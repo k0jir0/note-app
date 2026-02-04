@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title><%= title %></title>
+        <link rel="stylesheet" href="/css/styles.css">
+    </head>
+    <body>
+        <div class="container">
+        <h1><%= title %></h1>
+        <ul>
+        <% recipes.forEach(recipe => { %>
+        <li class="recipe-card"><a href="/recipe/<%= encodeURIComponent(recipe.name) %>"><%= recipe.name %></a>   
+        <% if (recipe.isFavorite) { %> 
+            <span class="favorite">**</span>
+        <% } %>
+        </li> 
+        <% }); %>
+</ul>
+        </div>
+
+</body>
+<script src="../src/home.js"></script>
+</html>
