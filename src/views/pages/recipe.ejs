@@ -7,15 +7,36 @@
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1><%= recipe.name %></h1>
-            <ul class="ingredients">
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-6">
+                <img src="<%= recipe.image %>" class="img-fluid rounded" alt="<%= recipe.name %>"/>
+            </div>
+            <div class="col-md-6">
+                <h1><%= recipe.name %></h1>
+                <p class="text-muted"><%= recipe.description %></p>
+
+                <div class="d-flex gap-3 mb-3">
+                    <span class="badge bg-secondary">Prep: <%= recipe.prepTime %> mins</span>
+                    <span class="badge bg-secondary">Cook: <%= recipe.cookTime %> mins</span>
+                </div>
+
+                <h3>Ingredients</h3>
+                         <ul class="list-group">
                 <% recipe.ingredients.forEach(ingredient => { %>
-                    <li><%= ingredient %></li>  
+                    <li class="list-group-item"><%= ingredient %></li>  
                 <% }); %>
             </ul>
+            <hr/>
+                <h3>Instructions</h3>
+                <ol class="list-group list-group-numbered">
+                <% recipe.instructions.forEach(instruction => { %>
+                    <li class="list-group-item"><%= instruction %></li>  
+                <% }); %>
+        </div>
+   
 
-            <a class="back-link" href="/">Back to Home</a>
+            <a class="btn btn-outlined-dark mt-3" href="/">Back to Home</a>
     </div>
     
 </body>
