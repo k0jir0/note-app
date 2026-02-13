@@ -1,43 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= recipe.name %></title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <title>
+        <%= recipe.name %>
+    </title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
 <body>
     <div class="container mt-5">
         <div class="row">
             <div class="col-md-6">
-                <img src="<%= recipe.image %>" class="img-fluid rounded" alt="<%= recipe.name %>"/>
+                <img src="<%= recipe.image %>" class="img-fluid rounded" alt="<%= recipe.name %>" />
             </div>
             <div class="col-md-6">
-                <h1><%= recipe.name %></h1>
-                <p class="text-muted"><%= recipe.description %></p>
+                <h1>
+                    <%= recipe.name %>
+                        <% if (recipe.isFavourite) { %>
+                            <span class="badge bg-warning text-dark">★ Favourite</span>
+                            <% } %>
+                </h1>
+
+
+                <p class="text-muted">
+                    <%= recipe.description %>
+                </p>
+
 
                 <div class="d-flex gap-3 mb-3">
                     <span class="badge bg-secondary">Prep: <%= recipe.prepTime %> mins</span>
                     <span class="badge bg-secondary">Cook: <%= recipe.cookTime %> mins</span>
                 </div>
 
+
                 <h3>Ingredients</h3>
-                         <ul class="list-group">
-                <% recipe.ingredients.forEach(ingredient => { %>
-                    <li class="list-group-item"><%= ingredient %></li>  
-                <% }); %>
-            </ul>
-            <hr/>
+                <ul class="list-group mb-4">
+                    <% (recipe.ingredients || []).forEach(ingredient => { %>
+                        <li class="list-group-item">
+                            <%= ingredient %>
+                        </li>
+                        <% }) %>
+                </ul>
+
+
                 <h3>Instructions</h3>
                 <ol class="list-group list-group-numbered">
-                <% recipe.instructions.forEach(instruction => { %>
-                    <li class="list-group-item"><%= instruction %></li>  
-                <% }); %>
-        </div>
-   
+                    <% (recipe.instructions || []).forEach(instruction => { %>
+                        <li class="list-group-item">
+                            <%= instruction %>
+                        </li>
+                        <% }) %>
+                </ol>
 
-            <a class="btn btn-outlined-dark mt-3" href="/">Back to Home</a>
+
+                <a href="/recipes/<%= recipe._id %>/edit" class="btn btn-outline-dark mt-3">Edit</a>
+                <a href="/" class="btn btn-secondary mt-3">Back</a>
+            </div>
+        </div>
     </div>
-    
 </body>
+
 </html>

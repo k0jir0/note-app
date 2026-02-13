@@ -2,7 +2,8 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 
-const recipeRoute = require('./src/routes/recipeRoutes');
+const recipeApiRoute = require('./src/routes/recipeApiRoutes');
+const recipePageRoute = require('./src/routes/recipePageRoutes');
 
 require('dotenv').config();
 const app = express();
@@ -22,12 +23,15 @@ mongoose.connect(dbURI)
 
 // mongoose connection  
 //mongoose.connect("mongodb+srv://ryanadmin:<circuitstream26>@cluster0.09wsom9.mongodb.net/?appName=Cluster0");
+app.use(express.json());
 
 const recipes = require('./src/models/recipes');
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views'));
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
 app.get('/', async (req, res) => {
@@ -79,7 +83,8 @@ app.get('/seed', async (req, res) => {
     res.send('Database seeded');
 }); 
 
-app.use('/', recipeRoute);
+app.use(recipeApiRoute);
+app.use(recipePageRoute);
 
 app.listen(3000, () => {
     console.log('Server is running on http://localhost:3000');
