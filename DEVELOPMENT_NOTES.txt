@@ -10,77 +10,79 @@ This full-stack note-taking application demonstrates the complete lifecycle of a
 
 MAJOR CHALLENGES AND SOLUTIONS
 
-The implementation of authentication and authorization proved to be one of the most significant challenges. Securing user sessions with Passport.js required understanding local strategy configuration, proper serialization and deserialization of user data, and protecting routes with middleware. The solution involved creating reusable `requireAuth` middleware and implementing user-specific queries to ensure users could only access their own notes. Separating API routes (returning JSON) from page routes (returning HTML) provided better error handling for different client types.
+Authentication and authorization proved most challenging. Securing user sessions with Passport.js involved local strategy configuration, user data serialization/deserialization, and route protection middleware. The solution used reusable `requireAuth` middleware and user-specific queries to ensure users could only access their own notes. Separating API routes (JSON) from page routes (HTML) provided better error handling for different client types.
 
-Input validation and sanitization required balancing security with user experience. The challenge was preventing XSS attacks while validating diverse field types without exposing system internals. This was addressed by creating centralized validation utilities in `src/utils/validation.js`, implementing multi-layer validation across client, server, and database layers, and using an `isUpdate` flag to differentiate between create and update operations. Inputs were sanitized using regex patterns to remove potentially dangerous script tags while preserving legitimate content.
+Input validation and sanitization balanced security with user experience. The challenge was preventing XSS attacks while validating diverse field types without exposing system internals. This was addressed by creating centralized validation utilities in `src/utils/validation.js`, implementing multi-layer validation across client, server, and database, and using an `isUpdate` flag to differentiate create from update operations. Inputs were sanitized using regex to remove dangerous script tags while preserving legitimate content.
 
-Achieving comprehensive test coverage without requiring a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Using Sinon for stubs, spies, and mocks alongside consistent test patterns solved this issue. Proper cleanup in `afterEach` blocks prevented state leakage between tests, ultimately achieving 112 tests covering models, controllers, routes, and utilities.
+Comprehensive test coverage without a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Sinon for stubs, spies, and mocks alongside consistent test patterns solved this. Proper cleanup in `afterEach` blocks prevented state leakage, achieving 112 tests covering models, controllers, routes, and utilities.
 
-Preparing for production deployment revealed hidden technical debt including hardcoded values, insecure cookie settings, and mixed indentation. These issues were resolved by introducing environment variables with fallbacks, configuring secure cookies for production (`secure: process.env.NODE_ENV === 'production'`), creating proper npm scripts, protecting destructive seed routes, and running ESLint with the `--fix` flag to standardize code formatting.
+Production deployment preparation revealed technical debt: hardcoded values, insecure cookie settings, and mixed indentation. Resolution involved environment variables with fallbacks, secure cookies for production (`secure: process.env.NODE_ENV === 'production'`), proper npm scripts, protected seed routes, and ESLint `--fix` for standardized formatting.
 
-Error handling consistency across API and page routes required creating a centralized `handleError` utility that standardized response formats as `{ success, message, errors }` with appropriate HTTP status codes. All async handlers were wrapped in try-catch blocks, and dedicated test cases verified error scenarios including database failures, validation errors, and invalid ObjectId casting.
+Error handling consistency required a centralized `handleError` utility standardizing response formats as `{ success, message, errors }` with appropriate HTTP status codes. All async handlers were wrapped in try-catch blocks, with dedicated test cases verifying database failures, validation errors, and invalid ObjectId casting.
 
-Database schema design involved decisions about references versus embedded documents, field constraints, and indexing. Using ObjectId references for the User-to-Notes relationship with automatic timestamps, optional fields with defaults, and realistic constraints (title: 3-200 characters, content: max 10,000) created a flexible yet robust data structure. Compound queries combining user ID and note ID ensured proper authorization.
+Database schema design involved decisions about references versus embedded documents, field constraints, and indexing. ObjectId references for the User-to-Notes relationship with automatic timestamps, optional fields with defaults, and realistic constraints (title: 3-200 characters, content: max 10,000) created a flexible yet robust structure. Compound queries combining user ID and note ID ensured proper authorization.
 
 The project initially pointed to a different repository and required migration. This involved removing the incorrect remote, installing GitHub CLI (`winget install GitHub.cli`), authenticating via web, creating the new repository programmatically (`gh repo create test-app --public --source=.`), and pushing the code successfully.
 
-Legacy code maintenance presented the challenge of updating older controllers and routes that lacked authentication. Rather than deleting these files, they were updated with `requireAuth` middleware and user-specific filtering to maintain backward compatibility while improving security. Tests were updated accordingly, and documentation explained why legacy files were preserved.
+Legacy code maintenance required updating older controllers and routes that lacked authentication. Rather than deleting these files, they were updated with `requireAuth` middleware and user-specific filtering to maintain backward compatibility while improving security. Tests were updated accordingly with documentation explaining preservation.
+
+Model naming standardization involved renaming `notes.js` to `Notes.js` for consistency with JavaScript conventions. This required updating all import statements across controllers (`noteController.js`, `noteApiController.js`), routes (`notePageRoutes.js`), test files, and `index.js`. Git's `mv` command preserved file history during the rename.
 
 
 KEY LEARNINGS
 
-Security must be the foundation of any application. Never trust user input—validate and sanitize everything. Hash passwords rather than storing plaintext, use environment variables for secrets, implement both authentication and authorization, configure cookies securely in production, and protect destructive operations.
+Security must be foundational. Never trust user input—validate and sanitize everything. Hash passwords, use environment variables for secrets, implement authentication and authorization, configure cookies securely in production, and protect destructive operations.
 
-Separation of concerns improves maintainability. Models should handle data structure and basic validation, controllers contain business logic, routes handle HTTP mapping, middleware provides reusable functionality, utilities centralize common operations, and views contain only presentation logic.
+Separation of concerns improves maintainability. Models handle data structure and validation, controllers contain business logic, routes handle HTTP mapping, middleware provides reusable functionality, utilities centralize common operations, and views contain presentation logic only.
 
-Testing is non-negotiable for quality software. Tests should be written before or during development, not after. Mock external dependencies like databases and authentication systems, test both success and error scenarios, focus on critical paths while aiming for high coverage, use descriptive test names, and clean up properly after each test.
+Testing is non-negotiable. Write tests before or during development, not after. Mock external dependencies like databases and authentication, test success and error scenarios, focus on critical paths while aiming for high coverage, use descriptive test names, and clean up after each test.
 
-Environment configuration requires discipline. Use .env files for local development but never commit secrets to version control. Provide .env.example as a template, use different configurations for development, testing, and production, default to safe values, and document all required environment variables.
+Environment configuration requires discipline. Use .env files for local development but never commit secrets. Provide .env.example as a template, use different configurations for dev/test/prod, default to safe values, and document all required variables.
 
-API design should follow consistent patterns. Use standardized response formats, follow RESTful conventions, return appropriate HTTP status codes, provide detailed error messages for developers, support partial updates with optional fields, and include timestamps in all database records.
+API design should follow consistent patterns. Use standardized response formats, RESTful conventions, appropriate HTTP status codes, detailed error messages for developers, partial updates with optional fields, and timestamps in all database records.
 
-Error handling must be comprehensive and centralized. Always use try-catch for async operations, centralize error handling logic, log errors for debugging but not in production, return user-friendly messages, differentiate between client errors (4xx) and server errors (5xx), and never expose stack traces to users.
+Error handling must be comprehensive and centralized. Use try-catch for async operations, centralize error logic, log errors for debugging but not in production, return user-friendly messages, differentiate client (4xx) from server errors (5xx), and never expose stack traces.
 
-Code organization affects long-term maintainability. Group related files logically, use consistent naming conventions, keep files focused on single responsibilities, comment complex logic but not obvious code, extract repeated code into utilities, and follow established patterns throughout the codebase.
+Code organization affects maintainability. Group related files logically, use consistent naming conventions, keep files focused on single responsibilities, comment complex logic but not obvious code, extract repeated code into utilities, and follow established patterns.
 
-Documentation enables collaboration and future development. Write clear README files with setup instructions, document API endpoints with examples, include request and response formats, explain validation rules, provide troubleshooting guidance, and keep documentation synchronized with code changes.
+Documentation enables collaboration and future development. Write clear READMEs with setup instructions, document API endpoints with examples, include request/response formats, explain validation rules, provide troubleshooting guidance, and keep documentation synchronized with code.
 
-Honest technical debt assessment is better than false perfection. Grade debt realistically, identify high-priority issues versus nice-to-haves, fix production blockers before optimization, document known issues for future work, and balance perfection with shipping functional software.
+Honest technical debt assessment beats false perfection. Grade realistically, identify high-priority issues versus nice-to-haves, fix production blockers before optimization, document known issues, and balance perfection with shipping functional software.
 
-Git workflow discipline prevents problems. Commit frequently with descriptive messages, review changes before committing, use branches for features when appropriate, keep commits focused on single changes, push to remote repositories regularly, and use version tags for releases.
+Git workflow discipline prevents problems. Commit frequently with descriptive messages, review changes before committing, use branches appropriately, keep commits focused, push regularly, and use version tags for releases.
 
 
 TECHNICAL INSIGHTS
 
-Working with Mongoose revealed several quirks: validation runs on save but not on update unless `runValidators: true` is specified, `findOne` returns null rather than throwing errors when no document is found, ObjectId casting errors need explicit handling, virtual fields don't persist to the database, and timestamps only update automatically on save or update operations.
+Mongoose quirks: validation runs on save but not update unless `runValidators: true` is specified, `findOne` returns null when no document is found, ObjectId casting errors need explicit handling, virtual fields don't persist, and timestamps only update on save/update operations.
 
-Express sessions store data server-side while cookies only hold session IDs. Session secrets should be long and random, sessions persist across server restarts when using a store (memory by default), Passport serializes only the user ID rather than the entire user object, and logout requires both `req.logout()` and session destruction.
+Express sessions store data server-side while cookies hold only session IDs. Session secrets should be long and random, sessions persist across restarts when using a store (memory by default), Passport serializes only the user ID, and logout requires both `req.logout()` and session destruction.
 
-Passport.js authentication follows specific patterns: the local strategy handles username/password authentication, serialization stores user identifiers in sessions, deserialization fetches the full user from the database, callbacks use `done(err, user)` or `done(err, false, { message })`, and `req.isAuthenticated()` checks login status.
+Passport.js patterns: local strategy handles username/password authentication, serialization stores user identifiers in sessions, deserialization fetches the full user from the database, callbacks use `done(err, user)` or `done(err, false, { message })`, and `req.isAuthenticated()` checks login status.
 
-Testing best practices include using `describe()` for grouping related tests, `beforeEach()` for common setup, `afterEach()` for cleanup and stub restoration, stubbing database calls rather than connecting to real databases, testing edge cases like empty strings and long inputs, and verifying both success and error paths.
+Testing best practices: use `describe()` for grouping tests, `beforeEach()` for setup, `afterEach()` for cleanup and stub restoration, stub database calls rather than connecting to real databases, test edge cases like empty strings and long inputs, and verify both success and error paths.
 
-ESLint automation with the `--fix` flag auto-corrects many issues. Configure rules in .eslintrc.json, accept some warnings as reasonable (like unused variables in stubs), recognize that consistent indentation improves readability, and run the linter before committing.
+ESLint automation with `--fix` auto-corrects many issues. Configure rules in .eslintrc.json, accept some warnings as reasonable (unused variables in stubs), recognize consistent indentation improves readability, and run the linter before committing.
 
 
 WHAT I WOULD DO DIFFERENTLY
 
-Starting with tests and using test-driven development for critical features would have caught bugs earlier and established test patterns from the beginning. Planning authentication first—designing the auth flow before implementing other features and creating the middleware library early—would have prevented security gaps.
+Starting with test-driven development for critical features would have caught bugs earlier and established test patterns from the beginning. Planning authentication first—designing the auth flow before other features and creating the middleware library early—would have prevented security gaps.
 
-Standardizing early by choosing indentation style at project start, setting up linter configuration immediately, and establishing naming conventions would have avoided later cleanup work. Documenting as development progresses rather than leaving it for later keeps documentation accurate and complete.
+Standardizing early by choosing indentation style, setting up linter configuration, and establishing naming conventions would have avoided cleanup work. Documenting during development rather than deferring keeps documentation accurate and complete.
 
-Using environment variables from day one prevents the need to refactor hardcoded values later. Setting up .env.example immediately and configuring for production from the start saves time and reduces deployment issues.
+Using environment variables from day one prevents refactoring hardcoded values later. Setting up .env.example immediately and configuring for production from the start saves time and reduces deployment issues.
 
-Centralizing validation early by creating validation utilities before building features prevents scattered validation logic and encourages reuse across routes. Implementing proper logging with a library like Winston or Morgan, logging to files in production, and including request IDs for tracking would improve debugging capabilities.
+Centralizing validation early by creating utilities before building features prevents scattered logic and encourages reuse. Implementing proper logging with Winston or Morgan, logging to files in production, and including request IDs would improve debugging.
 
 
 FINAL REFLECTION
 
-This project achieved 112 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, RESTful API design with proper status codes, production-ready configuration, a 299-line README, proper Git repository setup, logical code organization, and security best practices. 
+This project achieved 112 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, RESTful API design with proper status codes, production-ready configuration, a concise 233-line README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and security best practices.
 
-Building software is inherently iterative. The first version may work, but achieving security, maintainability, and production readiness requires conscious effort and continuous improvement. The most valuable lesson learned is that honesty about technical debt surpasses claiming perfection. Real projects involve trade-offs, and understanding those trade-offs makes for better development decisions.
+Building software is inherently iterative. The first version may work, but achieving security, maintainability, and production readiness requires conscious effort and continuous improvement. The most valuable lesson is that honesty about technical debt surpasses claiming perfection. Real projects involve trade-offs, and understanding them makes for better development decisions.
 
 ================================================================================
-Project: Note App | Developer: Ryan V | Date: February 17, 2026
+Project: Note App | Developer: Ryan V | Date: February 18, 2026
 Repository: https://github.com/k0jir0/test-app
 ================================================================================
