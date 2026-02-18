@@ -38,6 +38,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
 // Session configuration
+const SESSION_COOKIE_MAX_AGE = 1000 * 60 * 60 * 24; // 24 hours in milliseconds
+
 const sessionSecret = process.env.SESSION_SECRET || 'YourSecretKeyHere';
 if (sessionSecret === 'YourSecretKeyHere' && process.env.NODE_ENV === 'production') {
     console.error('WARNING: Using default SESSION_SECRET in production is insecure!');
@@ -49,7 +51,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        maxAge: 1000 * 60 * 60 * 24, // 24 hours
+        maxAge: SESSION_COOKIE_MAX_AGE,
         secure: process.env.NODE_ENV === 'production', // HTTPS only in production
         httpOnly: true, // Prevents client-side JavaScript access
         sameSite: 'lax' // CSRF protection

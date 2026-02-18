@@ -1,5 +1,16 @@
 // Validation utility functions
 
+// Validation constants
+const VALIDATION_LIMITS = {
+    NOTE_TITLE_MIN: 3,
+    NOTE_TITLE_MAX: 200,
+    NOTE_CONTENT_MAX: 10000,
+    NOTE_IMAGE_URL_MAX: 500,
+    EMAIL_MAX: 254,
+    PASSWORD_MIN: 8,
+    PASSWORD_MAX: 128
+};
+
 /**
  * Validate note data
  * @param {Object} data - Note data to validate
@@ -15,10 +26,10 @@ const validateNoteData = (data, isUpdate = false) => {
             errors.push('Title is required and must be a string');
         } else if (data.title.trim().length === 0) {
             errors.push('Title cannot be empty or only whitespace');
-        } else if (data.title.length > 200) {
-            errors.push('Title must be 200 characters or less');
-        } else if (data.title.length < 3) {
-            errors.push('Title must be at least 3 characters long');
+        } else if (data.title.length > VALIDATION_LIMITS.NOTE_TITLE_MAX) {
+            errors.push(`Title must be ${VALIDATION_LIMITS.NOTE_TITLE_MAX} characters or less`);
+        } else if (data.title.length < VALIDATION_LIMITS.NOTE_TITLE_MIN) {
+            errors.push(`Title must be at least ${VALIDATION_LIMITS.NOTE_TITLE_MIN} characters long`);
         }
     }
 
@@ -26,8 +37,8 @@ const validateNoteData = (data, isUpdate = false) => {
     if (data.content !== undefined) {
         if (typeof data.content !== 'string') {
             errors.push('Content must be a string');
-        } else if (data.content.length > 10000) {
-            errors.push('Content must be 10,000 characters or less');
+        } else if (data.content.length > VALIDATION_LIMITS.NOTE_CONTENT_MAX) {
+            errors.push(`Content must be ${VALIDATION_LIMITS.NOTE_CONTENT_MAX.toLocaleString()} characters or less`);
         }
     }
 
@@ -37,8 +48,8 @@ const validateNoteData = (data, isUpdate = false) => {
             errors.push('Image URL must be a string');
         } else if (!isValidUrl(data.image)) {
             errors.push('Image must be a valid URL (http:// or https://)');
-        } else if (data.image.length > 500) {
-            errors.push('Image URL must be 500 characters or less');
+        } else if (data.image.length > VALIDATION_LIMITS.NOTE_IMAGE_URL_MAX) {
+            errors.push(`Image URL must be ${VALIDATION_LIMITS.NOTE_IMAGE_URL_MAX} characters or less`);
         }
     }
 
@@ -79,7 +90,7 @@ const validateEmail = (email) => {
         return { isValid: false, error: 'Email cannot be empty' };
     }
 
-    if (trimmedEmail.length > 254) {
+    if (trimmedEmail.length > VALIDATION_LIMITS.EMAIL_MAX) {
         return { isValid: false, error: 'Email is too long' };
     }
 
@@ -104,12 +115,12 @@ const validatePassword = (password) => {
         return { isValid: false, errors };
     }
 
-    if (password.length < 8) {
-        errors.push('Password must be at least 8 characters long');
+    if (password.length < VALIDATION_LIMITS.PASSWORD_MIN) {
+        errors.push(`Password must be at least ${VALIDATION_LIMITS.PASSWORD_MIN} characters long`);
     }
 
-    if (password.length > 128) {
-        errors.push('Password must be 128 characters or less');
+    if (password.length > VALIDATION_LIMITS.PASSWORD_MAX) {
+        errors.push(`Password must be ${VALIDATION_LIMITS.PASSWORD_MAX} characters or less`);
     }
 
     if (!/[A-Z]/.test(password)) {
@@ -174,5 +185,6 @@ module.exports = {
     validatePassword,
     sanitizeString,
     sanitizeNoteData,
-    isValidUrl
+    isValidUrl,
+    VALIDATION_LIMITS
 };

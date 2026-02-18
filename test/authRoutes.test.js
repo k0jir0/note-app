@@ -114,7 +114,7 @@ describe('Auth Routes', () => {
             const handler = getHandler('post', '/signup');
 
             sinon.stub(User, 'findOne').resolves(null);
-            const saveStub = sinon.stub(User.prototype, 'save').resolves();
+            sinon.stub(User.prototype, 'save').resolves();
             sinon.stub(bcrypt, 'hash').resolves('hashedPassword123');
 
             const req = {

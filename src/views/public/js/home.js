@@ -1,8 +1,8 @@
 fetch('/notes')
     .then(response => response.json())
-    .then(data => {
+    .then(() => {
         // Handle notes data
     })
-    .catch(error => {
+    .catch(() => {
         // Handle error
     });

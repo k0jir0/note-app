@@ -8,7 +8,7 @@ const isValidObjectId = (id) => {
 };
 
 // Helper function to handle errors
-const handleError = (res, error, operation) => {
+const handleError = (res, error, _operation) => {
     // Validation errors (missing required fields, invalid data types)
     if (error.name === 'ValidationError') {
         const errors = Object.values(error.errors).map(err => err.message);
