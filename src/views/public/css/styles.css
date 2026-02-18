@@ -27,14 +27,14 @@ ul {
   list-style: none;
 }
 
-.recipe-card {
+.note-card {
   display: flex;
   justify-content: space-between;
   padding: 10px;
   border-radius: 6px;
 }
 
-.recipe-card:hover {
+.note-card:hover {
   background: #edf2f7;
 }
 

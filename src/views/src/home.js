@@ -1,7 +1,7 @@
-console.log("Hello");
+console.log('Hello');
 
-fetch('/recipes')
-    .then(response => responses.json())
+fetch('/notes')
+    .then(response => response.json())
     .then(data => {
         console.log(data);
     });
