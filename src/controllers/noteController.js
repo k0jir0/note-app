@@ -1,4 +1,4 @@
-const Notes = require('../models/notes');
+const Notes = require('../models/Notes');
 
 exports.getAllNotes = async (req, res) => {
     try {

@@ -1,7 +1,7 @@
 const {expect} = require('chai');
 const mongoose = require('mongoose');
 
-const Note = require('../src/models/notes');
+const Note = require('../src/models/Notes');
 
 describe('Note Model', () => {
     it('Should be invalid if title is missing', () => {

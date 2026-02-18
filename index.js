@@ -23,7 +23,7 @@ mongoose.connect(dbURI)
     }).catch((err) => {
     });
 
-const notes = require('./src/models/notes');
+const notes = require('./src/models/Notes');
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views'));

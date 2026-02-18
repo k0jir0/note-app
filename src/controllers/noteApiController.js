@@ -1,4 +1,4 @@
-const Notes = require('../models/notes');
+const Notes = require('../models/Notes');
 const mongoose = require('mongoose');
 const { validateNoteData, sanitizeNoteData } = require('../utils/validation');
 

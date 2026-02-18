@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 const router = require('../src/routes/noteRoutes');
 const noteController = require('../src/controllers/noteController');
-const Notes = require('../src/models/notes');
+const Notes = require('../src/models/Notes');
 
 const getLayers = (method, path) => {
     return router.stack.filter(

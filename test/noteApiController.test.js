@@ -3,7 +3,7 @@ const sinon = require('sinon');
 const mongoose = require('mongoose');
 
 const noteApiController = require('../src/controllers/noteApiController');
-const Notes = require('../src/models/notes');
+const Notes = require('../src/models/Notes');
 
 describe('Note API Controller - getAllNotes', () => {
     afterEach(() => {

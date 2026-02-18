@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
-const Notes = require('../models/notes');
+const Notes = require('../models/Notes');
 const mongoose = require('mongoose');
 
 router.get('/notes/new', requireAuth, (req, res) => {

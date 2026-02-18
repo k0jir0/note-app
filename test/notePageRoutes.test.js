@@ -3,7 +3,7 @@ const sinon = require('sinon');
 const mongoose = require('mongoose');
 
 const router = require('../src/routes/notePageRoutes');
-const Notes = require('../src/models/notes');
+const Notes = require('../src/models/Notes');
 
 const getHandler = (method, path, stackIndex = 1) => {
     const layer = router.stack.find(
