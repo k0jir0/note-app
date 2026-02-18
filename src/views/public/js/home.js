@@ -1,8 +1,8 @@
 fetch('/notes')
     .then(response => response.json())
-    .then(() => {
-        // Handle notes data
+    .then(data => {
+        console.log(data);
     })
-    .catch(() => {
-        // Handle error
+    .catch(error => {
+        console.error('Error fetching notes:', error);
     });
