@@ -1,51 +1,34 @@
 {
-  "name": "simple-note-app",
+  "name": "simple-recipe-app",
   "version": "1.0.0",
-  "description": "A full-stack note-taking application with user authentication, built with Node.js, Express, MongoDB, and EJS",
+  "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "start-dev": "npx nodemon index.js",
     "test": "mocha",
-    "lint": "eslint . --ext .js"
+    "start-dev": "npx nodemon index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/k0jir0/simple-note-app.git"
+    "url": "git+https://github.com/k0jir0/simple-recipe-app.git"
   },
-  "keywords": [
-    "notes",
-    "note-taking",
-    "express",
-    "mongodb",
-    "authentication",
-    "passport",
-    "ejs",
-    "crud",
-    "rest-api"
-  ],
-  "author": "Ryan V",
+  "keywords": [],
+  "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/k0jir0/simple-note-app/issues"
+    "url": "https://github.com/k0jir0/simple-recipe-app/issues"
   },
-  "homepage": "https://github.com/k0jir0/simple-note-app#readme",
+  "homepage": "https://github.com/k0jir0/simple-recipe-app#readme",
   "devDependencies": {
-    "chai": "^6.2.2",
-    "eslint": "^8.57.1",
+    "chai": "^6.2.2", 
     "mocha": "^11.7.5",
     "nodemon": "^3.1.11",
     "sinon": "^21.0.1"
   },
   "dependencies": {
-    "bcrypt": "^6.0.0",
     "dotenv": "^16.4.7",
     "ejs": "^4.0.1",
     "express": "^5.2.1",
-    "express-session": "^1.19.0",
-    "mongoose": "^8.10.0",
-    "passport": "^0.7.0",
-    "passport-local": "^1.0.0"
+    "mongoose": "^8.10.0"
   }
 }

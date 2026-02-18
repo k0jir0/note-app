@@ -1,29 +1,31 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const session = require('express-session');
-const passport = require('passport');
 
-const noteApiRoute = require('./src/routes/noteApiRoutes');
-const notePageRoute = require('./src/routes/notePageRoutes');
-const authRoutes = require('./src/routes/authRoutes');
-const { requireAuth } = require('./src/middleware/auth');
+const recipeApiRoute = require('./src/routes/recipeApiRoutes');
+const recipePageRoute = require('./src/routes/recipePageRoutes');
 
-require('./src/config/passport')(passport);
 require('dotenv').config();
 const app = express();
 
-// Model layer
+//Model layer
 const dbURI = process.env.MONGODB_URI;
 if (!dbURI) {
+    console.error('Missing MONGODB_URI. Set it in your environment or a .env file.');
     process.exit(1);
 }
 mongoose.connect(dbURI)
     .then(() => {
+        console.log("Connected to MongoDB");
     }).catch((err) => {
+        console.log("Error connecting to MongoDB:", err);
     });
 
-const notes = require('./src/models/notes');
+// mongoose connection  
+//mongoose.connect("mongodb+srv://ryanadmin:<circuitstream26>@cluster0.09wsom9.mongodb.net/?appName=Cluster0");
+app.use(express.json());
+
+const recipes = require('./src/models/recipes');
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views'));
@@ -32,93 +34,59 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
-// Session configuration
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'YourSecretKeyHere',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        maxAge: 1000 * 60 * 60 * 24, // 24 hours
-        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-        httpOnly: true, // Prevents client-side JavaScript access
-        sameSite: 'lax' // CSRF protection
-    }
-}));
-
-// Passport middleware (must come after session)
-app.use(passport.initialize());
-app.use(passport.session());
-
-// Make user available in all views
-app.use((req, res, next) => {
-    res.locals.user = req.user || null;
-    next();
-});
-
-// Authentication routes (must be before requireAuth middleware)
-app.use('/auth', authRoutes);
-
-app.get('/', requireAuth, async (req, res) => {
+app.get('/', async (req, res) => {
     try {
-        const noteList = await notes.find({ user: req.user._id });
-        res.render('pages/home', { title: 'Note App', notes: noteList });
+        const recipeList = await recipes.find({});
+        res.render('pages/home', { title: 'Recipe Picker App', recipes: recipeList });
     } catch (error) {
         res.status(500).send('Server Error');
     }
 });
 
-// Seed route - DEVELOPMENT ONLY - requires authentication
-// WARNING: This route deletes all data! Only enabled in non-production environments.
-if (process.env.NODE_ENV !== 'production') {
-    app.get('/seed', requireAuth, async (req, res) => {
-        const User = require('./src/models/User');
-        const bcrypt = require('bcrypt');
+// app.get('/recipe/:name', (req, res) => {
+//     const recipeName = decodeURIComponent(req.params.name);
+//     const recipe = recipes.find(r => r.name === recipeName);
 
-        try {
-            // Clear existing data
-            await notes.deleteMany({});
-            await User.deleteMany({});
+//     if (!recipe) {
+//         return res.status(404).send('Recipe not found');
+//     }
 
-            // Create a test user
-            const hashedPassword = await bcrypt.hash('password123', 10);
-            const testUser = await User.create({
-                email: 'test@example.com',
-                password: hashedPassword
-            });
+//     res.render('pages/recipe', { recipe });
+// });
 
-            // Create sample notes for the test user
-            await notes.create([
-                {
-                    title: 'Meeting Notes',
-                    content: 'Discussed Q1 goals and upcoming project deadlines. Action items: Review budget, Schedule team meeting.',
-                    image: 'https://images.unsplash.com/photo-1517842645767-c639042777db?w=600',
-                    user: testUser._id
-                },
-                {
-                    title: 'Shopping List',
-                    content: 'Milk, Eggs, Bread, Butter, Coffee, Fresh vegetables',
-                    image: '',
-                    user: testUser._id
-                },
-                {
-                    title: 'Book Ideas',
-                    content: 'Research topics for new project: Machine Learning basics, Web Development trends, Design patterns',
-                    image: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600',
-                    user: testUser._id
-                }
-            ]);
+app.get('/seed', async (req, res) => {
+    await recipes.deleteMany({});
 
-            res.send('Database seeded! Test user created: test@example.com / password123');
-        } catch (error) {
-            res.status(500).send('Error seeding database: ' + error.message);
+    await recipes.create([
+        {
+            name: 'Spaghetti Bolognese',
+            description: 'Classic Italian meat sauce.',
+            ingredients: ['Spaghetti', 'Ground Beef', 'Tomato Sauce', 'Onion'],
+            instructions: ['Boil pasta', 'Cook meat', 'Mix sauce'],
+            prepTime: 15,
+            cookTime: 30,
+            image: 'https://images.unsplash.com/photo-1626844131082-256783844137?w=600',
+            isFavorite: true
+        },
+        {
+            name: 'Vegetable Stir Fry',
+            description: 'Healthy and quick veggies.',
+            ingredients: ['Broccoli', 'Carrots', 'Soy Sauce', 'Tofu'],
+            instructions: ['Chop veggies', 'Fry tofu', 'Stir fry all'],
+            prepTime: 10,
+            cookTime: 15,
+            image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600',
+            isFavorite: false
         }
-    });
-}
+    ]);
 
-app.use(noteApiRoute);
-app.use(notePageRoute);
+    res.send('Database seeded');
+}); 
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.use(recipeApiRoute);
+app.use(recipePageRoute);
+
+app.listen(3000, () => {
+    console.log('Server is running on http://localhost:3000');
 });
 
