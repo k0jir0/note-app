@@ -1,48 +1,12 @@
 const Notes = require('../models/Notes');
 const mongoose = require('mongoose');
 const { validateNoteData, sanitizeNoteData } = require('../utils/validation');
+const { handleApiError } = require('../utils/errorHandler');
+const { parsePaginationParams, createPaginationMeta } = require('../utils/pagination');
 
 // Helper function to validate MongoDB ObjectId
 const isValidObjectId = (id) => {
     return mongoose.Types.ObjectId.isValid(id);
-};
-
-// Helper function to handle errors
-const handleError = (res, error, _operation) => {
-    // Validation errors (missing required fields, invalid data types)
-    if (error.name === 'ValidationError') {
-        const errors = Object.values(error.errors).map(err => err.message);
-        return res.status(400).json({
-            success: false,
-            message: 'Validation failed',
-            errors
-        });
-    }
-
-    // Cast errors (invalid data format)
-    if (error.name === 'CastError') {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid data format',
-            error: error.message
-        });
-    }
-
-    // Duplicate key errors
-    if (error.code === 11000) {
-        return res.status(409).json({
-            success: false,
-            message: 'Duplicate entry',
-            error: 'A note with this information already exists'
-        });
-    }
-
-    // Default server error
-    return res.status(500).json({
-        success: false,
-        message: 'Server Error',
-        error: error.message
-    });
 };
 
 // CREATE Operations
@@ -87,23 +51,36 @@ exports.createNote = async (req, res) => {
             data: note
         });
     } catch (error) {
-        handleError(res, error, 'Create note');
+        handleApiError(res, error, 'Create note');
     }
 };
 
 // READ Operations
 exports.getAllNotes = async (req, res) => {
     try {
-        // Only get notes for the authenticated user
-        const notes = await Notes.find({ user: req.user._id });
+        // Parse pagination parameters
+        const { page, limit, skip } = parsePaginationParams(req.query);
+
+        // Get total count for pagination metadata
+        const totalCount = await Notes.countDocuments({ user: req.user._id });
+
+        // Get paginated notes for the authenticated user
+        const notes = await Notes.find({ user: req.user._id })
+            .sort({ updatedAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        // Create pagination metadata
+        const pagination = createPaginationMeta(totalCount, page, limit);
 
         res.status(200).json({
             success: true,
             count: notes.length,
-            data: notes
+            data: notes,
+            pagination
         });
     } catch (error) {
-        handleError(res, error, 'Get all notes');
+        handleApiError(res, error, 'Get all notes');
     }
 };
 
@@ -136,7 +113,7 @@ exports.getNote = async (req, res) => {
             data: note
         });
     } catch (error) {
-        handleError(res, error, 'Get note');
+        handleApiError(res, error, 'Get note');
     }
 };
 
@@ -203,7 +180,7 @@ exports.updateNote = async (req, res) => {
             data: note
         });
     } catch (error) {
-        handleError(res, error, 'Update note');
+        handleApiError(res, error, 'Update note');
     }
 };
 
@@ -238,6 +215,6 @@ exports.deleteNote = async (req, res) => {
             data: note
         });
     } catch (error) {
-        handleError(res, error, 'Delete note');
+        handleApiError(res, error, 'Delete note');
     }
 };

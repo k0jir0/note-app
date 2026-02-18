@@ -6,7 +6,6 @@ const passport = require('passport');
 
 const noteApiRoute = require('./src/routes/noteApiRoutes');
 const notePageRoute = require('./src/routes/notePageRoutes');
-const noteRoutes = require('./src/routes/noteRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const { requireAuth } = require('./src/middleware/auth');
 
@@ -27,8 +26,6 @@ mongoose.connect(dbURI)
         console.error('MongoDB connection error:', err.message);
         process.exit(1);
     });
-
-const notes = require('./src/models/Notes');
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views'));
@@ -71,13 +68,9 @@ app.use((req, res, next) => {
 // Authentication routes (must be before requireAuth middleware)
 app.use('/auth', authRoutes);
 
-app.get('/', requireAuth, async (req, res) => {
-    try {
-        const noteList = await notes.find({ user: req.user._id });
-        res.render('pages/home', { title: 'Note App', notes: noteList });
-    } catch (error) {
-        res.status(500).send('Server Error');
-    }
+// Redirect home to notes page
+app.get('/', requireAuth, (req, res) => {
+    res.redirect('/notes');
 });
 
 // Seed route - DEVELOPMENT ONLY - requires authentication
@@ -85,11 +78,12 @@ app.get('/', requireAuth, async (req, res) => {
 if (process.env.NODE_ENV !== 'production') {
     app.get('/seed', requireAuth, async (req, res) => {
         const User = require('./src/models/User');
+        const Notes = require('./src/models/Notes');
         const bcrypt = require('bcrypt');
 
         try {
             // Clear existing data
-            await notes.deleteMany({});
+            await Notes.deleteMany({});
             await User.deleteMany({});
 
             // Create a test user
@@ -100,7 +94,7 @@ if (process.env.NODE_ENV !== 'production') {
             });
 
             // Create sample notes for the test user
-            await notes.create([
+            await Notes.create([
                 {
                     title: 'Meeting Notes',
                     content: 'Discussed Q1 goals and upcoming project deadlines. Action items: Review budget, Schedule team meeting.',
@@ -130,7 +124,6 @@ if (process.env.NODE_ENV !== 'production') {
 
 app.use(noteApiRoute);
 app.use(notePageRoute);
-app.use(noteRoutes);  // Legacy routes
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

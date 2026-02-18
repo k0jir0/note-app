@@ -25,10 +25,17 @@ describe('Note API Controller - getAllNotes', () => {
             }
         ];
 
-        sinon.stub(Notes, 'find').resolves(fakeNotes);
+        const findStub = sinon.stub(Notes, 'find');
+        findStub.returns({
+            sort: sinon.stub().returnsThis(),
+            skip: sinon.stub().returnsThis(),
+            limit: sinon.stub().resolves(fakeNotes)
+        });
+        sinon.stub(Notes, 'countDocuments').resolves(2);
 
         const req = {
-            user: { _id: userId }
+            user: { _id: userId },
+            query: {}
         };
         const res = {
             status: sinon.stub().returnsThis(),
@@ -42,6 +49,8 @@ describe('Note API Controller - getAllNotes', () => {
         expect(res.json.firstCall.args[0].success).to.equal(true);
         expect(res.json.firstCall.args[0].data).to.deep.equal(fakeNotes);
         expect(res.json.firstCall.args[0].count).to.equal(2);
+        expect(res.json.firstCall.args[0].pagination).to.exist;
+        expect(res.json.firstCall.args[0].pagination.totalCount).to.equal(2);
     });
 
     it('should return 500 if there is a server error', async () => {

@@ -3,6 +3,7 @@ const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const Notes = require('../models/Notes');
 const mongoose = require('mongoose');
+const { handlePageError } = require('../utils/errorHandler');
 
 router.get('/notes/new', requireAuth, (req, res) => {
     res.render('pages/note-form.ejs', { note: null });
@@ -17,10 +18,7 @@ router.get('/notes', requireAuth, async (req, res) => {
             notes: notes
         });
     } catch (error) {
-        res.status(500).render('pages/home.ejs', {
-            title: 'Note App',
-            notes: []
-        });
+        handlePageError(res, error, 'Unable to load notes');
     }
 });
 
@@ -42,7 +40,7 @@ router.get('/notes/:id', requireAuth, async (req, res) => {
 
         res.render('pages/note.ejs', { note });
     } catch (error) {
-        res.status(500).send('Error loading note');
+        handlePageError(res, error, 'Unable to load note');
     }
 });
 
@@ -64,7 +62,7 @@ router.get('/notes/:id/edit', requireAuth, async (req, res) => {
 
         res.render('pages/note-form.ejs', { note });
     } catch (error) {
-        res.status(500).send('Error loading note');
+        handlePageError(res, error, 'Unable to load note for editing');
     }
 });
 

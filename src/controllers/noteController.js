@@ -1,4 +1,5 @@
 const Notes = require('../models/Notes');
+const { handlePageError } = require('../utils/errorHandler');
 
 exports.getAllNotes = async (req, res) => {
     try {
@@ -6,7 +7,7 @@ exports.getAllNotes = async (req, res) => {
         const notes = await Notes.find({ user: req.user._id }).sort({ updatedAt: -1 });
         res.render('pages/home', { title: 'Note App', notes: notes });
     } catch (error) {
-        res.status(500).send('Server Error: Unable to load notes');
+        handlePageError(res, error, 'Unable to load notes');
     }
 };
 
@@ -20,6 +21,6 @@ exports.getNote = async (req, res) => {
 
         res.render('pages/note', { note });
     } catch (error) {
-        res.status(500).send('Server Error: Unable to load note');
+        handlePageError(res, error, 'Unable to load note');
     }
 };

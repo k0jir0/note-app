@@ -9,14 +9,13 @@ module.exports = function (passport) {
         try {
             // Get the user from the database
             const user = await User.findOne({ email: email });
-            if (!user) {
-                return done(null, false, { message: 'Incorrect email.' });
-            }
 
-            // Compare passwords
-            const isMatch = await bcrypt.compare(password, user.password);
-            if (!isMatch) {
-                return done(null, false, { message: 'Incorrect password.' });
+            // Compare passwords (also handles case when user is null)
+            // Using generic error message to prevent user enumeration via timing attacks
+            const isMatch = user ? await bcrypt.compare(password, user.password) : false;
+
+            if (!user || !isMatch) {
+                return done(null, false, { message: 'Invalid credentials.' });
             }
 
             return done(null, user);

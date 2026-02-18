@@ -108,12 +108,8 @@ describe('Note Page Routes', () => {
         await handler(req, res);
 
         expect(res.status.calledWith(500)).to.be.true;
-        expect(
-            res.render.calledWith('pages/home.ejs', {
-                title: 'Note App',
-                notes: []
-            })
-        ).to.be.true;
+        expect(res.send.called).to.be.true;
+        expect(res.send.firstCall.args[0]).to.include('Unable to load notes');
     });
 
     it('renders a single note for GET /notes/:id', async () => {
