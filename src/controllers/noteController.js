@@ -6,7 +6,7 @@ exports.getAllNotes = async (req, res) => {
         const notes = await Notes.find({ user: req.user._id }).sort({ updatedAt: -1 });
         res.render('pages/home', { title: 'Note App', notes: notes });
     } catch (error) {
-        res.status(500).json({ message: 'Server Error' });
+        res.status(500).send('Server Error: Unable to load notes');
     }
 };
 
@@ -20,6 +20,6 @@ exports.getNote = async (req, res) => {
 
         res.render('pages/note', { note });
     } catch (error) {
-        res.status(500).json({ message: 'Server Error' });
+        res.status(500).send('Server Error: Unable to load note');
     }
 };

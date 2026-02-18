@@ -6,6 +6,7 @@ const passport = require('passport');
 
 const noteApiRoute = require('./src/routes/noteApiRoutes');
 const notePageRoute = require('./src/routes/notePageRoutes');
+const noteRoutes = require('./src/routes/noteRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const { requireAuth } = require('./src/middleware/auth');
 
@@ -16,11 +17,15 @@ const app = express();
 // Model layer
 const dbURI = process.env.MONGODB_URI;
 if (!dbURI) {
+    console.error('ERROR: MONGODB_URI is not defined in environment variables');
     process.exit(1);
 }
 mongoose.connect(dbURI)
     .then(() => {
+        console.log('MongoDB connected successfully');
     }).catch((err) => {
+        console.error('MongoDB connection error:', err.message);
+        process.exit(1);
     });
 
 const notes = require('./src/models/Notes');
@@ -33,8 +38,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
 // Session configuration
+const sessionSecret = process.env.SESSION_SECRET || 'YourSecretKeyHere';
+if (sessionSecret === 'YourSecretKeyHere' && process.env.NODE_ENV === 'production') {
+    console.error('WARNING: Using default SESSION_SECRET in production is insecure!');
+    process.exit(1);
+}
+
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'YourSecretKeyHere',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -117,8 +128,10 @@ if (process.env.NODE_ENV !== 'production') {
 
 app.use(noteApiRoute);
 app.use(notePageRoute);
+app.use(noteRoutes);  // Legacy routes
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
 

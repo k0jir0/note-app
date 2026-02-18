@@ -1,5 +1,5 @@
 {
-  "name": "simple-note-app",
+  "name": "test-app",
   "version": "1.0.0",
   "description": "A full-stack note-taking application with user authentication, built with Node.js, Express, MongoDB, and EJS",
   "main": "index.js",
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/k0jir0/simple-note-app.git"
+    "url": "git+https://github.com/k0jir0/test-app.git"
   },
   "keywords": [
     "notes",
@@ -28,9 +28,9 @@
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/k0jir0/simple-note-app/issues"
+    "url": "https://github.com/k0jir0/test-app/issues"
   },
-  "homepage": "https://github.com/k0jir0/simple-note-app#readme",
+  "homepage": "https://github.com/k0jir0/test-app#readme",
   "devDependencies": {
     "chai": "^6.2.2",
     "eslint": "^8.57.1",
