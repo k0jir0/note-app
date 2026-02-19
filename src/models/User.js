@@ -11,8 +11,16 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: true,
+        required: false,
         minLength: [8, 'Password must be at least 8 characters long']
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    name: {
+        type: String
     }
 }, {
     timestamps: true

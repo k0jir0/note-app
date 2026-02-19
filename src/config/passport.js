@@ -1,4 +1,5 @@
 const LocalStrategy = require('passport-local').Strategy;
+const GoogleStrategy = require('passport-google-oidc');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 
@@ -11,7 +12,6 @@ module.exports = function (passport) {
             const user = await User.findOne({ email: email });
 
             // Compare passwords (also handles case when user is null)
-            // Using generic error message to prevent user enumeration via timing attacks
             const isMatch = user ? await bcrypt.compare(password, user.password) : false;
 
             if (!user || !isMatch) {
@@ -21,6 +21,50 @@ module.exports = function (passport) {
             return done(null, user);
         } catch (error) {
             return done(error);
+        }
+    }));
+
+    passport.use(new GoogleStrategy({
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: '/auth/oauth2/redirect/google',
+        scope: ['profile', 'email']
+    }, async (issuer, profile, cb) => {
+        try {
+            // Check if user already exists with Google ID
+            let user = await User.findOne({ googleId: profile.id });
+            if (user) {
+                return cb(null, user);
+            }
+
+            // Check if user exists with email (link account)
+            // Note: passport-google-oidc usually provides email in profile.emails
+            let email = null;
+            if (profile.emails && profile.emails.length > 0) {
+                 email = profile.emails[0].value;
+            }
+
+            if (email) {
+                 user = await User.findOne({ email: email });
+                 if (user) {
+                     user.googleId = profile.id;
+                     await user.save();
+                     return cb(null, user);
+                 }
+            }
+
+            // Create new google user
+            const newUser = new User({
+                googleId: profile.id,
+                name: profile.displayName,
+                email: email
+            });
+
+            await newUser.save();
+            return cb(null, newUser);
+
+        } catch (err) {
+            return cb(err);
         }
     }));
 

@@ -9,8 +9,8 @@ const notePageRoute = require('./src/routes/notePageRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const { requireAuth } = require('./src/middleware/auth');
 
-require('./src/config/passport')(passport);
 require('dotenv').config();
+require('./src/config/passport')(passport);
 const app = express();
 
 // Model layer

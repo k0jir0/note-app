@@ -122,23 +122,31 @@ router.post('/signup', async (req, res) => {
 });
 
 // POST logout
-router.post('/logout', (req, res) => {
+router.post('/logout', (req, res, next) => {
     req.logout((err) => {
         if (err) {
-            return res.status(500).json({ error: 'Logout failed' });
+            return next(err);
         }
         res.redirect('/auth/login');
     });
 });
 
 // GET logout (for convenience)
-router.get('/logout', (req, res) => {
+router.get('/logout', (req, res, next) => {
     req.logout((err) => {
         if (err) {
-            return res.status(500).json({ error: 'Logout failed' });
+            return next(err);
         }
         res.redirect('/auth/login');
     });
 });
+
+// Google Auth
+router.get('/login/federated/google', passport.authenticate('google'));
+
+router.get('/oauth2/redirect/google', passport.authenticate('google', {
+    successRedirect: '/',
+    failureRedirect: '/auth/login'
+}));
 
 module.exports = router;

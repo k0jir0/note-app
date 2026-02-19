@@ -13,12 +13,14 @@
             <div>
                 <h1>Notes</h1>
                 <% if (user) { %>
-                    <p class="text-muted mb-0">Welcome, <%= user.email %></p>
+                    <p class="text-muted mb-0">Welcome, <%= user.name || user.email %></p>
                 <% } %>
             </div>
             <div>
                 <a href="/notes/new" class="btn btn-dark me-2">Create Note</a>
-                <a href="/auth/logout" class="btn btn-outline-secondary">Logout</a>
+                <form action="/auth/logout" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-outline-secondary">Logout</button>
+                </form>
             </div>
         </div>
 
