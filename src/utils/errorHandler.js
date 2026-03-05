@@ -25,7 +25,7 @@ const handleApiError = (res, error, operation = 'Operation') => {
         return res.status(400).json({
             success: false,
             message: 'Invalid data format',
-            error: error.message
+            errors: [error.message]
         });
     }
 
@@ -34,7 +34,7 @@ const handleApiError = (res, error, operation = 'Operation') => {
         return res.status(409).json({
             success: false,
             message: 'Duplicate entry',
-            error: 'A resource with this information already exists'
+            errors: ['A resource with this information already exists']
         });
     }
 
@@ -45,7 +45,7 @@ const handleApiError = (res, error, operation = 'Operation') => {
     return res.status(500).json({
         success: false,
         message: 'Server Error',
-        error: error.message
+        errors: ['An unexpected error occurred. Please try again later.']
     });
 };
 

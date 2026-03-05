@@ -11,9 +11,12 @@ const MAX_LIMIT = 100;
  * @param {Object} query - Express request.query object
  * @returns {Object} { page, limit, skip }
  */
-const parsePaginationParams = (query) => {
-    let page = parseInt(query.page) || DEFAULT_PAGE;
-    let limit = parseInt(query.limit) || DEFAULT_LIMIT;
+const parsePaginationParams = (query = {}) => {
+    const parsedPage = Number.parseInt(query.page, 10);
+    const parsedLimit = Number.parseInt(query.limit, 10);
+
+    let page = Number.isNaN(parsedPage) ? DEFAULT_PAGE : parsedPage;
+    let limit = Number.isNaN(parsedLimit) ? DEFAULT_LIMIT : parsedLimit;
 
     // Validate and sanitize
     if (page < 1) page = DEFAULT_PAGE;

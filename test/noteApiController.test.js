@@ -56,10 +56,11 @@ describe('Note API Controller - getAllNotes', () => {
     it('should return 500 if there is a server error', async () => {
         const userId = new mongoose.Types.ObjectId();
 
-        sinon.stub(Notes, 'find').throws(new Error('Database error'));
+        sinon.stub(Notes, 'countDocuments').rejects(new Error('Database error'));
 
         const req = {
-            user: { _id: userId }
+            user: { _id: userId },
+            query: {}
         };
         const res = {
             status: sinon.stub().returnsThis(),

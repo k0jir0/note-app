@@ -24,7 +24,7 @@ router.post('/login', (req, res, next) => {
     const bodyKeys = Object.keys(req.body || {});
     const hasUnexpectedFields = bodyKeys.some((key) => !['email', 'password'].includes(key));
     if (hasUnexpectedFields) {
-        return res.render('pages/login', {
+        return res.status(400).render('pages/login', {
             title: 'Login',
             error: 'Invalid login request payload'
         });
@@ -32,7 +32,7 @@ router.post('/login', (req, res, next) => {
 
     // Basic validation
     if (!email || !password) {
-        return res.render('pages/login', {
+        return res.status(400).render('pages/login', {
             title: 'Login',
             error: 'Please provide both email and password'
         });
@@ -41,7 +41,7 @@ router.post('/login', (req, res, next) => {
     // Validate email format
     const emailValidation = validateEmail(email);
     if (!emailValidation.isValid) {
-        return res.render('pages/login', {
+        return res.status(400).render('pages/login', {
             title: 'Login',
             error: emailValidation.error
         });
@@ -49,7 +49,7 @@ router.post('/login', (req, res, next) => {
 
     const passwordValidation = validateLoginPassword(password);
     if (!passwordValidation.isValid) {
-        return res.render('pages/login', {
+        return res.status(400).render('pages/login', {
             title: 'Login',
             error: passwordValidation.error
         });
@@ -68,7 +68,7 @@ router.post('/login', (req, res, next) => {
                 return res.redirect('/auth/login/federated/google');
             }
 
-            return res.render('pages/login', {
+            return res.status(401).render('pages/login', {
                 title: 'Login',
                 error: info.message || 'Invalid email or password'
             });
@@ -96,7 +96,7 @@ router.post('/signup', async (req, res) => {
         const bodyKeys = Object.keys(req.body || {});
         const hasUnexpectedFields = bodyKeys.some((key) => !['email', 'password'].includes(key));
         if (hasUnexpectedFields) {
-            return res.render('pages/signup', {
+            return res.status(400).render('pages/signup', {
                 title: 'Sign Up',
                 error: 'Invalid signup request payload'
             });
@@ -105,7 +105,7 @@ router.post('/signup', async (req, res) => {
         // Validate email
         const emailValidation = validateEmail(email);
         if (!emailValidation.isValid) {
-            return res.render('pages/signup', {
+            return res.status(400).render('pages/signup', {
                 title: 'Sign Up',
                 error: emailValidation.error
             });
@@ -114,7 +114,7 @@ router.post('/signup', async (req, res) => {
         // Validate password
         const passwordValidation = validatePassword(password);
         if (!passwordValidation.isValid) {
-            return res.render('pages/signup', {
+            return res.status(400).render('pages/signup', {
                 title: 'Sign Up',
                 error: passwordValidation.errors.join('. ')
             });
@@ -123,7 +123,7 @@ router.post('/signup', async (req, res) => {
         // Check if user already exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return res.render('pages/signup', {
+            return res.status(409).render('pages/signup', {
                 title: 'Sign Up',
                 error: 'This email is already registered. Please login or use a different email.'
             });
@@ -147,13 +147,13 @@ router.post('/signup', async (req, res) => {
         // Handle validation errors from Mongoose
         if (err.name === 'ValidationError') {
             const errorMessages = Object.values(err.errors).map(e => e.message);
-            return res.render('pages/signup', {
+            return res.status(400).render('pages/signup', {
                 title: 'Sign Up',
                 error: errorMessages.join('. ')
             });
         }
 
-        res.render('pages/signup', {
+        res.status(500).render('pages/signup', {
             title: 'Sign Up',
             error: 'An error occurred during signup. Please try again.'
         });
