@@ -5,7 +5,15 @@ Note-Taking Application Development Process
 
 PROJECT OVERVIEW
 
-This full-stack note-taking application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, and 112 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, and deployment readiness.
+This full-stack note-taking application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, and 122 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, and deployment readiness.
+
+Recent updates (March 5, 2026) hardened validation and authentication flows:
+- Added strict auth payload sanitization (`sanitizeAuthPayload`) and login password validation (`validateLoginPassword`).
+- Restricted note API payloads to allowed fields only (`title`, `content`, `image`) with explicit rejection of unexpected fields.
+- Trimmed and validated note route IDs before database operations in API and page routes.
+- Fixed a Google-auth edge case where local login attempted `bcrypt.compare` against missing password hashes.
+- Implemented fallback behavior: Google-only accounts are redirected to `/auth/login/federated/google`; other failures return a frontend login error.
+- Added regression tests covering the Google-only login redirect path and new validation behavior.
 
 
 MAJOR CHALLENGES AND SOLUTIONS
@@ -14,7 +22,7 @@ Authentication and authorization proved most challenging. Securing user sessions
 
 Input validation and sanitization balanced security with user experience. The challenge was preventing XSS attacks while validating diverse field types without exposing system internals. This was addressed by creating centralized validation utilities in `src/utils/validation.js`, implementing multi-layer validation across client, server, and database, and using an `isUpdate` flag to differentiate create from update operations. Inputs were sanitized using regex to remove dangerous script tags while preserving legitimate content.
 
-Comprehensive test coverage without a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Sinon for stubs, spies, and mocks alongside consistent test patterns solved this. Proper cleanup in `afterEach` blocks prevented state leakage, achieving 112 tests covering models, controllers, routes, and utilities.
+Comprehensive test coverage without a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Sinon for stubs, spies, and mocks alongside consistent test patterns solved this. Proper cleanup in `afterEach` blocks prevented state leakage, achieving 122 tests covering models, controllers, routes, and utilities.
 
 Production deployment preparation revealed technical debt: hardcoded values, insecure cookie settings, and mixed indentation. Resolution involved environment variables with fallbacks, secure cookies for production (`secure: process.env.NODE_ENV === 'production'`), proper npm scripts, protected seed routes, and ESLint `--fix` for standardized formatting.
 
@@ -58,7 +66,7 @@ Mongoose quirks: validation runs on save but not update unless `runValidators: t
 
 Express sessions store data server-side while cookies hold only session IDs. Session secrets should be long and random, sessions persist across restarts when using a store (memory by default), Passport serializes only the user ID, and logout requires both `req.logout()` and session destruction.
 
-Passport.js patterns: local strategy handles username/password authentication, serialization stores user identifiers in sessions, deserialization fetches the full user from the database, callbacks use `done(err, user)` or `done(err, false, { message })`, and `req.isAuthenticated()` checks login status.
+Passport.js patterns: local strategy handles username/password authentication, serialization stores user identifiers in sessions, deserialization fetches the full user from the database, callbacks use `done(err, user)` or `done(err, false, { message })`, and `req.isAuthenticated()` checks login status. Local auth must guard against accounts without local hashes (for example Google-only users) before calling `bcrypt.compare`.
 
 Testing best practices: use `describe()` for grouping tests, `beforeEach()` for setup, `afterEach()` for cleanup and stub restoration, stub database calls rather than connecting to real databases, test edge cases like empty strings and long inputs, and verify both success and error paths.
 
@@ -78,7 +86,7 @@ Centralizing validation early by creating utilities before building features pre
 
 FINAL REFLECTION
 
-This project achieved 112 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, RESTful API design with proper status codes, production-ready configuration, a concise 233-line README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and security best practices.
+This project achieved 122 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, RESTful API design with proper status codes, production-ready configuration, a concise README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and security best practices.
 
 Building software is inherently iterative. The first version may work, but achieving security, maintainability, and production readiness requires conscious effort and continuous improvement. The most valuable lesson is that honesty about technical debt surpasses claiming perfection. Real projects involve trade-offs, and understanding them makes for better development decisions.
 

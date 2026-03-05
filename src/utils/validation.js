@@ -142,6 +142,51 @@ const validatePassword = (password) => {
 };
 
 /**
+ * Validate login password input (presence/type/length only)
+ * @param {string} password - Password to validate
+ * @returns {Object} { isValid: boolean, error: string|null }
+ */
+const validateLoginPassword = (password) => {
+    if (typeof password !== 'string') {
+        return { isValid: false, error: 'Password must be a string' };
+    }
+
+    const trimmedPassword = password.trim();
+    if (trimmedPassword.length === 0) {
+        return { isValid: false, error: 'Password is required' };
+    }
+
+    if (trimmedPassword.length > VALIDATION_LIMITS.PASSWORD_MAX) {
+        return { isValid: false, error: `Password must be ${VALIDATION_LIMITS.PASSWORD_MAX} characters or less` };
+    }
+
+    return { isValid: true, error: null };
+};
+
+/**
+ * Normalize auth credentials before validation/authentication.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+const sanitizeAuthPayload = (payload = {}) => {
+    const sanitized = {};
+
+    if (payload.email !== undefined) {
+        sanitized.email = typeof payload.email === 'string'
+            ? payload.email.trim().toLowerCase()
+            : payload.email;
+    }
+
+    if (payload.password !== undefined) {
+        sanitized.password = typeof payload.password === 'string'
+            ? payload.password.trim()
+            : payload.password;
+    }
+
+    return sanitized;
+};
+
+/**
  * Sanitize string input to prevent XSS
  * @param {string} str - String to sanitize
  * @returns {string} Sanitized string
@@ -183,6 +228,8 @@ module.exports = {
     validateNoteData,
     validateEmail,
     validatePassword,
+    validateLoginPassword,
+    sanitizeAuthPayload,
     sanitizeString,
     sanitizeNoteData,
     isValidUrl,

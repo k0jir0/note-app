@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const sinon = require('sinon');
+const passport = require('passport');
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const authRoutes = require('../src/routes/authRoutes');
@@ -93,6 +94,57 @@ describe('Auth Routes', () => {
             expect(res.render.called).to.be.true;
             expect(res.render.firstCall.args[0]).to.equal('pages/login');
             expect(res.render.firstCall.args[1].error).to.include('email');
+        });
+
+        it('should redirect to Google auth when account requires Google sign-in', () => {
+            const handler = getHandler('post', '/login');
+
+            const authenticateStub = sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
+                expect(strategy).to.equal('local');
+                return (req, res, next) => callback(null, false, { code: 'GOOGLE_AUTH_REQUIRED' });
+            });
+
+            const req = {
+                body: {
+                    email: 'test@example.com',
+                    password: 'password123'
+                },
+                logIn: sinon.stub()
+            };
+            const res = buildRes();
+            const next = sinon.stub();
+
+            handler(req, res, next);
+
+            expect(authenticateStub.calledOnce).to.be.true;
+            expect(res.redirect.calledWith('/auth/login/federated/google')).to.be.true;
+            expect(res.render.called).to.be.false;
+        });
+
+        it('should render passport info message when local auth fails', () => {
+            const handler = getHandler('post', '/login');
+
+            sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
+                expect(strategy).to.equal('local');
+                return (req, res, next) => callback(null, false, { message: 'Invalid credentials.' });
+            });
+
+            const req = {
+                body: {
+                    email: 'test@example.com',
+                    password: 'password123'
+                },
+                logIn: sinon.stub()
+            };
+            const res = buildRes();
+            const next = sinon.stub();
+
+            handler(req, res, next);
+
+            expect(res.render.calledWith('pages/login', {
+                title: 'Login',
+                error: 'Invalid credentials.'
+            })).to.be.true;
         });
     });
 

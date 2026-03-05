@@ -219,6 +219,24 @@ describe('Note API Controller - createNote', () => {
         expect(res.status.calledWith(400)).to.be.true;
         expect(res.json.firstCall.args[0].success).to.equal(false);
     });
+
+    it('should return 400 when payload contains unexpected fields', async () => {
+        const userId = new mongoose.Types.ObjectId();
+
+        const req = {
+            body: { title: 'Valid title', admin: true },
+            user: { _id: userId }
+        };
+        const res = {
+            status: sinon.stub().returnsThis(),
+            json: sinon.stub()
+        };
+
+        await noteApiController.createNote(req, res);
+
+        expect(res.status.calledWith(400)).to.be.true;
+        expect(res.json.firstCall.args[0].errors[0]).to.include('Unexpected field(s)');
+    });
 });
 
 describe('Note API Controller - updateNote', () => {
@@ -295,6 +313,26 @@ describe('Note API Controller - updateNote', () => {
 
         expect(res.status.calledWith(404)).to.be.true;
         expect(res.json.firstCall.args[0].success).to.equal(false);
+    });
+
+    it('should return 400 when update payload has no allowed fields', async () => {
+        const userId = new mongoose.Types.ObjectId();
+        const noteId = new mongoose.Types.ObjectId();
+
+        const req = {
+            params: { id: noteId.toString() },
+            body: { unknown: 'value' },
+            user: { _id: userId }
+        };
+        const res = {
+            status: sinon.stub().returnsThis(),
+            json: sinon.stub()
+        };
+
+        await noteApiController.updateNote(req, res);
+
+        expect(res.status.calledWith(400)).to.be.true;
+        expect(res.json.firstCall.args[0].errors[0]).to.include('Unexpected field(s)');
     });
 });
 

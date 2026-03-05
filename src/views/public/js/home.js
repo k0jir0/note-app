@@ -1,8 +1,27 @@
-fetch('/notes')
-    .then(response => response.json())
-    .then(data => {
-        console.log(data);
-    })
-    .catch(error => {
-        console.error('Error fetching notes:', error);
-    });
+async function fetchNotesSummary() {
+    try {
+        const response = await fetch('/api/notes?limit=5', {
+            headers: {
+                Accept: 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            return;
+        }
+
+        const data = await response.json();
+        console.debug('Fetched notes summary:', data.count);
+    } catch (error) {
+        console.error('Error fetching notes summary:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    fetchNotesSummary();
+});

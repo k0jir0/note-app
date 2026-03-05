@@ -11,10 +11,26 @@ module.exports = function (passport) {
             // Get the user from the database
             const user = await User.findOne({ email: email });
 
-            // Compare passwords (also handles case when user is null)
-            const isMatch = user ? await bcrypt.compare(password, user.password) : false;
+            if (!user) {
+                return done(null, false, { message: 'Invalid credentials.' });
+            }
 
-            if (!user || !isMatch) {
+            // Google-only accounts do not have a local password hash.
+            if (user.googleId && typeof user.password !== 'string') {
+                return done(null, false, {
+                    code: 'GOOGLE_AUTH_REQUIRED',
+                    message: 'This account uses Google sign-in. Please continue with Google.'
+                });
+            }
+
+            if (typeof user.password !== 'string' || user.password.length === 0) {
+                return done(null, false, { message: 'Invalid credentials.' });
+            }
+
+            // Compare passwords after confirming a valid local hash exists.
+            const isMatch = await bcrypt.compare(password, user.password);
+
+            if (!isMatch) {
                 return done(null, false, { message: 'Invalid credentials.' });
             }
 

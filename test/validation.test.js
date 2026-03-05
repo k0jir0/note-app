@@ -3,6 +3,8 @@ const {
     validateNoteData,
     validateEmail,
     validatePassword,
+    validateLoginPassword,
+    sanitizeAuthPayload,
     sanitizeString,
     sanitizeNoteData,
     isValidUrl
@@ -295,6 +297,29 @@ describe('Validation Utilities', () => {
         });
     });
 
+    describe('validateLoginPassword', () => {
+        it('should accept a non-empty string password', () => {
+            const result = validateLoginPassword('password123');
+
+            expect(result.isValid).to.be.true;
+            expect(result.error).to.be.null;
+        });
+
+        it('should reject non-string passwords', () => {
+            const result = validateLoginPassword(12345);
+
+            expect(result.isValid).to.be.false;
+            expect(result.error).to.equal('Password must be a string');
+        });
+
+        it('should reject blank passwords', () => {
+            const result = validateLoginPassword('   ');
+
+            expect(result.isValid).to.be.false;
+            expect(result.error).to.equal('Password is required');
+        });
+    });
+
     describe('isValidUrl', () => {
         it('should validate http URL', () => {
             expect(isValidUrl('http://example.com')).to.be.true;
@@ -440,6 +465,27 @@ describe('Validation Utilities', () => {
             expect(result.title).to.equal(123);
             expect(result.content).to.equal(null);
             expect(result.image).to.equal(undefined);
+        });
+    });
+
+    describe('sanitizeAuthPayload', () => {
+        it('should trim and normalize email', () => {
+            const result = sanitizeAuthPayload({ email: '  USER@Example.COM  ' });
+
+            expect(result.email).to.equal('user@example.com');
+        });
+
+        it('should trim password', () => {
+            const result = sanitizeAuthPayload({ password: '  Pass123  ' });
+
+            expect(result.password).to.equal('Pass123');
+        });
+
+        it('should preserve non-string payload values', () => {
+            const result = sanitizeAuthPayload({ email: 42, password: null });
+
+            expect(result.email).to.equal(42);
+            expect(result.password).to.equal(null);
         });
     });
 });

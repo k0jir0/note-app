@@ -24,7 +24,7 @@ router.get('/notes', requireAuth, async (req, res) => {
 
 router.get('/notes/:id', requireAuth, async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
 
         // Validate ObjectId
         if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -46,7 +46,7 @@ router.get('/notes/:id', requireAuth, async (req, res) => {
 
 router.get('/notes/:id/edit', requireAuth, async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
 
         // Validate ObjectId
         if (!mongoose.Types.ObjectId.isValid(id)) {

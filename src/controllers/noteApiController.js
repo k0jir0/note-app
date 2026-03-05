@@ -4,6 +4,12 @@ const { validateNoteData, sanitizeNoteData } = require('../utils/validation');
 const { handleApiError } = require('../utils/errorHandler');
 const { parsePaginationParams, createPaginationMeta } = require('../utils/pagination');
 
+const ALLOWED_NOTE_FIELDS = ['title', 'content', 'image'];
+
+const getDisallowedFields = (payload = {}) => {
+    return Object.keys(payload).filter((field) => !ALLOWED_NOTE_FIELDS.includes(field));
+};
+
 // Helper function to validate MongoDB ObjectId
 const isValidObjectId = (id) => {
     return mongoose.Types.ObjectId.isValid(id);
@@ -18,6 +24,15 @@ exports.createNote = async (req, res) => {
                 success: false,
                 message: 'Request body cannot be empty',
                 errors: ['Please provide note data']
+            });
+        }
+
+        const disallowedFields = getDisallowedFields(req.body);
+        if (disallowedFields.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: [`Unexpected field(s): ${disallowedFields.join(', ')}`]
             });
         }
 
@@ -86,7 +101,7 @@ exports.getAllNotes = async (req, res) => {
 
 exports.getNote = async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
 
         // Validate ObjectId format
         if (!isValidObjectId(id)) {
@@ -120,7 +135,7 @@ exports.getNote = async (req, res) => {
 // UPDATE Operations
 exports.updateNote = async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
 
         // Validate ObjectId format
         if (!isValidObjectId(id)) {
@@ -137,6 +152,15 @@ exports.updateNote = async (req, res) => {
                 success: false,
                 message: 'Request body cannot be empty',
                 errors: ['Please provide data to update']
+            });
+        }
+
+        const disallowedFields = getDisallowedFields(req.body);
+        if (disallowedFields.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: [`Unexpected field(s): ${disallowedFields.join(', ')}`]
             });
         }
 
@@ -158,6 +182,14 @@ exports.updateNote = async (req, res) => {
         if (sanitizedData.title !== undefined) updateData.title = sanitizedData.title;
         if (sanitizedData.content !== undefined) updateData.content = sanitizedData.content;
         if (sanitizedData.image !== undefined) updateData.image = sanitizedData.image;
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: ['Please provide at least one valid field to update']
+            });
+        }
 
         // Find and update only if owned by user
         const note = await Notes.findOneAndUpdate(
@@ -187,7 +219,7 @@ exports.updateNote = async (req, res) => {
 // DELETE Operations
 exports.deleteNote = async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
 
         // Validate ObjectId format
         if (!isValidObjectId(id)) {

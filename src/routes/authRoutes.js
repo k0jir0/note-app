@@ -2,7 +2,12 @@ const express = require('express');
 const passport = require('passport');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
-const { validateEmail, validatePassword } = require('../utils/validation');
+const {
+    validateEmail,
+    validatePassword,
+    validateLoginPassword,
+    sanitizeAuthPayload
+} = require('../utils/validation');
 
 const router = express.Router();
 
@@ -13,7 +18,17 @@ router.get('/login', (req, res) => {
 
 // POST login
 router.post('/login', (req, res, next) => {
-    const { email, password } = req.body;
+    const { email, password } = sanitizeAuthPayload(req.body);
+
+    // Only process expected fields in auth payloads
+    const bodyKeys = Object.keys(req.body || {});
+    const hasUnexpectedFields = bodyKeys.some((key) => !['email', 'password'].includes(key));
+    if (hasUnexpectedFields) {
+        return res.render('pages/login', {
+            title: 'Login',
+            error: 'Invalid login request payload'
+        });
+    }
 
     // Basic validation
     if (!email || !password) {
@@ -32,12 +47,27 @@ router.post('/login', (req, res, next) => {
         });
     }
 
+    const passwordValidation = validateLoginPassword(password);
+    if (!passwordValidation.isValid) {
+        return res.render('pages/login', {
+            title: 'Login',
+            error: passwordValidation.error
+        });
+    }
+
+    req.body.email = email;
+    req.body.password = password;
+
     passport.authenticate('local', (err, user, info) => {
         if (err) {
             return next(err);
         }
 
         if (!user) {
+            if (info && info.code === 'GOOGLE_AUTH_REQUIRED') {
+                return res.redirect('/auth/login/federated/google');
+            }
+
             return res.render('pages/login', {
                 title: 'Login',
                 error: info.message || 'Invalid email or password'
@@ -61,7 +91,16 @@ router.get('/signup', (req, res) => {
 // POST signup
 router.post('/signup', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password } = sanitizeAuthPayload(req.body);
+
+        const bodyKeys = Object.keys(req.body || {});
+        const hasUnexpectedFields = bodyKeys.some((key) => !['email', 'password'].includes(key));
+        if (hasUnexpectedFields) {
+            return res.render('pages/signup', {
+                title: 'Sign Up',
+                error: 'Invalid signup request payload'
+            });
+        }
 
         // Validate email
         const emailValidation = validateEmail(email);
@@ -82,7 +121,7 @@ router.post('/signup', async (req, res) => {
         }
 
         // Check if user already exists
-        const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
+        const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.render('pages/signup', {
                 title: 'Sign Up',
@@ -95,7 +134,7 @@ router.post('/signup', async (req, res) => {
 
         // Create a new user
         const user = new User({
-            email: email.trim().toLowerCase(),
+            email,
             password: hashedPassword
         });
 
@@ -125,7 +164,11 @@ router.post('/signup', async (req, res) => {
 router.post('/logout', (req, res, next) => {
     req.logout((err) => {
         if (err) {
-            return next(err);
+            if (typeof next === 'function') {
+                return next(err);
+            }
+
+            return res.status(500).json({ error: 'Logout failed' });
         }
         res.redirect('/auth/login');
     });
@@ -135,7 +178,11 @@ router.post('/logout', (req, res, next) => {
 router.get('/logout', (req, res, next) => {
     req.logout((err) => {
         if (err) {
-            return next(err);
+            if (typeof next === 'function') {
+                return next(err);
+            }
+
+            return res.status(500).json({ error: 'Logout failed' });
         }
         res.redirect('/auth/login');
     });
