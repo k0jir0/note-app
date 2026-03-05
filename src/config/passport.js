@@ -57,16 +57,16 @@ module.exports = function (passport) {
             // Note: passport-google-oidc usually provides email in profile.emails
             let email = null;
             if (profile.emails && profile.emails.length > 0) {
-                 email = profile.emails[0].value;
+                email = profile.emails[0].value;
             }
 
             if (email) {
-                 user = await User.findOne({ email: email });
-                 if (user) {
-                     user.googleId = profile.id;
-                     await user.save();
-                     return cb(null, user);
-                 }
+                user = await User.findOne({ email: email });
+                if (user) {
+                    user.googleId = profile.id;
+                    await user.save();
+                    return cb(null, user);
+                }
             }
 
             // Create new google user
