@@ -49,11 +49,12 @@
 
                 <!-- Note Card -->
                 <div class="card shadow-sm">
-                    <!-- Image (if exists) -->
-                    <% if (note.image) { %>
-                        <img src="<%= note.image %>" class="note-image" alt="<%= note.title %>" 
-                             onerror="this.style.display='none'">
-                    <% } %>
+                    <img
+                        src="<%= note.image || '/placeholder.jpg' %>"
+                        class="note-image"
+                        alt="<%= note.title %>"
+                        onerror="this.onerror=null; this.src='/placeholder.jpg';"
+                    >
                     
                     <div class="card-body">
                         <!-- Metadata -->

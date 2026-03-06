@@ -34,6 +34,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
+// Public fallback image for notes without an image URL.
+app.get('/placeholder.jpg', (req, res) => {
+    res.sendFile(path.join(__dirname, 'placeholder.jpg'));
+});
+
 // Session configuration
 const SESSION_COOKIE_MAX_AGE = 1000 * 60 * 60 * 24; // 24 hours in milliseconds
 

@@ -31,9 +31,13 @@
                 <% notes.forEach(note=> { %>
                     <div class="col-md-4 mb-4">
                         <div class="card h-100">
-                            <% if (note.image) { %>
-                                <img src="<%= note.image %>" class="card-img-top" alt="<%= note.title %>" style="height: 200px; object-fit: cover;">
-                            <% } %>
+                            <img
+                                src="<%= note.image || '/placeholder.jpg' %>"
+                                class="card-img-top"
+                                alt="<%= note.title %>"
+                                style="height: 200px; object-fit: cover;"
+                                onerror="this.onerror=null; this.src='/placeholder.jpg';"
+                            >
                             <div class="card-body">
                                 <h5 class="card-title"><%= note.title %></h5>
                                 <p class="card-text text-muted">
