@@ -36,7 +36,7 @@ app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
 // Public fallback image for notes without an image URL.
 app.get('/placeholder.jpg', (req, res) => {
-    res.sendFile(path.join(__dirname, 'placeholder.jpg'));
+    res.sendFile(path.join(__dirname, 'src', 'image', 'placeholder.jpg'));
 });
 
 // Session configuration
