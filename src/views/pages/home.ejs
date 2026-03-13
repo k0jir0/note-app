@@ -17,12 +17,10 @@
                     <p class="text-muted mb-0">Welcome, <%= user.name || user.email %></p>
                 <% } %>
             </div>
-            <div>
-                <a href="/notes/new" class="btn btn-dark me-2">Create Note</a>
-                <a href="/security/logs" class="btn btn-outline-dark me-2">Log Analysis</a>
-                <a href="/security/scans" class="btn btn-outline-dark me-2">Scan Importer</a>
-                <a href="/security/correlations" class="btn btn-outline-dark me-2">Correlations</a>
-                <form action="/auth/logout" method="POST" style="display: inline;">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <a href="/notes/new" class="btn btn-dark">Create Note</a>
+                <a href="/research" class="btn btn-outline-dark">Research</a>
+                <form action="/auth/logout" method="POST" class="m-0">
                     <button type="submit" class="btn btn-outline-secondary">Logout</button>
                 </form>
             </div>

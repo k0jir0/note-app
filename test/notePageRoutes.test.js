@@ -45,6 +45,12 @@ describe('Note Page Routes', () => {
         expect(handler).to.exist;
     });
 
+    it('maps GET /research to a handler', () => {
+        const handler = getHandler('get', '/research');
+
+        expect(handler).to.exist;
+    });
+
     it('maps GET /notes/:id/edit to a handler', () => {
         const handler = getHandler('get', '/notes/:id/edit');
 
@@ -90,6 +96,24 @@ describe('Note Page Routes', () => {
             res.render.calledWith('pages/home.ejs', {
                 title: 'Note App',
                 notes: fakeNotes
+            })
+        ).to.be.true;
+    });
+
+    it('renders the research page for GET /research', async () => {
+        const handler = getHandler('get', '/research');
+        const userId = new mongoose.Types.ObjectId();
+
+        const req = {
+            user: { _id: userId }
+        };
+        const res = buildRes();
+
+        await handler(req, res);
+
+        expect(
+            res.render.calledWith('pages/research.ejs', {
+                title: 'Research'
             })
         ).to.be.true;
     });

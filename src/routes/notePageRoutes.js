@@ -22,6 +22,12 @@ router.get('/notes', requireAuth, async (req, res) => {
     }
 });
 
+router.get('/research', requireAuth, (req, res) => {
+    res.render('pages/research.ejs', {
+        title: 'Research'
+    });
+});
+
 router.get('/notes/:id', requireAuth, async (req, res) => {
     try {
         const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
