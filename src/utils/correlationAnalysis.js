@@ -182,15 +182,78 @@ function buildCorrelationOverview(correlations = []) {
 }
 
 function buildScanAlertCorrelations(scans = [], alerts = [], limit = 20) {
-    // Build pairwise correlations first
-    const pairwise = [];
+    // Index scans to avoid full pairwise S*A work in common cases.
+    // Build lightweight augmented scan entries and maps for quick candidate lookup.
+    const targetMap = new Map();
+    const toolMap = new Map();
+    const scansWithWebFindings = new Set();
+    const scansWithAuthFindings = new Set();
+    const scansWithHighFindings = new Set();
 
+    // keep reference to scans array while building maps
     scans.forEach((scan) => {
-        alerts.forEach((alert) => {
-            const correlation = buildCorrelation(scan, alert);
-            if (correlation) {
-                pairwise.push(correlation);
+        const targetKey = normalizeToken(scan.target || 'unknown');
+        const toolKey = normalizeToken(scan.tool || 'unknown');
+        const { webFindings, authFindings } = classifyScanSurface(scan.findings || []);
+        const highFindings = (scan.findings || []).filter((f) => f.severity === 'high');
+
+        if (!targetMap.has(targetKey)) targetMap.set(targetKey, []);
+        targetMap.get(targetKey).push(scan);
+
+        if (!toolMap.has(toolKey)) toolMap.set(toolKey, []);
+        toolMap.get(toolKey).push(scan);
+
+        if (webFindings.length > 0) scansWithWebFindings.add(scan);
+        if (authFindings.length > 0) scansWithAuthFindings.add(scan);
+        if (highFindings.length > 0) scansWithHighFindings.add(scan);
+
+    });
+
+    // For each alert, build a candidate set from indices and run correlation only against candidates.
+    const pairwise = [];
+    alerts.forEach((alert) => {
+        const indicators = collectAlertIndicators(alert);
+        const candidateSet = new Set();
+
+        // Match by explicit target/ip indicators
+        (indicators.ips || []).forEach((ip) => {
+            const key = normalizeToken(ip);
+            if (targetMap.has(key)) {
+                targetMap.get(key).forEach((s) => candidateSet.add(s));
             }
+        });
+
+        // Match by observed scanner/tool
+        (indicators.tools || []).forEach((tool) => {
+            const key = normalizeToken(tool);
+            if (toolMap.has(key)) toolMap.get(key).forEach((s) => candidateSet.add(s));
+        });
+
+        // Heuristic matches based on alert type
+        if (alert.type === 'suspicious_path_probe' || alert.type === 'injection_attempt') {
+            scansWithWebFindings.forEach((s) => candidateSet.add(s));
+        }
+
+        if (alert.type === 'failed_login_burst') {
+            scansWithAuthFindings.forEach((s) => candidateSet.add(s));
+        }
+
+        if (alert.severity === 'high') {
+            scansWithHighFindings.forEach((s) => candidateSet.add(s));
+        }
+
+        // Fallback: if no candidates found, limit to scans that share any target-like token (cheap heuristic)
+        if (candidateSet.size === 0) {
+            // try matching alerts' detectedAt window by returning all scans with same normalized target tokens
+            (indicators.ips || []).forEach((ip) => {
+                const key = normalizeToken(ip);
+                if (targetMap.has(key)) targetMap.get(key).forEach((s) => candidateSet.add(s));
+            });
+        }
+
+        candidateSet.forEach((scan) => {
+            const correlation = buildCorrelation(scan, alert);
+            if (correlation) pairwise.push(correlation);
         });
     });
 
