@@ -2,6 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
+const { hasGoogleAuthCredentials } = require('../config/runtimeConfig');
 const {
     validateEmail,
     validatePassword,
@@ -189,11 +190,29 @@ router.get('/logout', (req, res, next) => {
 });
 
 // Google Auth
-router.get('/login/federated/google', passport.authenticate('google'));
+router.get('/login/federated/google', (req, res, next) => {
+    if (!hasGoogleAuthCredentials()) {
+        return res.status(503).render('pages/login', {
+            title: 'Login',
+            error: 'Google sign-in is not configured'
+        });
+    }
 
-router.get('/oauth2/redirect/google', passport.authenticate('google', {
-    successRedirect: '/',
-    failureRedirect: '/auth/login'
-}));
+    return passport.authenticate('google')(req, res, next);
+});
+
+router.get('/oauth2/redirect/google', (req, res, next) => {
+    if (!hasGoogleAuthCredentials()) {
+        return res.status(503).render('pages/login', {
+            title: 'Login',
+            error: 'Google sign-in is not configured'
+        });
+    }
+
+    return passport.authenticate('google', {
+        successRedirect: '/',
+        failureRedirect: '/auth/login'
+    })(req, res, next);
+});
 
 module.exports = router;

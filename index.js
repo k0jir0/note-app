@@ -11,18 +11,16 @@ const securityPageRoute = require('./src/routes/securityPageRoutes');
 const scanApiRoute = require('./src/routes/scanApiRoutes');
 const scanPageRoute = require('./src/routes/scanPageRoutes');
 const authRoutes = require('./src/routes/authRoutes');
+const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { requireAuth } = require('./src/middleware/auth');
 
 require('dotenv').config();
+const runtimeConfig = validateRuntimeConfig();
 require('./src/config/passport')(passport);
 const app = express();
 
 // Model layer
-const dbURI = process.env.MONGODB_URI;
-if (!dbURI) {
-    console.error('ERROR: MONGODB_URI is not defined in environment variables');
-    process.exit(1);
-}
+const dbURI = runtimeConfig.dbURI;
 mongoose.connect(dbURI)
     .then(() => {
         console.log('MongoDB connected successfully');
@@ -46,11 +44,7 @@ app.get('/placeholder.jpg', (req, res) => {
 // Session configuration
 const SESSION_COOKIE_MAX_AGE = 1000 * 60 * 60 * 24; // 24 hours in milliseconds
 
-const sessionSecret = process.env.SESSION_SECRET || 'YourSecretKeyHere';
-if (sessionSecret === 'YourSecretKeyHere' && process.env.NODE_ENV === 'production') {
-    console.error('WARNING: Using default SESSION_SECRET in production is insecure!');
-    process.exit(1);
-}
+const sessionSecret = runtimeConfig.sessionSecret;
 
 app.use(session({
     secret: sessionSecret,

@@ -2,6 +2,7 @@ const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oidc');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
+const { hasGoogleAuthCredentials } = require('./runtimeConfig');
 
 module.exports = function (passport) {
     passport.use(new LocalStrategy({
@@ -40,49 +41,51 @@ module.exports = function (passport) {
         }
     }));
 
-    passport.use(new GoogleStrategy({
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: '/auth/oauth2/redirect/google',
-        scope: ['profile', 'email']
-    }, async (issuer, profile, cb) => {
-        try {
-            // Check if user already exists with Google ID
-            let user = await User.findOne({ googleId: profile.id });
-            if (user) {
-                return cb(null, user);
-            }
-
-            // Check if user exists with email (link account)
-            // Note: passport-google-oidc usually provides email in profile.emails
-            let email = null;
-            if (profile.emails && profile.emails.length > 0) {
-                email = profile.emails[0].value;
-            }
-
-            if (email) {
-                user = await User.findOne({ email: email });
+    if (hasGoogleAuthCredentials()) {
+        passport.use(new GoogleStrategy({
+            clientID: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            callbackURL: '/auth/oauth2/redirect/google',
+            scope: ['profile', 'email']
+        }, async (issuer, profile, cb) => {
+            try {
+                // Check if user already exists with Google ID
+                let user = await User.findOne({ googleId: profile.id });
                 if (user) {
-                    user.googleId = profile.id;
-                    await user.save();
                     return cb(null, user);
                 }
+
+                // Check if user exists with email (link account)
+                // Note: passport-google-oidc usually provides email in profile.emails
+                let email = null;
+                if (profile.emails && profile.emails.length > 0) {
+                    email = profile.emails[0].value;
+                }
+
+                if (email) {
+                    user = await User.findOne({ email: email });
+                    if (user) {
+                        user.googleId = profile.id;
+                        await user.save();
+                        return cb(null, user);
+                    }
+                }
+
+                // Create new google user
+                const newUser = new User({
+                    googleId: profile.id,
+                    name: profile.displayName,
+                    email: email
+                });
+
+                await newUser.save();
+                return cb(null, newUser);
+
+            } catch (err) {
+                return cb(err);
             }
-
-            // Create new google user
-            const newUser = new User({
-                googleId: profile.id,
-                name: profile.displayName,
-                email: email
-            });
-
-            await newUser.save();
-            return cb(null, newUser);
-
-        } catch (err) {
-            return cb(err);
-        }
-    }));
+        }));
+    }
 
     passport.serializeUser((user, done) => {
         done(null, user.id);

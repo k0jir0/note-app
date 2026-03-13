@@ -44,8 +44,10 @@ Edit `.env`:
 ```env
 MONGODB_URI=<your-mongodb-connection-string>
 SESSION_SECRET=your-strong-random-secret-32-chars-minimum
+NOTE_ENCRYPTION_KEY=64-char-hex-key-for-note-encryption
 NODE_ENV=development
 PORT=3000
+# Optional: only if you want Google sign-in
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
@@ -251,6 +253,8 @@ npm run lint       # ESLint code quality check
 - Environment variables for secrets
 - Password hashing (bcrypt, 10 salt rounds)
 - Session-based authentication with Passport.js
+- Startup validation for required secret configuration
+- Dedicated encryption key for notes at rest
 - Safe fallback for Google-only accounts in local login flow
 - Input validation & XSS sanitization
 - User-specific authorization checks
@@ -258,6 +262,7 @@ npm run lint       # ESLint code quality check
 
 **Production Checklist:**
 - [ ] Strong `SESSION_SECRET` (32+ random chars)
+- [ ] Dedicated `NOTE_ENCRYPTION_KEY` (32 bytes, separate from `SESSION_SECRET`)
 - [ ] HTTPS enabled with `cookie.secure: true`
 - [ ] Rate limiting (e.g., `express-rate-limit`)
 - [ ] Security headers (helmet.js)
@@ -272,6 +277,7 @@ npm run lint       # ESLint code quality check
 NODE_ENV=production
 MONGODB_URI=<your-mongodb-connection-string>
 SESSION_SECRET=strong-random-secret-min-32-chars
+NOTE_ENCRYPTION_KEY=64-char-hex-key
 PORT=3000
 ```
 
@@ -280,7 +286,7 @@ PORT=3000
 ```bash
 # Heroku
 heroku create app-name
-heroku config:set MONGODB_URI=... SESSION_SECRET=...
+heroku config:set MONGODB_URI=... SESSION_SECRET=... NOTE_ENCRYPTION_KEY=...
 git push heroku main
 
 # VPS with PM2
@@ -296,7 +302,8 @@ pm2 save && pm2 startup
 | Issue | Solution |
 |-------|----------|
 | Missing MONGODB_URI error | Create `.env` file with valid connection string |
-| Authentication fails | Clear cookies, verify `SESSION_SECRET` is set |
+| Authentication fails | Clear cookies, verify `SESSION_SECRET` is set and not a placeholder |
+| Missing NOTE_ENCRYPTION_KEY error | Generate a 32-byte key and set `NOTE_ENCRYPTION_KEY` |
 | Tests fail | Run `npm install`, ensure Node.js v18+ |
 | Port already in use | Set `PORT` env variable or kill process on port 3000 |
 | Database connection fails | Check MongoDB Atlas IP whitelist or local MongoDB status |

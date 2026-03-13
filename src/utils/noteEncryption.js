@@ -41,14 +41,49 @@ function getEncryptionKey() {
         return cachedKey;
     }
 
-    const fallbackSecret = process.env.SESSION_SECRET || '';
-    if (!fallbackSecret.trim()) {
-        throw new Error('Missing NOTE_ENCRYPTION_KEY (or SESSION_SECRET fallback) for note encryption');
+    throw new Error('Missing NOTE_ENCRYPTION_KEY for note encryption');
+}
+
+function getLegacyDecryptionKeys() {
+    const legacyKeys = [];
+    const rawLegacyKey = process.env.LEGACY_NOTE_ENCRYPTION_KEY || '';
+
+    if (rawLegacyKey.trim()) {
+        legacyKeys.push(parseConfiguredKey(rawLegacyKey));
     }
 
-    cachedKey = deriveKeyFromFallback(fallbackSecret);
-    cachedRawKey = rawConfiguredKey;
-    return cachedKey;
+    if (String(process.env.ALLOW_LEGACY_SESSION_SECRET_FALLBACK || '').trim().toLowerCase() === 'true') {
+        const fallbackSecret = process.env.SESSION_SECRET || '';
+        if (fallbackSecret.trim()) {
+            legacyKeys.push(deriveKeyFromFallback(fallbackSecret));
+        }
+    }
+
+    return legacyKeys;
+}
+
+function decryptTextWithKey(ciphertext, key) {
+    const payload = ciphertext.slice(`${ENCRYPTION_PREFIX}:`.length);
+    const [ivB64, authTagB64, encryptedB64] = payload.split(':');
+
+    if (!ivB64 || !authTagB64 || !encryptedB64) {
+        throw new Error('Invalid encrypted note payload format');
+    }
+
+    const decipher = crypto.createDecipheriv(
+        ENCRYPTION_ALGORITHM,
+        key,
+        Buffer.from(ivB64, 'base64')
+    );
+
+    decipher.setAuthTag(Buffer.from(authTagB64, 'base64'));
+
+    const decrypted = Buffer.concat([
+        decipher.update(Buffer.from(encryptedB64, 'base64')),
+        decipher.final()
+    ]);
+
+    return decrypted.toString('utf8');
 }
 
 function isEncryptedValue(value) {
@@ -85,27 +120,22 @@ function decryptText(ciphertext) {
         return ciphertext;
     }
 
-    const payload = ciphertext.slice(`${ENCRYPTION_PREFIX}:`.length);
-    const [ivB64, authTagB64, encryptedB64] = payload.split(':');
+    const candidateKeys = [getEncryptionKey(), ...getLegacyDecryptionKeys()];
+    let lastError = null;
 
-    if (!ivB64 || !authTagB64 || !encryptedB64) {
-        throw new Error('Invalid encrypted note payload format');
+    for (const key of candidateKeys) {
+        try {
+            return decryptTextWithKey(ciphertext, key);
+        } catch (error) {
+            lastError = error;
+        }
     }
 
-    const decipher = crypto.createDecipheriv(
-        ENCRYPTION_ALGORITHM,
-        getEncryptionKey(),
-        Buffer.from(ivB64, 'base64')
-    );
+    if (lastError) {
+        throw lastError;
+    }
 
-    decipher.setAuthTag(Buffer.from(authTagB64, 'base64'));
-
-    const decrypted = Buffer.concat([
-        decipher.update(Buffer.from(encryptedB64, 'base64')),
-        decipher.final()
-    ]);
-
-    return decrypted.toString('utf8');
+    throw new Error('Unable to decrypt note payload with configured keys');
 }
 
 function encryptFieldInObject(container, fieldName) {
