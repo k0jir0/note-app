@@ -12,6 +12,8 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Input validation & XSS protection
 - Session-backed CSRF protection for forms and authenticated JSON mutations
 - MongoDB-backed session persistence via connect-mongo
+- Helmet security headers with Content Security Policy
+- Route-specific rate limiting for auth, destructive actions, and security analysis
 - Security alert log analysis dashboard
 - Scan import and findings dashboard
 - Correlation dashboard linking scan findings with observed security alerts
@@ -22,8 +24,8 @@ A full-stack note-taking application with user authentication, built with Node.j
 
 ## Tech Stack
 
-**Backend:** Node.js, Express 5.2, MongoDB 8.10 (Mongoose), Passport.js, bcrypt, express-session, connect-mongo  
-**Frontend:** EJS 4.0, Bootstrap 5.3, Vanilla JS  
+**Backend:** Node.js, Express 5.2, MongoDB 8.10 (Mongoose), Passport.js, bcrypt, express-session, connect-mongo, helmet  
+**Frontend:** EJS 5.0, Bootstrap 5.3, Vanilla JS  
 **Testing:** Mocha, Chai, Sinon, ESLint
 
 ## Quick Start
@@ -95,6 +97,7 @@ Server: `http://localhost:3000`
 |----------|--------|------|----------|
 | `/auth/signup` | POST | `email`, `password` | Redirect to `/auth/login` |
 | `/auth/login` | POST | `email`, `password` | Redirect to `/` |
+| `/auth/logout` | GET | - | Logout confirmation page or redirect to `/auth/login` |
 | `/auth/logout` | POST | - | Redirect to `/auth/login` |
 
 **Validation:**
@@ -200,6 +203,7 @@ PUT /api/notes/:id
 | `GET /research` | Research landing page | ✅ |
 | `GET /auth/login` | Login page | - |
 | `GET /auth/signup` | Signup page | - |
+| `GET /auth/logout` | Logout confirmation page | ✅ |
 | `GET /security/logs` | Security alerts dashboard | ✅ |
 | `GET /security/scans` | Security scans dashboard | ✅ |
 | `GET /security/correlations` | Scan-to-alert correlation dashboard | ✅ |
@@ -211,6 +215,7 @@ PUT /api/notes/:id
 |----------|--------|-------------|
 | `GET /api/security/alerts` | GET | Get recent log-derived security alerts |
 | `GET /api/security/correlations` | GET | Correlate imported scans with observed alerts |
+| `POST /api/security/correlations/sample` | POST | Inject sample correlation data for demos |
 | `POST /api/security/log-analysis` | POST | Analyze log lines and generate alerts |
 | `GET /api/security/scans` | GET | Get imported vulnerability scans |
 | `POST /api/security/scan-import` | POST | Import parsed scan results |
@@ -233,7 +238,9 @@ notes-app/
 │   │   ├── scanApiController.js
 │   │   └── securityApiController.js
 │   ├── middleware/
-│   │   └── auth.js
+│   │   ├── auth.js
+│   │   ├── csrf.js
+│   │   └── rateLimit.js
 │   ├── models/
 │   │   ├── Notes.js
 │   │   ├── ScanResult.js
@@ -258,8 +265,11 @@ notes-app/
 │       ├── pages/
 │       │   ├── home.ejs
 │       │   ├── login.ejs
+│       │   ├── logout.ejs
 │       │   ├── note-form.ejs
 │       │   ├── note.ejs
+│       │   ├── research.ejs
+│       │   ├── security-correlations.ejs
 │       │   ├── security-logs.ejs
 │       │   ├── security-scans.ejs
 │       │   └── signup.ejs
@@ -267,7 +277,13 @@ notes-app/
 │           ├── css/
 │           └── js/
 └── test/
-  └── ...
+    ├── authRoutes.test.js
+    ├── csrf.test.js
+    ├── noteApiController.test.js
+    ├── notePageRoutes.test.js
+    ├── scanApiRoutes.test.js
+    ├── securityApiRoutes.test.js
+    └── ...
 ```
 
 ## Development
