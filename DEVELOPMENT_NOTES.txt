@@ -15,6 +15,16 @@ Recent updates (March 5, 2026) hardened validation and authentication flows:
 - Implemented fallback behavior: Google-only accounts are redirected to `/auth/login/federated/google`; other failures return a frontend login error.
 - Added regression tests covering the Google-only login redirect path and new validation behavior.
 
+Recent developments (March 12-13, 2026) expanded security-focused functionality:
+- Implemented note encryption at rest using AES-256-GCM with transparent model-layer encryption/decryption hooks, plus environment-driven key management via `NOTE_ENCRYPTION_KEY` (with secure fallback behavior for development).
+- Added a Log Analysis Assistant feature with server-side detection of failed login bursts, suspicious path probing, high error rates, scanner signatures, injection attempts, and directory enumeration behavior.
+- Built dedicated security alert storage (`SecurityAlert` model), secured API endpoints (`/api/security/log-analysis`, `/api/security/alerts`), and a protected dashboard route (`/security/logs`) with auto-refreshing UI updates.
+- Added sample log injection on the dashboard to streamline demos and testing, and improved client-side rendering so new alerts appear without manual page reload.
+- Implemented a Vulnerability Scan Importer with multi-format parsing support (Nmap XML, Nikto text, JSON, and generic text) and normalized finding storage (`ScanResult` model) with severity/type classification.
+- Added secured scan endpoints (`/api/security/scan-import`, `/api/security/scans`) and a dedicated scan dashboard (`/security/scans`) including sample scan loading and live list refresh after import.
+- Updated navigation and styling to integrate both security dashboards into the core product workflow.
+- Extended automated coverage with new tests for log analysis, scan parsing, and security/scan routes, bringing the suite to 156 passing tests with ESLint clean.
+
 
 MAJOR CHALLENGES AND SOLUTIONS
 

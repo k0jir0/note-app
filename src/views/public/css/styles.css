@@ -139,3 +139,53 @@ ul {
   border-color: #ffccd2;
   color: #83111c;
 }
+
+.security-alert-card {
+  border-left: 5px solid #94a3b8;
+}
+
+.security-alert-card.severity-medium {
+  border-left-color: #f59e0b;
+}
+
+.security-alert-card.severity-high {
+  border-left-color: #dc2626;
+}
+
+.security-alert-card.severity-low {
+  border-left-color: #2563eb;
+}
+
+.scan-result-card {
+  border-left: 5px solid #94a3b8;
+}
+
+.scan-result-card.severity-medium {
+  border-left-color: #f59e0b;
+}
+
+.scan-result-card.severity-high {
+  border-left-color: #dc2626;
+}
+
+.scan-result-card.severity-low {
+  border-left-color: #2563eb;
+}
+
+.findings-badge-high {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.findings-badge-medium {
+  background-color: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.findings-badge-low {
+  background-color: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}

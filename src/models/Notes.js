@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 const { VALIDATION_LIMITS } = require('../utils/validation');
+const {
+    ENCRYPTED_NOTE_FIELDS,
+    encryptText,
+    encryptNoteUpdatePayload,
+    decryptNoteDocumentFields
+} = require('../utils/noteEncryption');
 
 const noteSchema = new mongoose.Schema({
     title: {
@@ -11,13 +17,11 @@ const noteSchema = new mongoose.Schema({
     },
     content: {
         type: String,
-        default: '',
-        maxlength: VALIDATION_LIMITS.NOTE_CONTENT_MAX
+        default: ''
     },
     image: {
         type: String,
-        default: '',
-        maxlength: VALIDATION_LIMITS.NOTE_IMAGE_URL_MAX
+        default: ''
     },
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -27,6 +31,66 @@ const noteSchema = new mongoose.Schema({
     }
 }, {
     timestamps: true  // Automatically adds createdAt & updatedAt
+});
+
+noteSchema.pre('save', function encryptNoteFields(next) {
+    try {
+        ENCRYPTED_NOTE_FIELDS.forEach((fieldName) => {
+            if (!this.isModified(fieldName)) {
+                return;
+            }
+
+            const value = this.get(fieldName);
+            if (typeof value === 'string') {
+                this.set(fieldName, encryptText(value));
+            }
+        });
+
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
+
+noteSchema.pre('findOneAndUpdate', function encryptUpdatedNoteFields(next) {
+    try {
+        const update = this.getUpdate();
+        this.setUpdate(encryptNoteUpdatePayload(update));
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
+
+noteSchema.post('init', function decryptNoteAfterInit(document) {
+    decryptNoteDocumentFields(document);
+});
+
+noteSchema.post('save', function decryptNoteAfterSave(document, next) {
+    try {
+        decryptNoteDocumentFields(document);
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
+
+noteSchema.post('find', function decryptNotesAfterFind(documents) {
+    if (!Array.isArray(documents)) {
+        return;
+    }
+
+    documents.forEach((document) => {
+        decryptNoteDocumentFields(document);
+    });
+});
+
+noteSchema.post('findOne', function decryptNoteAfterFindOne(document) {
+    decryptNoteDocumentFields(document);
+});
+
+noteSchema.post('findOneAndUpdate', function decryptNoteAfterFindOneAndUpdate(document) {
+    decryptNoteDocumentFields(document);
 });
 
 module.exports = mongoose.model('Note', noteSchema);

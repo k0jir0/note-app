@@ -6,6 +6,10 @@ const passport = require('passport');
 
 const noteApiRoute = require('./src/routes/noteApiRoutes');
 const notePageRoute = require('./src/routes/notePageRoutes');
+const securityApiRoute = require('./src/routes/securityApiRoutes');
+const securityPageRoute = require('./src/routes/securityPageRoutes');
+const scanApiRoute = require('./src/routes/scanApiRoutes');
+const scanPageRoute = require('./src/routes/scanPageRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const { requireAuth } = require('./src/middleware/auth');
 
@@ -129,6 +133,10 @@ if (process.env.NODE_ENV !== 'production') {
 
 app.use(noteApiRoute);
 app.use(notePageRoute);
+app.use(securityApiRoute);
+app.use(securityPageRoute);
+app.use(scanApiRoute);
+app.use(scanPageRoute);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
