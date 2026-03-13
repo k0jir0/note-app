@@ -20,26 +20,34 @@ const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { startAutomation } = require('./src/services/automationService');
 
 require('dotenv').config();
-const runtimeConfig = validateRuntimeConfig();
-require('./src/config/passport')(passport);
-const app = express();
-const isProduction = process.env.NODE_ENV === 'production';
+const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 
-app.locals.runtimeConfig = runtimeConfig;
+(async function main() {
+    const keyLoad = await tryLoadKeytarGoogleSecrets().catch((e) => ({ loaded: false, error: e }));
+    if (!keyLoad.loaded && keyLoad.error) {
+        console.warn('Keyring secrets not loaded (keytar missing or failed):', keyLoad.error && keyLoad.error.message ? keyLoad.error.message : keyLoad.error);
+    }
 
-// Model layer
-const dbURI = runtimeConfig.dbURI;
-mongoose.connect(dbURI)
-    .then(() => {
-        console.log('MongoDB connected successfully');
-        startAutomation(runtimeConfig.automation);
-    }).catch((err) => {
-        console.error('MongoDB connection error:', err.message);
-        process.exit(1);
-    });
+    const runtimeConfig = validateRuntimeConfig();
+    require('./src/config/passport')(passport);
+    const app = express();
+    const isProduction = process.env.NODE_ENV === 'production';
 
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'src', 'views'));
+    app.locals.runtimeConfig = runtimeConfig;
+
+    // Model layer
+    const dbURI = runtimeConfig.dbURI;
+    mongoose.connect(dbURI)
+        .then(() => {
+            console.log('MongoDB connected successfully');
+            startAutomation(runtimeConfig.automation);
+        }).catch((err) => {
+            console.error('MongoDB connection error:', err.message);
+            process.exit(1);
+        });
+
+    app.set('view engine', 'ejs');
+    app.set('views', path.join(__dirname, 'src', 'views'));
 
 app.use(helmet({
     contentSecurityPolicy: {
@@ -171,4 +179,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+})();
 

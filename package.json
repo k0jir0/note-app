@@ -52,6 +52,7 @@
     "mongoose": "^8.10.0",
     "passport": "^0.7.0",
     "passport-google-oidc": "^0.1.0",
+    "keytar": "^7.7.0",
     "passport-local": "^1.0.0"
   }
 }
