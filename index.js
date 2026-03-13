@@ -1,7 +1,9 @@
 const express = require('express');
+const helmet = require('helmet');
 const path = require('path');
 const mongoose = require('mongoose');
 const session = require('express-session');
+const { MongoStore } = require('connect-mongo');
 const passport = require('passport');
 
 const noteApiRoute = require('./src/routes/noteApiRoutes');
@@ -13,17 +15,24 @@ const scanPageRoute = require('./src/routes/scanPageRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { requireAuth } = require('./src/middleware/auth');
+const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
+const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
+const { startAutomation } = require('./src/services/automationService');
 
 require('dotenv').config();
 const runtimeConfig = validateRuntimeConfig();
 require('./src/config/passport')(passport);
 const app = express();
+const isProduction = process.env.NODE_ENV === 'production';
+
+app.locals.runtimeConfig = runtimeConfig;
 
 // Model layer
 const dbURI = runtimeConfig.dbURI;
 mongoose.connect(dbURI)
     .then(() => {
         console.log('MongoDB connected successfully');
+        startAutomation(runtimeConfig.automation);
     }).catch((err) => {
         console.error('MongoDB connection error:', err.message);
         process.exit(1);
@@ -31,6 +40,24 @@ mongoose.connect(dbURI)
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views'));
+
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ['\'self\''],
+            scriptSrc: ['\'self\''],
+            styleSrc: ['\'self\'', 'https://cdn.jsdelivr.net', '\'unsafe-inline\''],
+            imgSrc: ['\'self\'', 'data:', 'https:'],
+            fontSrc: ['\'self\'', 'data:', 'https://cdn.jsdelivr.net'],
+            connectSrc: ['\'self\''],
+            objectSrc: ['\'none\''],
+            baseUri: ['\'self\''],
+            formAction: ['\'self\''],
+            frameAncestors: ['\'none\'']
+        }
+    },
+    hsts: isProduction ? undefined : false
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -45,14 +72,19 @@ app.get('/placeholder.jpg', (req, res) => {
 const SESSION_COOKIE_MAX_AGE = 1000 * 60 * 60 * 24; // 24 hours in milliseconds
 
 const sessionSecret = runtimeConfig.sessionSecret;
+const sessionStore = MongoStore.create({
+    mongoUrl: dbURI,
+    ttl: Math.floor(SESSION_COOKIE_MAX_AGE / 1000)
+});
 
 app.use(session({
     secret: sessionSecret,
+    store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
         maxAge: SESSION_COOKIE_MAX_AGE,
-        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        secure: isProduction, // HTTPS only in production
         httpOnly: true, // Prevents client-side JavaScript access
         sameSite: 'lax' // CSRF protection
     }
@@ -61,6 +93,9 @@ app.use(session({
 // Passport middleware (must come after session)
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use(ensureCsrfToken);
+app.use(requireCsrfProtection);
 
 // Make user available in all views
 app.use((req, res, next) => {
@@ -79,7 +114,7 @@ app.get('/', requireAuth, (req, res) => {
 // Seed route - DEVELOPMENT ONLY - requires authentication
 // WARNING: This route deletes all data! Only enabled in non-production environments.
 if (process.env.NODE_ENV !== 'production') {
-    app.get('/seed', requireAuth, async (req, res) => {
+    app.post('/seed', requireAuth, destructiveActionRateLimiter, async (req, res) => {
         const User = require('./src/models/User');
         const Notes = require('./src/models/Notes');
         const bcrypt = require('bcrypt');

@@ -18,10 +18,7 @@ module.exports = function (passport) {
 
             // Google-only accounts do not have a local password hash.
             if (user.googleId && typeof user.password !== 'string') {
-                return done(null, false, {
-                    code: 'GOOGLE_AUTH_REQUIRED',
-                    message: 'This account uses Google sign-in. Please continue with Google.'
-                });
+                return done(null, false, { message: 'Invalid credentials.' });
             }
 
             if (typeof user.password !== 'string' || user.password.length === 0) {

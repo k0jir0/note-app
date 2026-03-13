@@ -1,0 +1,17 @@
+- Nikto v2.1.6
+---------------------------------------------------------------------------
++ Target IP:          10.10.10.50
++ Target Hostname:    target.local
++ Target Port:        80
+---------------------------------------------------------------------------
++ Server: Apache/2.4.41 (Ubuntu)
++ /admin/: Admin directory found. Directory indexing may be enabled.
++ OSVDB-3233: /icons/README: Apache default file found. This can expose server information.
++ OSVDB-3268: /phpmyadmin/: phpMyAdmin found. This is insecure if accessible publicly.
++ OSVDB-397: HTTP method 'PUT' allows clients to save files on the web server.
++ /login.php?action=backup: phpMyAdmin-type backup file found. Should be deleted.
++ OSVDB-3092: /.htaccess: .htaccess file retrieved. May expose internal configuration.
++ /config.php: Configuration file found exposed in web root. May contain credentials.
++ /cgi-bin/test.cgi: CGI script found. Potential code execution risk.
++ X-Powered-By header leaks technology: PHP/7.4.3
+---------------------------------------------------------------------------

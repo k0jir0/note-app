@@ -1,7 +1,7 @@
 {
-  "name": "test-app",
+  "name": "note-app",
   "version": "0.1.0",
-  "description": "A full-stack note-taking application with user authentication, built with Node.js, Express, MongoDB, and EJS",
+  "description": "A full-stack note-taking and security-research application with authentication, encrypted notes, and security analysis dashboards",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -11,11 +11,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/k0jir0/test-app.git"
+    "url": "git+https://github.com/k0jir0/note-app.git"
   },
   "keywords": [
     "notes",
     "note-taking",
+    "security",
+    "research",
     "express",
     "mongodb",
     "authentication",
@@ -28,9 +30,9 @@
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/k0jir0/test-app/issues"
+    "url": "https://github.com/k0jir0/note-app/issues"
   },
-  "homepage": "https://github.com/k0jir0/test-app#readme",
+  "homepage": "https://github.com/k0jir0/note-app#readme",
   "devDependencies": {
     "chai": "^6.2.2",
     "eslint": "^8.57.1",
@@ -40,10 +42,13 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "connect-mongo": "^6.0.0",
     "dotenv": "^17.3.1",
-    "ejs": "^4.0.1",
+    "ejs": "^5.0.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1",
     "express-session": "^1.19.0",
+    "helmet": "^8.1.0",
     "mongoose": "^8.10.0",
     "passport": "^0.7.0",
     "passport-google-oidc": "^0.1.0",

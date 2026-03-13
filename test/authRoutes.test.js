@@ -5,8 +5,9 @@ const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const authRoutes = require('../src/routes/authRoutes');
 const User = require('../src/models/User');
+const { authRateLimiter } = require('../src/middleware/rateLimit');
 
-const getHandler = (method, path, stackIndex = 0) => {
+const getRouteLayer = (method, path) => {
     const layer = authRoutes.stack.find(
         (entry) =>
             entry.route &&
@@ -14,14 +15,21 @@ const getHandler = (method, path, stackIndex = 0) => {
             entry.route.methods[method]
     );
 
+    return layer || null;
+};
+
+const getHandler = (method, path, stackIndex = 0) => {
+    const layer = getRouteLayer(method, path);
     return layer ? layer.route.stack[stackIndex].handle : null;
 };
 
 const buildRes = () => ({
+    locals: { csrfToken: 'test-csrf-token' },
     render: sinon.stub(),
     redirect: sinon.stub(),
     status: sinon.stub().returnsThis(),
-    json: sinon.stub()
+    json: sinon.stub(),
+    clearCookie: sinon.stub()
 });
 
 describe('Auth Routes', () => {
@@ -38,13 +46,25 @@ describe('Auth Routes', () => {
 
             handler(req, res);
 
-            expect(res.render.calledWith('pages/login', { title: 'Login', error: null })).to.be.true;
+            expect(res.render.calledWith('pages/login', {
+                title: 'Login',
+                error: null,
+                csrfToken: 'test-csrf-token'
+            })).to.be.true;
         });
     });
 
     describe('POST /login', () => {
+        it('registers auth rate limiting before the login handler', () => {
+            const layer = getRouteLayer('post', '/login');
+
+            expect(layer).to.exist;
+            expect(layer.route.stack).to.have.length(2);
+            expect(layer.route.stack[0].handle).to.equal(authRateLimiter);
+        });
+
         it('should render error if email is missing', () => {
-            const handler = getHandler('post', '/login');
+            const handler = getHandler('post', '/login', 1);
 
             const req = {
                 body: { password: 'password123' }
@@ -56,12 +76,13 @@ describe('Auth Routes', () => {
 
             expect(res.render.calledWith('pages/login', {
                 title: 'Login',
-                error: 'Please provide both email and password'
+                error: 'Please provide both email and password',
+                csrfToken: 'test-csrf-token'
             })).to.be.true;
         });
 
         it('should render error if password is missing', () => {
-            const handler = getHandler('post', '/login');
+            const handler = getHandler('post', '/login', 1);
 
             const req = {
                 body: { email: 'test@example.com' }
@@ -73,12 +94,13 @@ describe('Auth Routes', () => {
 
             expect(res.render.calledWith('pages/login', {
                 title: 'Login',
-                error: 'Please provide both email and password'
+                error: 'Please provide both email and password',
+                csrfToken: 'test-csrf-token'
             })).to.be.true;
         });
 
         it('should render error if email format is invalid', () => {
-            const handler = getHandler('post', '/login');
+            const handler = getHandler('post', '/login', 1);
 
             const req = {
                 body: {
@@ -96,8 +118,8 @@ describe('Auth Routes', () => {
             expect(res.render.firstCall.args[1].error).to.include('email');
         });
 
-        it('should redirect to Google auth when account requires Google sign-in', () => {
-            const handler = getHandler('post', '/login');
+        it('should render a generic error when auth fails for a Google-only account', () => {
+            const handler = getHandler('post', '/login', 1);
 
             const authenticateStub = sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
                 expect(strategy).to.equal('local');
@@ -117,12 +139,15 @@ describe('Auth Routes', () => {
             handler(req, res, next);
 
             expect(authenticateStub.calledOnce).to.be.true;
-            expect(res.redirect.calledWith('/auth/login/federated/google')).to.be.true;
-            expect(res.render.called).to.be.false;
+            expect(res.render.calledWith('pages/login', {
+                title: 'Login',
+                error: 'Invalid email or password',
+                csrfToken: 'test-csrf-token'
+            })).to.be.true;
         });
 
         it('should render passport info message when local auth fails', () => {
-            const handler = getHandler('post', '/login');
+            const handler = getHandler('post', '/login', 1);
 
             sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
                 expect(strategy).to.equal('local');
@@ -143,8 +168,66 @@ describe('Auth Routes', () => {
 
             expect(res.render.calledWith('pages/login', {
                 title: 'Login',
-                error: 'Invalid credentials.'
+                error: 'Invalid email or password',
+                csrfToken: 'test-csrf-token'
             })).to.be.true;
+        });
+
+        it('should allow the csrf field in login submissions', () => {
+            const handler = getHandler('post', '/login', 1);
+
+            sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
+                expect(strategy).to.equal('local');
+                return (req, res, next) => callback(null, { id: 'user-123' }, null);
+            });
+
+            const req = {
+                body: {
+                    email: 'test@example.com',
+                    password: 'password123',
+                    _csrf: 'test-csrf-token'
+                },
+                session: {
+                    regenerate: sinon.stub().callsFake((callback) => callback(null))
+                },
+                logIn: sinon.stub().callsFake((user, callback) => callback(null))
+            };
+            const res = buildRes();
+            const next = sinon.stub();
+
+            handler(req, res, next);
+
+            expect(res.redirect.calledWith('/')).to.be.true;
+            expect(next.called).to.be.false;
+        });
+
+        it('should regenerate the session before logging in and redirect home', () => {
+            const handler = getHandler('post', '/login', 1);
+
+            sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
+                expect(strategy).to.equal('local');
+                return (req, res, next) => callback(null, { id: 'user-123' }, null);
+            });
+
+            const req = {
+                body: {
+                    email: 'test@example.com',
+                    password: 'password123'
+                },
+                session: {
+                    regenerate: sinon.stub().callsFake((callback) => callback(null))
+                },
+                logIn: sinon.stub().callsFake((user, callback) => callback(null))
+            };
+            const res = buildRes();
+            const next = sinon.stub();
+
+            handler(req, res, next);
+
+            expect(req.session.regenerate.calledOnce).to.be.true;
+            expect(req.logIn.calledOnce).to.be.true;
+            expect(res.redirect.calledWith('/')).to.be.true;
+            expect(next.called).to.be.false;
         });
     });
 
@@ -157,13 +240,54 @@ describe('Auth Routes', () => {
 
             handler(req, res);
 
-            expect(res.render.calledWith('pages/signup', { title: 'Sign Up', error: null })).to.be.true;
+            expect(res.render.calledWith('pages/signup', {
+                title: 'Sign Up',
+                error: null,
+                csrfToken: 'test-csrf-token'
+            })).to.be.true;
+        });
+    });
+
+    describe('GET /logout', () => {
+        it('should redirect unauthenticated users to login', () => {
+            const handler = getHandler('get', '/logout');
+
+            const req = {};
+            const res = buildRes();
+
+            handler(req, res);
+
+            expect(res.redirect.calledWith('/auth/login')).to.be.true;
+        });
+
+        it('should render the logout confirmation page for authenticated users', () => {
+            const handler = getHandler('get', '/logout');
+
+            const req = {
+                user: { id: 'user-123' }
+            };
+            const res = buildRes();
+
+            handler(req, res);
+
+            expect(res.render.calledWith('pages/logout', {
+                title: 'Logout',
+                csrfToken: 'test-csrf-token'
+            })).to.be.true;
         });
     });
 
     describe('POST /signup', () => {
+        it('registers auth rate limiting before the signup handler', () => {
+            const layer = getRouteLayer('post', '/signup');
+
+            expect(layer).to.exist;
+            expect(layer.route.stack).to.have.length(2);
+            expect(layer.route.stack[0].handle).to.equal(authRateLimiter);
+        });
+
         it('should create a new user with valid data', async () => {
-            const handler = getHandler('post', '/signup');
+            const handler = getHandler('post', '/signup', 1);
 
             sinon.stub(User, 'findOne').resolves(null);
             sinon.stub(User.prototype, 'save').resolves();
@@ -183,8 +307,29 @@ describe('Auth Routes', () => {
             expect(res.redirect.calledWith('/auth/login')).to.be.true;
         });
 
+        it('should allow the csrf field in signup submissions', async () => {
+            const handler = getHandler('post', '/signup', 1);
+
+            sinon.stub(User, 'findOne').resolves(null);
+            sinon.stub(User.prototype, 'save').resolves();
+            sinon.stub(bcrypt, 'hash').resolves('hashedPassword123');
+
+            const req = {
+                body: {
+                    email: 'newuser@example.com',
+                    password: 'ValidPass123',
+                    _csrf: 'test-csrf-token'
+                }
+            };
+            const res = buildRes();
+
+            await handler(req, res);
+
+            expect(res.redirect.calledWith('/auth/login')).to.be.true;
+        });
+
         it('should render error if email is invalid', async () => {
-            const handler = getHandler('post', '/signup');
+            const handler = getHandler('post', '/signup', 1);
 
             const req = {
                 body: {
@@ -202,7 +347,7 @@ describe('Auth Routes', () => {
         });
 
         it('should render error if password is weak', async () => {
-            const handler = getHandler('post', '/signup');
+            const handler = getHandler('post', '/signup', 1);
 
             const req = {
                 body: {
@@ -219,8 +364,8 @@ describe('Auth Routes', () => {
             expect(res.render.firstCall.args[1].error).to.exist;
         });
 
-        it('should render error if email is already registered', async () => {
-            const handler = getHandler('post', '/signup');
+        it('should redirect to login if email is already registered', async () => {
+            const handler = getHandler('post', '/signup', 1);
 
             const existingUser = {
                 _id: new mongoose.Types.ObjectId(),
@@ -239,25 +384,27 @@ describe('Auth Routes', () => {
 
             await handler(req, res);
 
-            expect(res.render.calledWith('pages/signup', {
-                title: 'Sign Up',
-                error: 'This email is already registered. Please login or use a different email.'
-            })).to.be.true;
+            expect(res.redirect.calledWith('/auth/login')).to.be.true;
         });
     });
 
     describe('POST /logout', () => {
-        it('should logout and redirect to login', () => {
+        it('should logout, destroy the session, clear the cookie, and redirect to login', () => {
             const handler = getHandler('post', '/logout');
 
             const req = {
-                logout: sinon.stub().callsFake((callback) => callback(null))
+                logout: sinon.stub().callsFake((callback) => callback(null)),
+                session: {
+                    destroy: sinon.stub().callsFake((callback) => callback(null))
+                }
             };
             const res = buildRes();
 
             handler(req, res);
 
             expect(req.logout.called).to.be.true;
+            expect(req.session.destroy.called).to.be.true;
+            expect(res.clearCookie.calledWith('connect.sid')).to.be.true;
             expect(res.redirect.calledWith('/auth/login')).to.be.true;
         });
 
@@ -265,7 +412,10 @@ describe('Auth Routes', () => {
             const handler = getHandler('post', '/logout');
 
             const req = {
-                logout: sinon.stub().callsFake((callback) => callback(new Error('Logout error')))
+                logout: sinon.stub().callsFake((callback) => callback(new Error('Logout error'))),
+                session: {
+                    destroy: sinon.stub()
+                }
             };
             const res = buildRes();
 
@@ -274,28 +424,15 @@ describe('Auth Routes', () => {
             expect(res.status.calledWith(500)).to.be.true;
             expect(res.json.calledWith({ error: 'Logout failed' })).to.be.true;
         });
-    });
 
-    describe('GET /logout', () => {
-        it('should logout and redirect to login', () => {
-            const handler = getHandler('get', '/logout');
+        it('should return 500 if session destruction fails after logout', () => {
+            const handler = getHandler('post', '/logout');
 
             const req = {
-                logout: sinon.stub().callsFake((callback) => callback(null))
-            };
-            const res = buildRes();
-
-            handler(req, res);
-
-            expect(req.logout.called).to.be.true;
-            expect(res.redirect.calledWith('/auth/login')).to.be.true;
-        });
-
-        it('should return 500 if logout fails', () => {
-            const handler = getHandler('get', '/logout');
-
-            const req = {
-                logout: sinon.stub().callsFake((callback) => callback(new Error('Logout error')))
+                logout: sinon.stub().callsFake((callback) => callback(null)),
+                session: {
+                    destroy: sinon.stub().callsFake((callback) => callback(new Error('Session error')))
+                }
             };
             const res = buildRes();
 
@@ -303,6 +440,14 @@ describe('Auth Routes', () => {
 
             expect(res.status.calledWith(500)).to.be.true;
             expect(res.json.calledWith({ error: 'Logout failed' })).to.be.true;
+        });
+
+        it('keeps GET /logout separate from the state-changing POST handler', () => {
+            const postLayer = getRouteLayer('post', '/logout');
+            const getLayer = getRouteLayer('get', '/logout');
+
+            expect(postLayer).to.not.equal(null);
+            expect(getLayer).to.not.equal(null);
         });
     });
 });
