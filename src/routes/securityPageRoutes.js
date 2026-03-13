@@ -1,39 +1,72 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
-const SecurityAlert = require('../models/SecurityAlert');
 const { handlePageError } = require('../utils/errorHandler');
 
-router.get('/security/logs', requireAuth, async (req, res) => {
-    try {
-        const alerts = await SecurityAlert.find({ user: req.user._id })
-            .sort({ detectedAt: -1, createdAt: -1 })
-            .limit(20);
-
-        res.render('pages/security-logs.ejs', {
-            title: 'Log Analysis Assistant',
-            alerts,
-            csrfToken: res.locals.csrfToken
-        });
-    } catch (error) {
-        handlePageError(res, error, 'Unable to load security dashboard');
+function buildAutomationSection(config, defaults) {
+    if (!config || !config.enabled) {
+        return {
+            enabled: false,
+            statusLabel: 'Disabled',
+            statusTone: 'secondary',
+            source: defaults.source,
+            intervalMs: defaults.intervalMs,
+            dedupeWindowMs: defaults.dedupeWindowMs,
+            filePath: null,
+            maxReadBytes: defaults.maxReadBytes || null
+        };
     }
+
+    return {
+        enabled: true,
+        statusLabel: 'Active',
+        statusTone: 'success',
+        source: config.source,
+        intervalMs: config.intervalMs,
+        dedupeWindowMs: config.dedupeWindowMs,
+        filePath: config.filePath,
+        maxReadBytes: config.maxReadBytes || null
+    };
+}
+
+router.get('/security/logs', requireAuth, (req, res) => {
+    res.redirect('/security/module#logs');
 });
 
-router.get('/security/correlations', requireAuth, async (req, res) => {
+router.get('/security/correlations', requireAuth, (req, res) => {
+    res.redirect('/security/module#correlations');
+});
+
+router.get('/security/automation', requireAuth, (req, res) => {
+    res.redirect('/security/module#automation');
+});
+
+router.get('/security/module', requireAuth, async (req, res) => {
     try {
-        res.render('pages/security-correlations.ejs', {
-            title: 'Correlation Dashboard',
-            correlations: [],
+        const runtimeConfig = req.app.locals.runtimeConfig || {};
+        const automation = runtimeConfig.automation || {};
+
+        res.render('pages/security-automation.ejs', {
+            title: 'Security Module',
             csrfToken: res.locals.csrfToken,
-            overview: {
-                total: 0,
-                highPriority: 0,
-                targets: 0
+            automation: {
+                anyEnabled: Boolean((automation.logBatch && automation.logBatch.enabled)
+                    || (automation.scanBatch && automation.scanBatch.enabled)),
+                logBatch: buildAutomationSection(automation.logBatch, {
+                    source: 'server-log-batch',
+                    intervalMs: 60000,
+                    dedupeWindowMs: 300000,
+                    maxReadBytes: 65536
+                }),
+                scanBatch: buildAutomationSection(automation.scanBatch, {
+                    source: 'scheduled-scan-import',
+                    intervalMs: 300000,
+                    dedupeWindowMs: 3600000
+                })
             }
         });
     } catch (error) {
-        handlePageError(res, error, 'Unable to load correlation dashboard');
+        handlePageError(res, error, 'Unable to load automation console');
     }
 });
 

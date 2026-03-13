@@ -2,18 +2,18 @@
 <html lang="en">
 
 <head>
-    <title>Research</title>
+    <title>Research Workspace</title>
     <meta name="csrf-token" content="<%= csrfToken %>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 
 <body>
-    <div class="container mt-5">
+    <div class="container mt-5 mb-5" data-automation-enabled-count="<%= workspace.automation.enabledCount %>">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div>
-                <h1 class="notes-title mb-1">Research</h1>
-                <p class="text-muted mb-0">Choose a security research workspace.</p>
+                <h1 class="notes-title mb-1">Research Workspace</h1>
+                <p class="text-muted mb-0">One workspace for ingesting logs and scans, reviewing alerts, correlating findings, and checking automation state.</p>
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 <a href="/notes" class="btn btn-secondary">Back to Notes</a>
@@ -24,33 +24,17 @@
             </div>
         </div>
 
-        <div class="row g-4 research-grid">
-            <div class="col-md-4">
-                <a href="/security/logs" class="research-card card h-100">
-                    <div class="card-body">
-                        <span class="research-kicker">Detection</span>
-                        <h2 class="h4 mt-2 mb-3">Log Analysis</h2>
-                        <p class="text-muted mb-0">Analyze request logs for failed login bursts, probing, injection attempts, and other suspicious patterns.</p>
-                    </div>
-                </a>
-            </div>
-            <div class="col-md-4">
-                <a href="/security/scans" class="research-card card h-100">
-                    <div class="card-body">
-                        <span class="research-kicker">Import</span>
-                        <h2 class="h4 mt-2 mb-3">Scan Importer</h2>
-                        <p class="text-muted mb-0">Upload parsed scan results and normalize findings from tools like Nikto, Nmap, JSON, and plain text.</p>
-                    </div>
-                </a>
-            </div>
-            <div class="col-md-4">
-                <a href="/security/correlations" class="research-card card h-100">
-                    <div class="card-body">
-                        <span class="research-kicker">Review</span>
-                        <h2 class="h4 mt-2 mb-3">Correlations</h2>
-                        <p class="text-muted mb-0">Connect imported scan findings with observed alerts to spot the highest-priority risks faster.</p>
-                    </div>
-                </a>
+        <div class="card automation-card mb-4">
+            <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <span class="research-kicker">Primary Module</span>
+                    <h2 class="h3 mt-2 mb-1">Security Module</h2>
+                    <p class="text-muted mb-0">Log analysis, scan importing, correlations, automation status, and demo sample injection now live in one dedicated module page.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <span class="badge text-bg-<%= workspace.automation.anyEnabled ? 'success' : 'secondary' %>"><%= workspace.automation.enabledCount %>/2 automation pollers active</span>
+                    <a href="/security/module" class="btn btn-dark">Open Security Module</a>
+                </div>
             </div>
         </div>
     </div>

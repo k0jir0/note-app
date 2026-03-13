@@ -7,7 +7,7 @@ PROJECT OVERVIEW
 
 This full-stack note-taking application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, and 182 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, and deployment readiness.
 
-Current verified state (March 13, 2026): 182 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, and a clean production dependency audit.
+Current verified state (March 13, 2026): 185 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, and a clean production dependency audit.
 
 Recent updates (March 5, 2026) hardened validation and authentication flows:
 - Added strict auth payload sanitization (`sanitizeAuthPayload`) and login password validation (`validateLoginPassword`).
@@ -34,11 +34,18 @@ Recent developments (March 12-13, 2026) expanded security-focused functionality:
 - Removed provider-specific login failure handling and duplicate-email signup messaging to reduce account enumeration risk.
 - Removed `GET /auth/logout` and changed the development seed route to `POST /seed` so state-changing behavior is no longer exposed over GET.
 - Added a Research landing page to group Log Analysis, Scan Importer, and Correlations behind a single authenticated entry point.
+- Replaced the separate Logs, Scans, and Correlations pages with one Research Workspace, leaving the old routes as redirects into anchored workspace sections.
+- Moved `Inject Automation Sample` into the Automation module inside the Research Workspace so the demo action lives next to ingestion status and watched-file details.
+- Strengthened the automation demo sample so it now creates multiple alert types that immediately appear in the UI, including failed-login burst, suspicious path probing, scanner detection, injection attempt, and directory enumeration.
+- Adjusted demo sample persistence so explicit zero-window injection bypasses historical dedupe, making visible alert recreation reliable without weakening scheduled automation dedupe.
+- March 13, 2026: Correlation engine changed to group pairwise scan×alert matches by distinct `target` to avoid inflated pairwise totals; overview totals now report unique target groups. Updated `src/utils/correlationAnalysis.js` to merge pairwise matches into representative grouped correlations.
+- March 13, 2026: Demo injection behavior updated so `POST /api/security/correlations/sample` and the automation sample appender will append persisted alerts and scans rather than deleting prior demo records. Controller changes in `src/controllers/securityApiController.js` now build correlations from the current DB set so injected records appear alongside existing ones.
+- March 13, 2026: Client and API behavior: list endpoints now return `totalCount` (for alerts/scans/correlations) and the Research Workspace client reads `overview.total` / `totalCount` to populate summary cards. Remember to restart the server and refresh the Research page after code changes so client JS uses the updated totals.
 - Added Helmet security headers with CSP, frame protections, and inline-handler cleanup to support a stricter browser security model.
 - Added targeted rate limiting to log-analysis, scan-import, and sample-correlation endpoints to reduce authenticated abuse potential.
 - Upgraded EJS to 5.0.1, removing the `jake -> filelist -> minimatch` dependency chain and clearing the production `npm audit` report.
 - Fixed a `connect-mongo` CommonJS import mismatch by using the package's `MongoStore` export directly, restoring runtime startup after the session-store migration.
-- Extended automated coverage with new tests for log analysis, scan parsing, security/scan routes, CSRF behavior, and session hardening, bringing the suite to 182 passing tests with ESLint clean.
+- Extended automated coverage with new tests for log analysis, scan parsing, security/scan routes, CSRF behavior, session hardening, and automation-sample dedupe behavior, bringing the verified suite to 185 passing tests with ESLint clean.
 
 
 MAJOR CHALLENGES AND SOLUTIONS
@@ -115,7 +122,9 @@ Centralizing validation early by creating utilities before building features pre
 
 FINAL REFLECTION
 
-This project now achieves 182 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, encrypted notes at rest, CSRF protection, Mongo-backed sessions, RESTful API design with proper status codes, a dedicated Research workflow, production-ready configuration, a concise README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and stronger security defaults.
+This project now achieves 185 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, encrypted notes at rest, CSRF protection, Mongo-backed sessions, RESTful API design with proper status codes, a consolidated Research Workspace, production-ready configuration, a concise README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and stronger security defaults.
+
+Recent verification (March 13, 2026): focused tests and live checks confirm the grouping-by-target correlation totals and appended demo injection behavior. Focused mocha suites covering correlation analysis and security API routes pass locally; live injection increments alerts/scans counts and grouped correlation totals reflect unique targets as expected.
 
 Building software is inherently iterative. The first version may work, but achieving security, maintainability, and production readiness requires conscious effort and continuous improvement. The most valuable lesson is that honesty about technical debt surpasses claiming perfection. Real projects involve trade-offs, and understanding them makes for better development decisions.
 

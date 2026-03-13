@@ -51,4 +51,47 @@ describe('Runtime Config Validation', () => {
         expect(hasGoogleAuthCredentials(env)).to.equal(true);
         expect(validateRuntimeConfig(env).googleAuthEnabled).to.equal(true);
     });
+
+    it('returns disabled automation config by default', () => {
+        const config = validateRuntimeConfig(createValidEnv());
+
+        expect(config.automation.logBatch.enabled).to.equal(false);
+        expect(config.automation.scanBatch.enabled).to.equal(false);
+    });
+
+    it('requires file path and user id when log batch automation is enabled', () => {
+        const env = createValidEnv();
+        env.LOG_BATCH_ENABLED = 'true';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('LOG_BATCH_FILE_PATH');
+        expect(() => validateRuntimeConfig(env)).to.throw('LOG_BATCH_USER_ID');
+    });
+
+    it('accepts valid log and scan automation settings', () => {
+        const env = createValidEnv();
+        env.LOG_BATCH_ENABLED = 'true';
+        env.LOG_BATCH_FILE_PATH = 'C:\\logs\\app.log';
+        env.LOG_BATCH_USER_ID = '507f1f77bcf86cd799439011';
+        env.SCAN_BATCH_ENABLED = 'true';
+        env.SCAN_BATCH_FILE_PATH = 'C:\\scans\\latest.xml';
+        env.SCAN_BATCH_USER_ID = '507f191e810c19729de860ea';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.automation.logBatch.enabled).to.equal(true);
+        expect(config.automation.logBatch.filePath).to.equal('C:\\logs\\app.log');
+        expect(config.automation.scanBatch.enabled).to.equal(true);
+        expect(config.automation.scanBatch.filePath).to.equal('C:\\scans\\latest.xml');
+    });
+
+    it('rejects invalid automation boolean and user id values', () => {
+        const env = createValidEnv();
+        env.LOG_BATCH_ENABLED = 'maybe';
+        env.SCAN_BATCH_ENABLED = 'true';
+        env.SCAN_BATCH_FILE_PATH = 'C:\\scans\\latest.xml';
+        env.SCAN_BATCH_USER_ID = 'not-an-object-id';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('LOG_BATCH_ENABLED');
+        expect(() => validateRuntimeConfig(env)).to.throw('SCAN_BATCH_USER_ID');
+    });
 });

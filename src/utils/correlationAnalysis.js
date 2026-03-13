@@ -1,4 +1,5 @@
 const IPV4_REGEX = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+const IPV4_EXACT_REGEX = /^(?:\d{1,3}\.){3}\d{1,3}$/;
 const WEB_PORTS = new Set([80, 443, 8080, 8443, 8000, 8888]);
 const AUTH_PORTS = new Set([21, 22, 23, 25, 110, 143, 389, 445, 3389, 5900]);
 
@@ -74,20 +75,22 @@ function deriveReasons(scan, alert) {
     const scanTarget = normalizeToken(scan.target);
     const { webFindings, authFindings } = classifyScanSurface(scan.findings || []);
     const highFindings = (scan.findings || []).filter((finding) => finding.severity === 'high');
+    const hasExplicitIpTarget = IPV4_EXACT_REGEX.test(scanTarget);
+    const targetIpMismatch = hasExplicitIpTarget && indicators.ips.length > 0 && !indicators.ips.includes(scanTarget);
 
     if (scanTarget && scanTarget !== 'unknown' && indicators.ips.includes(scanTarget)) {
         reasons.push(`Alert activity references the same target as the scan: ${scan.target}`);
     }
 
-    if ((alert.type === 'suspicious_path_probe' || alert.type === 'directory_enumeration') && webFindings.length > 0) {
+    if (!targetIpMismatch && (alert.type === 'suspicious_path_probe' || alert.type === 'directory_enumeration') && webFindings.length > 0) {
         reasons.push(`Web reconnaissance alert aligns with ${webFindings.length} web-facing scan finding(s)`);
     }
 
-    if (alert.type === 'failed_login_burst' && authFindings.length > 0) {
+    if (!targetIpMismatch && alert.type === 'failed_login_burst' && authFindings.length > 0) {
         reasons.push(`Failed login activity aligns with ${authFindings.length} authentication-exposed scan finding(s)`);
     }
 
-    if (alert.type === 'injection_attempt' && webFindings.length > 0) {
+    if (!targetIpMismatch && alert.type === 'injection_attempt' && webFindings.length > 0) {
         reasons.push('Injection attempts target a service profile that appears in the imported scan');
     }
 
@@ -95,7 +98,7 @@ function deriveReasons(scan, alert) {
         reasons.push(`Observed scanner tool matches imported ${scan.tool} findings`);
     }
 
-    if (alert.severity === 'high' && highFindings.length > 0) {
+    if (!targetIpMismatch && alert.severity === 'high' && highFindings.length > 0) {
         reasons.push(`High-severity alert overlaps with ${highFindings.length} high-severity scan finding(s)`);
     }
 
@@ -179,18 +182,70 @@ function buildCorrelationOverview(correlations = []) {
 }
 
 function buildScanAlertCorrelations(scans = [], alerts = [], limit = 20) {
-    const correlations = [];
+    // Build pairwise correlations first
+    const pairwise = [];
 
     scans.forEach((scan) => {
         alerts.forEach((alert) => {
             const correlation = buildCorrelation(scan, alert);
             if (correlation) {
-                correlations.push(correlation);
+                pairwise.push(correlation);
             }
         });
     });
 
-    correlations.sort((left, right) => {
+    // Group correlations by target to avoid inflated pairwise counts
+    const groups = new Map();
+    pairwise.forEach((corr) => {
+        const targetKey = corr.target || 'unknown';
+        if (!groups.has(targetKey)) {
+            groups.set(targetKey, []);
+        }
+        groups.get(targetKey).push(corr);
+    });
+
+    // Reduce each group into a single representative correlation
+    const grouped = [...groups.entries()].map(([target, items]) => {
+        // pick highest-severity then most-recent correlation as representative
+        const severityScore = { high: 3, medium: 2, low: 1 };
+        items.sort((a, b) => {
+            const sd = severityScore[b.severity] - severityScore[a.severity];
+            if (sd !== 0) return sd;
+            const bt = new Date(b.alert.detectedAt || b.scan.importedAt || 0).getTime();
+            const at = new Date(a.alert.detectedAt || a.scan.importedAt || 0).getTime();
+            return bt - at;
+        });
+
+        const primary = items[0];
+        const mergedReasons = unique(items.flatMap((i) => i.rationale || []));
+        const mergedIps = unique(items.flatMap((i) => (i.matchedIndicators && i.matchedIndicators.ips) || []));
+        const mergedTools = unique(items.flatMap((i) => (i.matchedIndicators && i.matchedIndicators.tools) || []));
+        const webFindingCount = items.reduce((s, i) => s + ((i.matchedIndicators && i.matchedIndicators.webFindingCount) || 0), 0);
+        const authFindingCount = items.reduce((s, i) => s + ((i.matchedIndicators && i.matchedIndicators.authFindingCount) || 0), 0);
+        const highFindingCount = items.reduce((s, i) => s + ((i.matchedIndicators && i.matchedIndicators.highFindingCount) || 0), 0);
+
+        return {
+            id: `group-${target}`,
+            severity: primary.severity,
+            headline: items.length > 1 ? `${items.length} correlated matches for ${target}` : primary.headline,
+            target,
+            rationale: mergedReasons,
+            matchedIndicators: {
+                ips: mergedIps,
+                tools: mergedTools,
+                webFindingCount,
+                authFindingCount,
+                highFindingCount
+            },
+            // keep representative scan/alert for display
+            scan: primary.scan,
+            alert: primary.alert,
+            matches: items.length
+        };
+    });
+
+    // Sort grouped correlations by severity and time
+    grouped.sort((left, right) => {
         const severityScore = { high: 3, medium: 2, low: 1 };
         const severityDelta = severityScore[right.severity] - severityScore[left.severity];
         if (severityDelta !== 0) {
@@ -202,10 +257,12 @@ function buildScanAlertCorrelations(scans = [], alerts = [], limit = 20) {
         return rightTime - leftTime;
     });
 
-    const bounded = correlations.slice(0, limit);
+    const bounded = grouped.slice(0, limit);
+    const overview = buildCorrelationOverview(grouped);
 
     return {
-        overview: buildCorrelationOverview(bounded),
+        overview,
+        totalCount: grouped.length,
         correlations: bounded
     };
 }

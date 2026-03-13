@@ -34,7 +34,8 @@ exports.importScan = async (req, res) => {
             findings: parsed.findings,
             summary,
             importedAt: new Date(),
-            user: req.user._id
+            user: req.user._id,
+            source: 'manual-scan-input'
         });
 
         return res.status(200).json({
@@ -57,13 +58,17 @@ exports.getScans = async (req, res) => {
     try {
         const limit = parseLimit(req.query.limit, 20, 100);
 
-        const scans = await ScanResult.find({ user: req.user._id })
-            .sort({ importedAt: -1, createdAt: -1 })
-            .limit(limit);
+        const [scans, totalCount] = await Promise.all([
+            ScanResult.find({ user: req.user._id })
+                .sort({ importedAt: -1, createdAt: -1 })
+                .limit(limit),
+            ScanResult.countDocuments({ user: req.user._id })
+        ]);
 
         return res.status(200).json({
             success: true,
             count: scans.length,
+            totalCount,
             data: scans
         });
     } catch (error) {

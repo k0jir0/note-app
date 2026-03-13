@@ -17,7 +17,9 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Security alert log analysis dashboard
 - Scan import and findings dashboard
 - Correlation dashboard linking scan findings with observed security alerts
-- Research landing page that groups log analysis, scan importer, and correlation workflows
+- Consolidated Research Workspace that unifies log analysis, scan import, correlations, and automation status
+- Optional scheduled ingestion for one log file and one scan file to keep research dashboards populated automatically
+- Dedicated Security Module page for background-ingestion status, demo sample injection, and security controls reachable from the Research Workspace
 - RESTful API with JSON responses
 - Responsive UI with Bootstrap 5
 - Test coverage with Mocha, Chai, and Sinon
@@ -83,8 +85,42 @@ Server: `http://localhost:3000`
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account
 - Login and start creating notes
-- Use `/research` to access Log Analysis, Scan Importer, and Correlations from one page
+- Use `/research` to access the unified Research Workspace
+- Use the Security Module link inside `/research` to run `Inject Automation Sample` and populate Alerts, Scans, and Correlations with demo data for the signed-in account
 - Optional: send a `POST` request to `/seed` after logging in (dev only) for sample data
+
+### Optional Automation
+
+The shortest path to self-sufficient research workflows is built in as two pollers:
+
+- Log batch ingestion tails one configured log file, analyzes only new appended content, and creates deduplicated alerts.
+- Scan batch ingestion polls one configured scan output file, imports it when the content changes, and stores a fingerprint to avoid duplicate imports.
+- Correlations do not need a separate job because they are derived from the saved alerts and scans whenever the dashboard loads.
+
+Example configuration:
+
+```env
+LOG_BATCH_ENABLED=true
+LOG_BATCH_FILE_PATH=C:\logs\app.log
+LOG_BATCH_USER_ID=<mongo-user-id>
+LOG_BATCH_INTERVAL_MS=60000
+
+SCAN_BATCH_ENABLED=true
+SCAN_BATCH_FILE_PATH=C:\scans\latest-nmap.xml
+SCAN_BATCH_USER_ID=<mongo-user-id>
+SCAN_BATCH_INTERVAL_MS=300000
+```
+
+This is intentionally minimal: point the app at a live log file and a scanner output file that gets refreshed by some external job, and the Research pages begin updating themselves.
+
+### Security Module Demo Sample
+
+The Research Workspace links to a dedicated Security Module page with an `Inject Automation Sample` action.
+
+- It writes demo alert and scan records for the currently authenticated user.
+- The sample currently creates visible alert types for failed-login burst, suspicious path probing, scanner-tool detection, injection attempt, and directory enumeration.
+- After completion, the workspace refreshes the Alerts, Scans, and Correlations panels so the saved records appear immediately.
+- If backend sample behavior changes, restart the app and reload the Research page so both server and browser assets are current.
 
 ## API Documentation
 
@@ -200,13 +236,15 @@ PUT /api/notes/:id
 | `GET /notes/new` | Create note form | ✅ |
 | `GET /notes/:id` | View note | ✅ |
 | `GET /notes/:id/edit` | Edit note form | ✅ |
-| `GET /research` | Research landing page | ✅ |
+| `GET /research` | Unified Research Workspace | ✅ |
 | `GET /auth/login` | Login page | - |
 | `GET /auth/signup` | Signup page | - |
 | `GET /auth/logout` | Logout confirmation page | ✅ |
-| `GET /security/logs` | Security alerts dashboard | ✅ |
-| `GET /security/scans` | Security scans dashboard | ✅ |
-| `GET /security/correlations` | Scan-to-alert correlation dashboard | ✅ |
+| `GET /security/logs` | Redirects to the Logs section in `/research` | ✅ |
+| `GET /security/scans` | Redirects to the Scans section in `/research` | ✅ |
+| `GET /security/correlations` | Redirects to the Correlations section in `/research` | ✅ |
+| `GET /security/automation` | Redirects to `/security/module` | ✅ |
+| `GET /security/module` | Dedicated Security Module page | ✅ |
 | `POST /seed` | Seed database (dev only) | ✅ |
 
 ### Security API Endpoints
@@ -215,6 +253,7 @@ PUT /api/notes/:id
 |----------|--------|-------------|
 | `GET /api/security/alerts` | GET | Get recent log-derived security alerts |
 | `GET /api/security/correlations` | GET | Correlate imported scans with observed alerts |
+| `POST /api/security/automation/sample` | POST | Inject demo alert and scan data for the currently authenticated user and refresh the workspace with visible findings |
 | `POST /api/security/correlations/sample` | POST | Inject sample correlation data for demos |
 | `POST /api/security/log-analysis` | POST | Analyze log lines and generate alerts |
 | `GET /api/security/scans` | GET | Get imported vulnerability scans |
@@ -254,6 +293,8 @@ notes-app/
 │   │   ├── scanPageRoutes.js
 │   │   ├── securityApiRoutes.js
 │   │   └── securityPageRoutes.js
+│   ├── services/
+│   │   └── automationService.js
 │   ├── utils/
 │   │   ├── errorHandler.js
 │   │   ├── logAnalysis.js
@@ -269,9 +310,7 @@ notes-app/
 │       │   ├── note-form.ejs
 │       │   ├── note.ejs
 │       │   ├── research.ejs
-│       │   ├── security-correlations.ejs
-│       │   ├── security-logs.ejs
-│       │   ├── security-scans.ejs
+│       │   ├── security-automation.ejs
 │       │   └── signup.ejs
 │       └── public/
 │           ├── css/
@@ -325,6 +364,8 @@ npm run lint       # ESLint code quality check
 - MongoDB ObjectId validation
 - Authentication, destructive action, and security-analysis route rate limiting
 - Clean production dependency audit after upgrading to EJS 5
+- Optional background ingestion for logs and scan files, with deduplication to reduce duplicate records during scheduled automation
+- Demo automation sample injection that bypasses historical dedupe when invoked with a zero dedupe window so visible alert records can be recreated on demand
 
 **Production Checklist:**
 - [ ] Strong `SESSION_SECRET` (32+ random chars)
@@ -352,6 +393,26 @@ PORT=3000
 LEGACY_NOTE_ENCRYPTION_KEY=<previous-32-byte-key>
 ALLOW_LEGACY_SESSION_SECRET_FALLBACK=false
 ```
+
+**Optional Automation Variables:**
+```env
+LOG_BATCH_ENABLED=false
+LOG_BATCH_FILE_PATH=
+LOG_BATCH_USER_ID=
+LOG_BATCH_SOURCE=server-log-batch
+LOG_BATCH_INTERVAL_MS=60000
+LOG_BATCH_MAX_READ_BYTES=65536
+LOG_BATCH_DEDUPE_WINDOW_MS=300000
+
+SCAN_BATCH_ENABLED=false
+SCAN_BATCH_FILE_PATH=
+SCAN_BATCH_USER_ID=
+SCAN_BATCH_SOURCE=scheduled-scan-import
+SCAN_BATCH_INTERVAL_MS=300000
+SCAN_BATCH_DEDUPE_WINDOW_MS=3600000
+```
+
+The automation mode is meant to stay simple: an external log writer and an external scanner refresh the files, and the app ingests them on a schedule.
 
 Use `LEGACY_NOTE_ENCRYPTION_KEY` during note-encryption key rotation when existing data must remain readable under a previous key. Use `ALLOW_LEGACY_SESSION_SECRET_FALLBACK=true` only for compatibility with older data that used a session-secret-derived key, then disable it after re-saving affected notes.
 

@@ -110,7 +110,26 @@ describe('Note Page Routes', () => {
         const userId = new mongoose.Types.ObjectId();
 
         const req = {
-            user: { _id: userId }
+            user: { _id: userId },
+            app: {
+                locals: {
+                    runtimeConfig: {
+                        automation: {
+                            logBatch: {
+                                enabled: true,
+                                source: 'server-log-batch',
+                                intervalMs: 60000,
+                                dedupeWindowMs: 300000,
+                                maxReadBytes: 65536,
+                                filePath: 'C:\\logs\\app.log'
+                            },
+                            scanBatch: {
+                                enabled: false
+                            }
+                        }
+                    }
+                }
+            }
         };
         const res = buildRes();
 
@@ -119,7 +138,33 @@ describe('Note Page Routes', () => {
         expect(
             res.render.calledWith('pages/research.ejs', {
                 title: 'Research',
-                csrfToken: 'test-csrf-token'
+                csrfToken: 'test-csrf-token',
+                workspace: {
+                    automation: {
+                        anyEnabled: true,
+                        enabledCount: 1,
+                        logBatch: {
+                            enabled: true,
+                            statusLabel: 'Active',
+                            statusTone: 'success',
+                            source: 'server-log-batch',
+                            intervalMs: 60000,
+                            dedupeWindowMs: 300000,
+                            filePath: 'C:\\logs\\app.log',
+                            maxReadBytes: 65536
+                        },
+                        scanBatch: {
+                            enabled: false,
+                            statusLabel: 'Disabled',
+                            statusTone: 'secondary',
+                            source: 'scheduled-scan-import',
+                            intervalMs: 300000,
+                            dedupeWindowMs: 3600000,
+                            filePath: null,
+                            maxReadBytes: null
+                        }
+                    }
+                }
             })
         ).to.be.true;
     });

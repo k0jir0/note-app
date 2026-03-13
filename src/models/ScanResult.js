@@ -40,6 +40,17 @@ const scanResultSchema = new mongoose.Schema({
         trim: true,
         maxlength: 500
     },
+    source: {
+        type: String,
+        trim: true,
+        default: 'manual-scan-input'
+    },
+    fingerprint: {
+        type: String,
+        trim: true,
+        index: true,
+        sparse: true
+    },
     importedAt: {
         type: Date,
         default: Date.now

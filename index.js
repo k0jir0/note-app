@@ -17,6 +17,7 @@ const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { requireAuth } = require('./src/middleware/auth');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
+const { startAutomation } = require('./src/services/automationService');
 
 require('dotenv').config();
 const runtimeConfig = validateRuntimeConfig();
@@ -24,11 +25,14 @@ require('./src/config/passport')(passport);
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
 
+app.locals.runtimeConfig = runtimeConfig;
+
 // Model layer
 const dbURI = runtimeConfig.dbURI;
 mongoose.connect(dbURI)
     .then(() => {
         console.log('MongoDB connected successfully');
+        startAutomation(runtimeConfig.automation);
     }).catch((err) => {
         console.error('MongoDB connection error:', err.message);
         process.exit(1);
