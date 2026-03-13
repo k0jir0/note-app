@@ -5,10 +5,13 @@ A full-stack note-taking application with user authentication, built with Node.j
 ## Features
 
 - User authentication (signup/login) with Passport.js & bcrypt
-- Google OAuth sign-in with account linking by email
+- Optional Google OAuth sign-in with account linking by email
 - CRUD operations for notes (create, read, update, delete)
+- Encryption for note fields at rest
 - User-specific data isolation
 - Input validation & XSS protection
+- Security alert log analysis dashboard
+- Scan import and findings dashboard
 - RESTful API with JSON responses
 - Responsive UI with Bootstrap 5
 - Test coverage with Mocha, Chai, and Sinon
@@ -30,8 +33,8 @@ A full-stack note-taking application with user authentication, built with Node.j
 
 1. **Clone & Install**
 ```bash
-git clone https://github.com/k0jir0/note-app.git
-cd note-app
+git clone https://github.com/k0jir0/notes-app.git
+cd notes-app
 npm install
 ```
 
@@ -50,6 +53,11 @@ PORT=3000
 # Optional: only if you want Google sign-in
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+Generate strong local secrets with Node:
+```bash
+node -e "const crypto=require('crypto'); console.log('SESSION_SECRET=' + crypto.randomBytes(48).toString('hex')); console.log('NOTE_ENCRYPTION_KEY=' + crypto.randomBytes(32).toString('hex'));"
 ```
 
 **MongoDB Setup:**
@@ -89,6 +97,7 @@ Server: `http://localhost:3000`
 - Password: Min 8 chars, contains uppercase, lowercase, number
 - Login payload: only `email` and `password` fields are accepted
 - If a Google-only account attempts local email/password login, user is redirected to Google sign-in
+- Google OAuth routes require both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
 
 ### Notes API Endpoints
 
@@ -183,33 +192,57 @@ PUT /api/notes/:id
 | `GET /notes/:id/edit` | Edit note form | ✅ |
 | `GET /auth/login` | Login page | - |
 | `GET /auth/signup` | Signup page | - |
+| `GET /security/logs` | Security alerts dashboard | ✅ |
+| `GET /security/scans` | Security scans dashboard | ✅ |
 | `GET /seed` | Seed database (dev only) | ✅ |
+
+### Security API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/security/alerts` | GET | Get recent log-derived security alerts |
+| `POST /api/security/log-analysis` | POST | Analyze log lines and generate alerts |
+| `GET /api/security/scans` | GET | Get imported vulnerability scans |
+| `POST /api/security/scan-import` | POST | Import parsed scan results |
 
 ## Project Structure
 
 ```text
-note-app/
+notes-app/
 ├── index.js
 ├── package.json
 ├── .env.example
 ├── README.md
 ├── src/
 │   ├── config/
-│   │   └── passport.js
+│   │   ├── passport.js
+│   │   └── runtimeConfig.js
 │   ├── controllers/
 │   │   ├── noteApiController.js
-│   │   └── noteController.js
+│   │   ├── noteController.js
+│   │   ├── scanApiController.js
+│   │   └── securityApiController.js
 │   ├── middleware/
 │   │   └── auth.js
 │   ├── models/
 │   │   ├── Notes.js
+│   │   ├── ScanResult.js
+│   │   ├── SecurityAlert.js
 │   │   └── User.js
 │   ├── routes/
 │   │   ├── authRoutes.js
 │   │   ├── noteApiRoutes.js
-│   │   └── notePageRoutes.js
+│   │   ├── notePageRoutes.js
+│   │   ├── scanApiRoutes.js
+│   │   ├── scanPageRoutes.js
+│   │   ├── securityApiRoutes.js
+│   │   └── securityPageRoutes.js
 │   ├── utils/
 │   │   ├── errorHandler.js
+│   │   ├── logAnalysis.js
+│   │   ├── noteEncryption.js
+│   │   ├── pagination.js
+│   │   ├── scanParser.js
 │   │   └── validation.js
 │   └── views/
 │       ├── pages/
@@ -217,16 +250,14 @@ note-app/
 │       │   ├── login.ejs
 │       │   ├── note-form.ejs
 │       │   ├── note.ejs
+│       │   ├── security-logs.ejs
+│       │   ├── security-scans.ejs
 │       │   └── signup.ejs
 │       └── public/
 │           ├── css/
-│           │   └── styles.css
 │           └── js/
-│               ├── home.js
-│               ├── note-form.js
-│               └── notes.js
 └── test/
-    └── ...
+  └── ...
 ```
 
 ## Development
@@ -255,6 +286,7 @@ npm run lint       # ESLint code quality check
 - Session-based authentication with Passport.js
 - Startup validation for required secret configuration
 - Dedicated encryption key for notes at rest
+- Optional compatibility support for note-encryption key rotation
 - Safe fallback for Google-only accounts in local login flow
 - Input validation & XSS sanitization
 - User-specific authorization checks
@@ -281,6 +313,14 @@ NOTE_ENCRYPTION_KEY=64-char-hex-key
 PORT=3000
 ```
 
+**Optional Migration Variables:**
+```env
+LEGACY_NOTE_ENCRYPTION_KEY=<previous-32-byte-key>
+ALLOW_LEGACY_SESSION_SECRET_FALLBACK=false
+```
+
+Use `LEGACY_NOTE_ENCRYPTION_KEY` during note-encryption key rotation when existing data must remain readable under a previous key. Use `ALLOW_LEGACY_SESSION_SECRET_FALLBACK=true` only for compatibility with older data that used a session-secret-derived key, then disable it after re-saving affected notes.
+
 **Deploy Commands:**
 
 ```bash
@@ -304,6 +344,8 @@ pm2 save && pm2 startup
 | Missing MONGODB_URI error | Create `.env` file with valid connection string |
 | Authentication fails | Clear cookies, verify `SESSION_SECRET` is set and not a placeholder |
 | Missing NOTE_ENCRYPTION_KEY error | Generate a 32-byte key and set `NOTE_ENCRYPTION_KEY` |
+| Google sign-in unavailable | Set both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, or leave both unset |
+| Older encrypted notes no longer decrypt after key rotation | Set `LEGACY_NOTE_ENCRYPTION_KEY`, re-save affected notes, then remove the compatibility setting |
 | Tests fail | Run `npm install`, ensure Node.js v18+ |
 | Port already in use | Set `PORT` env variable or kill process on port 3000 |
 | Database connection fails | Check MongoDB Atlas IP whitelist or local MongoDB status |
