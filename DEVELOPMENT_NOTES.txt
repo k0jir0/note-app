@@ -23,7 +23,10 @@ Recent developments (March 12-13, 2026) expanded security-focused functionality:
 - Implemented a Vulnerability Scan Importer with multi-format parsing support (Nmap XML, Nikto text, JSON, and generic text) and normalized finding storage (`ScanResult` model) with severity/type classification.
 - Added secured scan endpoints (`/api/security/scan-import`, `/api/security/scans`) and a dedicated scan dashboard (`/security/scans`) including sample scan loading and live list refresh after import.
 - Updated navigation and styling to integrate both security dashboards into the core product workflow.
-- Extended automated coverage with new tests for log analysis, scan parsing, and security/scan routes, bringing the suite to 156 passing tests with ESLint clean.
+- Added targeted rate limiting for authentication attempts and destructive development actions.
+- Regenerated the session on successful login, destroyed the session on logout, and cleared the session cookie instead of relying on `req.logout()` alone.
+- Removed `GET /auth/logout` and changed the development seed route to `POST /seed` so state-changing behavior is no longer exposed over GET.
+- Extended automated coverage with new tests for log analysis, scan parsing, security/scan routes, and session hardening, bringing the suite to 173 passing tests with ESLint clean.
 
 
 MAJOR CHALLENGES AND SOLUTIONS

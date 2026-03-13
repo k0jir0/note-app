@@ -3,6 +3,7 @@ const passport = require('passport');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const { hasGoogleAuthCredentials } = require('../config/runtimeConfig');
+const { authRateLimiter } = require('../middleware/rateLimit');
 const {
     validateEmail,
     validatePassword,
@@ -12,13 +13,43 @@ const {
 
 const router = express.Router();
 
+function destroyAuthenticatedSession(req, res, next) {
+    req.logout((logoutError) => {
+        if (logoutError) {
+            if (typeof next === 'function') {
+                return next(logoutError);
+            }
+
+            return res.status(500).json({ error: 'Logout failed' });
+        }
+
+        if (!req.session || typeof req.session.destroy !== 'function') {
+            res.clearCookie('connect.sid');
+            return res.redirect('/auth/login');
+        }
+
+        return req.session.destroy((sessionError) => {
+            if (sessionError) {
+                if (typeof next === 'function') {
+                    return next(sessionError);
+                }
+
+                return res.status(500).json({ error: 'Logout failed' });
+            }
+
+            res.clearCookie('connect.sid');
+            return res.redirect('/auth/login');
+        });
+    });
+}
+
 // GET login page
 router.get('/login', (req, res) => {
     res.render('pages/login', { title: 'Login', error: null });
 });
 
 // POST login
-router.post('/login', (req, res, next) => {
+router.post('/login', authRateLimiter, (req, res, next) => {
     const { email, password } = sanitizeAuthPayload(req.body);
 
     // Only process expected fields in auth payloads
@@ -75,11 +106,22 @@ router.post('/login', (req, res, next) => {
             });
         }
 
-        req.logIn(user, (err) => {
-            if (err) {
-                return next(err);
+        if (!req.session || typeof req.session.regenerate !== 'function') {
+            return next(new Error('Session regeneration is unavailable'));
+        }
+
+        return req.session.regenerate((regenerateError) => {
+            if (regenerateError) {
+                return next(regenerateError);
             }
-            return res.redirect('/');
+
+            return req.logIn(user, (loginError) => {
+                if (loginError) {
+                    return next(loginError);
+                }
+
+                return res.redirect('/');
+            });
         });
     })(req, res, next);
 });
@@ -163,30 +205,7 @@ router.post('/signup', async (req, res) => {
 
 // POST logout
 router.post('/logout', (req, res, next) => {
-    req.logout((err) => {
-        if (err) {
-            if (typeof next === 'function') {
-                return next(err);
-            }
-
-            return res.status(500).json({ error: 'Logout failed' });
-        }
-        res.redirect('/auth/login');
-    });
-});
-
-// GET logout (for convenience)
-router.get('/logout', (req, res, next) => {
-    req.logout((err) => {
-        if (err) {
-            if (typeof next === 'function') {
-                return next(err);
-            }
-
-            return res.status(500).json({ error: 'Logout failed' });
-        }
-        res.redirect('/auth/login');
-    });
+    destroyAuthenticatedSession(req, res, next);
 });
 
 // Google Auth

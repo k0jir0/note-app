@@ -78,7 +78,7 @@ Server: `http://localhost:3000`
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account
 - Login and start creating notes
-- Optional: Visit `/seed` (dev only) for sample data
+- Optional: send a `POST` request to `/seed` after logging in (dev only) for sample data
 
 ## API Documentation
 
@@ -91,7 +91,7 @@ Server: `http://localhost:3000`
 |----------|--------|------|----------|
 | `/auth/signup` | POST | `email`, `password` | Redirect to `/auth/login` |
 | `/auth/login` | POST | `email`, `password` | Redirect to `/` |
-| `/auth/logout` | GET/POST | - | Redirect to `/auth/login` |
+| `/auth/logout` | POST | - | Redirect to `/auth/login` |
 
 **Validation:**
 - Email: Valid format, max 254 chars, unique
@@ -196,7 +196,7 @@ PUT /api/notes/:id
 | `GET /security/logs` | Security alerts dashboard | ✅ |
 | `GET /security/scans` | Security scans dashboard | ✅ |
 | `GET /security/correlations` | Scan-to-alert correlation dashboard | ✅ |
-| `GET /seed` | Seed database (dev only) | ✅ |
+| `POST /seed` | Seed database (dev only) | ✅ |
 
 ### Security API Endpoints
 
@@ -287,6 +287,7 @@ npm run lint       # ESLint code quality check
 - Environment variables for secrets
 - Password hashing (bcrypt, 10 salt rounds)
 - Session-based authentication with Passport.js
+- Session regeneration on login and session destruction on logout
 - Startup validation for required secret configuration
 - Dedicated encryption key for notes at rest
 - Optional compatibility support for note-encryption key rotation
@@ -294,6 +295,7 @@ npm run lint       # ESLint code quality check
 - Input validation & XSS sanitization
 - User-specific authorization checks
 - MongoDB ObjectId validation
+- Authentication and destructive action rate limiting
 
 **Production Checklist:**
 - [ ] Strong `SESSION_SECRET` (32+ random chars)

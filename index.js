@@ -13,6 +13,7 @@ const scanPageRoute = require('./src/routes/scanPageRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { requireAuth } = require('./src/middleware/auth');
+const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 
 require('dotenv').config();
 const runtimeConfig = validateRuntimeConfig();
@@ -79,7 +80,7 @@ app.get('/', requireAuth, (req, res) => {
 // Seed route - DEVELOPMENT ONLY - requires authentication
 // WARNING: This route deletes all data! Only enabled in non-production environments.
 if (process.env.NODE_ENV !== 'production') {
-    app.get('/seed', requireAuth, async (req, res) => {
+    app.post('/seed', requireAuth, destructiveActionRateLimiter, async (req, res) => {
         const User = require('./src/models/User');
         const Notes = require('./src/models/Notes');
         const bcrypt = require('bcrypt');
