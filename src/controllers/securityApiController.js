@@ -1,6 +1,9 @@
 const SecurityAlert = require('../models/SecurityAlert');
+const ScanResult = require('../models/ScanResult');
+const { buildScanAlertCorrelations } = require('../utils/correlationAnalysis');
 const { analyzeLogText, MAX_LOG_TEXT_LENGTH } = require('../utils/logAnalysis');
 const { handleApiError } = require('../utils/errorHandler');
+const { buildSampleCorrelationInputs } = require('../utils/sampleCorrelationData');
 
 const parseLimit = (value, fallback = 20, max = 100) => {
     const parsed = Number.parseInt(value, 10);
@@ -68,5 +71,50 @@ exports.getAlerts = async (req, res) => {
         });
     } catch (error) {
         return handleApiError(res, error, 'Get security alerts');
+    }
+};
+
+exports.getCorrelations = async (req, res) => {
+    try {
+        const limit = parseLimit(req.query.limit, 20, 50);
+
+        const [alerts, scans] = await Promise.all([
+            SecurityAlert.find({ user: req.user._id })
+                .sort({ detectedAt: -1, createdAt: -1 })
+                .limit(50),
+            ScanResult.find({ user: req.user._id })
+                .sort({ importedAt: -1, createdAt: -1 })
+                .limit(50)
+        ]);
+
+        const correlationPayload = buildScanAlertCorrelations(scans, alerts, limit);
+
+        return res.status(200).json({
+            success: true,
+            data: correlationPayload.correlations,
+            overview: correlationPayload.overview
+        });
+    } catch (error) {
+        return handleApiError(res, error, 'Get correlations');
+    }
+};
+
+exports.getSampleCorrelations = async (req, res) => {
+    try {
+        const sampleInput = buildSampleCorrelationInputs();
+        const correlationPayload = buildScanAlertCorrelations(sampleInput.scans, sampleInput.alerts, 20);
+
+        return res.status(200).json({
+            success: true,
+            data: correlationPayload.correlations,
+            overview: correlationPayload.overview,
+            meta: {
+                sample: true,
+                sampleLogText: sampleInput.sampleLogText,
+                sampleScanText: sampleInput.sampleScanText
+            }
+        });
+    } catch (error) {
+        return handleApiError(res, error, 'Get sample correlations');
     }
 };

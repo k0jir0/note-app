@@ -12,6 +12,7 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Input validation & XSS protection
 - Security alert log analysis dashboard
 - Scan import and findings dashboard
+- Correlation dashboard linking scan findings with observed security alerts
 - RESTful API with JSON responses
 - Responsive UI with Bootstrap 5
 - Test coverage with Mocha, Chai, and Sinon
@@ -194,6 +195,7 @@ PUT /api/notes/:id
 | `GET /auth/signup` | Signup page | - |
 | `GET /security/logs` | Security alerts dashboard | ✅ |
 | `GET /security/scans` | Security scans dashboard | ✅ |
+| `GET /security/correlations` | Scan-to-alert correlation dashboard | ✅ |
 | `GET /seed` | Seed database (dev only) | ✅ |
 
 ### Security API Endpoints
@@ -201,6 +203,7 @@ PUT /api/notes/:id
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `GET /api/security/alerts` | GET | Get recent log-derived security alerts |
+| `GET /api/security/correlations` | GET | Correlate imported scans with observed alerts |
 | `POST /api/security/log-analysis` | POST | Analyze log lines and generate alerts |
 | `GET /api/security/scans` | GET | Get imported vulnerability scans |
 | `POST /api/security/scan-import` | POST | Import parsed scan results |

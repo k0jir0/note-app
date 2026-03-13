@@ -19,4 +19,20 @@ router.get('/security/logs', requireAuth, async (req, res) => {
     }
 });
 
+router.get('/security/correlations', requireAuth, async (req, res) => {
+    try {
+        res.render('pages/security-correlations.ejs', {
+            title: 'Correlation Dashboard',
+            correlations: [],
+            overview: {
+                total: 0,
+                highPriority: 0,
+                targets: 0
+            }
+        });
+    } catch (error) {
+        handlePageError(res, error, 'Unable to load correlation dashboard');
+    }
+});
+
 module.exports = router;

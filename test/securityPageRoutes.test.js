@@ -3,8 +3,6 @@ const sinon = require('sinon');
 const mongoose = require('mongoose');
 
 const router = require('../src/routes/securityPageRoutes');
-const SecurityAlert = require('../src/models/SecurityAlert');
-
 const getHandler = (method, path, stackIndex = 1) => {
     const layer = router.stack.find(
         (entry) => entry.route && entry.route.path === path && entry.route.methods[method]
@@ -35,6 +33,8 @@ describe('Security Page Routes', () => {
         const userId = new mongoose.Types.ObjectId();
         const fakeAlerts = [{ summary: 'Suspicious path probing detected' }];
 
+        const SecurityAlert = require('../src/models/SecurityAlert');
+
         sinon.stub(SecurityAlert, 'find').returns({
             sort: sinon.stub().returnsThis(),
             limit: sinon.stub().resolves(fakeAlerts)
@@ -51,5 +51,26 @@ describe('Security Page Routes', () => {
             title: 'Log Analysis Assistant',
             alerts: fakeAlerts
         })).to.be.true;
+    });
+
+    it('maps GET /security/correlations to a handler', () => {
+        const handler = getHandler('get', '/security/correlations');
+
+        expect(handler).to.exist;
+    });
+
+    it('renders the correlation dashboard empty on initial load', async () => {
+        const handler = getHandler('get', '/security/correlations');
+        const userId = new mongoose.Types.ObjectId();
+
+        const req = { user: { _id: userId } };
+        const res = buildRes();
+
+        await handler(req, res);
+
+        expect(res.render.calledOnce).to.equal(true);
+        expect(res.render.firstCall.args[0]).to.equal('pages/security-correlations.ejs');
+        expect(res.render.firstCall.args[1].correlations).to.deep.equal([]);
+        expect(res.render.firstCall.args[1].overview.total).to.equal(0);
     });
 });

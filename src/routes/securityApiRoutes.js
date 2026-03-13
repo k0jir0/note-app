@@ -4,6 +4,8 @@ const { requireAuthAPI } = require('../middleware/auth');
 const securityApiController = require('../controllers/securityApiController');
 
 router.get('/api/security/alerts', requireAuthAPI, securityApiController.getAlerts);
+router.get('/api/security/correlations', requireAuthAPI, securityApiController.getCorrelations);
+router.post('/api/security/correlations/sample', requireAuthAPI, securityApiController.getSampleCorrelations);
 router.post('/api/security/log-analysis', requireAuthAPI, securityApiController.analyzeLogs);
 
 module.exports = router;
