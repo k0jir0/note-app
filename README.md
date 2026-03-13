@@ -1,6 +1,6 @@
 # Note App
 
-A full-stack note-taking application with user authentication, built with Node.js, Express, MongoDB, and EJS.
+A full-stack note-taking application with user authentication, built with Node.js, Express, MongoDB, and EJS. Includes an integrated Security Module for log analysis, scan import, correlation dashboards, and optional automated ingestion to help research, triage, and demo security alerts.
 
 ## Features
 
