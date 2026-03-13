@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="/js/image-fallback.js" defer></script>
     <style>
         .note-image {
             width: 100%;
@@ -53,7 +54,7 @@
                         src="<%= note.image || '/placeholder.jpg' %>"
                         class="note-image"
                         alt="<%= note.title %>"
-                        onerror="this.onerror=null; this.src='/placeholder.jpg';"
+                        data-fallback-src="/placeholder.jpg"
                     >
                     
                     <div class="card-body">

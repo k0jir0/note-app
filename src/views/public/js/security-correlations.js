@@ -20,7 +20,11 @@ const renderMessage = (message, type = 'secondary') => {
         return;
     }
 
-    resultBox.innerHTML = `<div class="alert alert-${escapeHtml(type)} mb-0">${message}</div>`;
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${escapeHtml(type)} mb-0`;
+    alert.textContent = String(message);
+
+    resultBox.replaceChildren(alert);
 };
 
 const renderOverview = (overview = {}) => {

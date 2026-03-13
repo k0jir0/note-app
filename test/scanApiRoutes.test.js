@@ -3,6 +3,7 @@ const { expect } = require('chai');
 const router = require('../src/routes/scanApiRoutes');
 const scanApiController = require('../src/controllers/scanApiController');
 const { requireAuthAPI } = require('../src/middleware/auth');
+const { securityAnalysisRateLimiter } = require('../src/middleware/rateLimit');
 
 const findRouteLayer = (method, path) => {
     return router.stack.find(
@@ -30,8 +31,9 @@ describe('Scan API Routes', () => {
         const layer = findRouteLayer('post', '/api/security/scan-import');
 
         expect(layer).to.exist;
-        expect(layer.route.stack).to.have.length(2);
+        expect(layer.route.stack).to.have.length(3);
         expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
-        expect(layer.route.stack[1].handle).to.equal(scanApiController.importScan);
+        expect(layer.route.stack[1].handle).to.equal(securityAnalysisRateLimiter);
+        expect(layer.route.stack[2].handle).to.equal(scanApiController.importScan);
     });
 });

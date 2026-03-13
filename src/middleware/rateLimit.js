@@ -22,7 +22,16 @@ const destructiveActionRateLimiter = rateLimit({
     message: buildRateLimitMessage('Too many destructive requests. Please wait before trying again.')
 });
 
+const securityAnalysisRateLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: buildRateLimitMessage('Too many security analysis requests. Please wait before trying again.')
+});
+
 module.exports = {
     authRateLimiter,
-    destructiveActionRateLimiter
+    destructiveActionRateLimiter,
+    securityAnalysisRateLimiter
 };

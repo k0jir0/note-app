@@ -7,7 +7,7 @@ PROJECT OVERVIEW
 
 This full-stack note-taking application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, and 182 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, and deployment readiness.
 
-Current verified state (March 13, 2026): 182 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, and a Research landing page that groups the security-focused dashboards.
+Current verified state (March 13, 2026): 182 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, and a clean production dependency audit.
 
 Recent updates (March 5, 2026) hardened validation and authentication flows:
 - Added strict auth payload sanitization (`sanitizeAuthPayload`) and login password validation (`validateLoginPassword`).
@@ -29,10 +29,14 @@ Recent developments (March 12-13, 2026) expanded security-focused functionality:
 - Moved session storage from the default in-memory store to MongoDB-backed persistence for safer production behavior.
 - Added synchronizer-token CSRF protection for login/signup/logout forms and authenticated JSON mutation routes.
 - Updated page-route render payloads to pass `csrfToken` explicitly so EJS templates can rely on the token consistently after the CSRF rollout.
+- Removed unsafe dashboard status-message HTML injection by switching security dashboard notifications to DOM-safe rendering with `textContent`.
 - Regenerated the session on successful login, destroyed the session on logout, and cleared the session cookie instead of relying on `req.logout()` alone.
 - Removed provider-specific login failure handling and duplicate-email signup messaging to reduce account enumeration risk.
 - Removed `GET /auth/logout` and changed the development seed route to `POST /seed` so state-changing behavior is no longer exposed over GET.
 - Added a Research landing page to group Log Analysis, Scan Importer, and Correlations behind a single authenticated entry point.
+- Added Helmet security headers with CSP, frame protections, and inline-handler cleanup to support a stricter browser security model.
+- Added targeted rate limiting to log-analysis, scan-import, and sample-correlation endpoints to reduce authenticated abuse potential.
+- Upgraded EJS to 5.0.1, removing the `jake -> filelist -> minimatch` dependency chain and clearing the production `npm audit` report.
 - Fixed a `connect-mongo` CommonJS import mismatch by using the package's `MongoStore` export directly, restoring runtime startup after the session-store migration.
 - Extended automated coverage with new tests for log analysis, scan parsing, security/scan routes, CSRF behavior, and session hardening, bringing the suite to 182 passing tests with ESLint clean.
 
@@ -88,6 +92,8 @@ Mongoose quirks: validation runs on save but not update unless `runValidators: t
 Express sessions store data server-side while cookies hold only session IDs. Session secrets should be long and random, sessions now persist across restarts through MongoDB-backed storage, Passport serializes only the user ID, and logout requires both `req.logout()` and session destruction.
 
 CSRF protection in server-rendered apps requires coordination between middleware, route handlers, templates, and client-side fetch calls. The synchronizer-token pattern worked well here, but it also showed that templates should not assume locals are implicitly present unless render paths are covered by tests.
+
+Content Security Policy becomes much more practical once inline event handlers are removed. Moving image fallbacks and note-delete actions into static JS files made it possible to enforce `script-src 'self'` instead of accepting inline scripts as a permanent compromise.
 
 Passport.js patterns: local strategy handles username/password authentication, serialization stores user identifiers in sessions, deserialization fetches the full user from the database, callbacks use `done(err, user)` or `done(err, false, { message })`, and `req.isAuthenticated()` checks login status. Local auth must guard against accounts without local hashes (for example Google-only users) before calling `bcrypt.compare`.
 

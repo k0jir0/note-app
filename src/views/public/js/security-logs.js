@@ -41,7 +41,11 @@ const SAMPLE_LOG_TEXT = [
 const csrfToken = window.getCsrfToken();
 
 const renderResult = (message, type = 'secondary') => {
-    resultBox.innerHTML = `<div class="alert alert-${type} mb-0">${message}</div>`;
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${escapeHtml(type)} mb-0`;
+    alert.textContent = String(message);
+
+    resultBox.replaceChildren(alert);
 };
 
 const escapeHtml = (value = '') => {

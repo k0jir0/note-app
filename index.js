@@ -1,4 +1,5 @@
 const express = require('express');
+const helmet = require('helmet');
 const path = require('path');
 const mongoose = require('mongoose');
 const session = require('express-session');
@@ -21,6 +22,7 @@ require('dotenv').config();
 const runtimeConfig = validateRuntimeConfig();
 require('./src/config/passport')(passport);
 const app = express();
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Model layer
 const dbURI = runtimeConfig.dbURI;
@@ -34,6 +36,24 @@ mongoose.connect(dbURI)
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views'));
+
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ['\'self\''],
+            scriptSrc: ['\'self\''],
+            styleSrc: ['\'self\'', 'https://cdn.jsdelivr.net', '\'unsafe-inline\''],
+            imgSrc: ['\'self\'', 'data:', 'https:'],
+            fontSrc: ['\'self\'', 'data:', 'https://cdn.jsdelivr.net'],
+            connectSrc: ['\'self\''],
+            objectSrc: ['\'none\''],
+            baseUri: ['\'self\''],
+            formAction: ['\'self\''],
+            frameAncestors: ['\'none\'']
+        }
+    },
+    hsts: isProduction ? undefined : false
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -60,7 +80,7 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         maxAge: SESSION_COOKIE_MAX_AGE,
-        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        secure: isProduction, // HTTPS only in production
         httpOnly: true, // Prevents client-side JavaScript access
         sameSite: 'lax' // CSRF protection
     }

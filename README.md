@@ -297,7 +297,9 @@ npm run lint       # ESLint code quality check
 - MongoDB-backed persistent session storage
 - Session regeneration on login and session destruction on logout
 - CSRF protection for form posts and authenticated JSON mutations
+- Helmet security headers with Content Security Policy and clickjacking protection
 - Explicit CSRF token injection in rendered page view-models
+- DOM-safe status message rendering on the security dashboards
 - Startup validation for required secret configuration
 - Dedicated encryption key for notes at rest
 - Optional compatibility support for note-encryption key rotation
@@ -305,14 +307,16 @@ npm run lint       # ESLint code quality check
 - Input validation & XSS sanitization
 - User-specific authorization checks
 - MongoDB ObjectId validation
-- Authentication and destructive action rate limiting
+- Authentication, destructive action, and security-analysis route rate limiting
+- Clean production dependency audit after upgrading to EJS 5
 
 **Production Checklist:**
 - [ ] Strong `SESSION_SECRET` (32+ random chars)
 - [ ] Dedicated `NOTE_ENCRYPTION_KEY` (32 bytes, separate from `SESSION_SECRET`)
 - [ ] HTTPS enabled with `cookie.secure: true`
 - [x] Rate limiting (`express-rate-limit`) on authentication and destructive development actions
-- [ ] Security headers (helmet.js)
+- [x] Security headers (`helmet`) with CSP and frame protections
+- [x] Production dependency audit currently clean (`npm audit --omit=dev`)
 - [ ] Regular dependency updates
 - [ ] MongoDB connection with TLS
 
