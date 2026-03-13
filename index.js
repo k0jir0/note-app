@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const session = require('express-session');
+const { MongoStore } = require('connect-mongo');
 const passport = require('passport');
 
 const noteApiRoute = require('./src/routes/noteApiRoutes');
@@ -13,6 +14,7 @@ const scanPageRoute = require('./src/routes/scanPageRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { requireAuth } = require('./src/middleware/auth');
+const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 
 require('dotenv').config();
@@ -46,9 +48,14 @@ app.get('/placeholder.jpg', (req, res) => {
 const SESSION_COOKIE_MAX_AGE = 1000 * 60 * 60 * 24; // 24 hours in milliseconds
 
 const sessionSecret = runtimeConfig.sessionSecret;
+const sessionStore = MongoStore.create({
+    mongoUrl: dbURI,
+    ttl: Math.floor(SESSION_COOKIE_MAX_AGE / 1000)
+});
 
 app.use(session({
     secret: sessionSecret,
+    store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -62,6 +69,9 @@ app.use(session({
 // Passport middleware (must come after session)
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use(ensureCsrfToken);
+app.use(requireCsrfProtection);
 
 // Make user available in all views
 app.use((req, res, next) => {

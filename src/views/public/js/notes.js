@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-unused-vars
 async function deleteNote(id) {
+    const csrfToken = window.getCsrfToken();
     const confirmed = confirm('Are you sure you want to delete this note?');
 
     if (!confirmed) {
@@ -8,7 +9,10 @@ async function deleteNote(id) {
 
     try {
         const response = await fetch(`/api/notes/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'x-csrf-token': csrfToken
+            }
         });
 
         const result = await response.json();

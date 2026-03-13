@@ -13,6 +13,7 @@ const getHandler = (method, path, stackIndex = 1) => {
 };
 
 const buildRes = () => ({
+    locals: { csrfToken: 'test-csrf-token' },
     render: sinon.stub(),
     status: sinon.stub().returnsThis(),
     send: sinon.stub().returnsThis()
@@ -47,5 +48,6 @@ describe('Scan Page Routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/security-scans.ejs');
         expect(res.render.firstCall.args[1].scans).to.deep.equal(fakeScans);
+        expect(res.render.firstCall.args[1].csrfToken).to.equal('test-csrf-token');
     });
 });

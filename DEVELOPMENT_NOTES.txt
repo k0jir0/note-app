@@ -5,15 +5,17 @@ Note-Taking Application Development Process
 
 PROJECT OVERVIEW
 
-This full-stack note-taking application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, and 122 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, and deployment readiness.
+This full-stack note-taking application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, and 182 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, and deployment readiness.
+
+Current verified state (March 13, 2026): 182 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, and a Research landing page that groups the security-focused dashboards.
 
 Recent updates (March 5, 2026) hardened validation and authentication flows:
 - Added strict auth payload sanitization (`sanitizeAuthPayload`) and login password validation (`validateLoginPassword`).
 - Restricted note API payloads to allowed fields only (`title`, `content`, `image`) with explicit rejection of unexpected fields.
 - Trimmed and validated note route IDs before database operations in API and page routes.
 - Fixed a Google-auth edge case where local login attempted `bcrypt.compare` against missing password hashes.
-- Implemented fallback behavior: Google-only accounts are redirected to `/auth/login/federated/google`; other failures return a frontend login error.
-- Added regression tests covering the Google-only login redirect path and new validation behavior.
+- Standardized local login failures to a generic invalid-credentials response so provider details are not leaked.
+- Added regression tests covering generic login failure handling and stricter auth validation behavior.
 
 Recent developments (March 12-13, 2026) expanded security-focused functionality:
 - Implemented note encryption at rest using AES-256-GCM with transparent model-layer encryption/decryption hooks, plus environment-driven key management via `NOTE_ENCRYPTION_KEY` (with secure fallback behavior for development).
@@ -24,9 +26,15 @@ Recent developments (March 12-13, 2026) expanded security-focused functionality:
 - Added secured scan endpoints (`/api/security/scan-import`, `/api/security/scans`) and a dedicated scan dashboard (`/security/scans`) including sample scan loading and live list refresh after import.
 - Updated navigation and styling to integrate both security dashboards into the core product workflow.
 - Added targeted rate limiting for authentication attempts and destructive development actions.
+- Moved session storage from the default in-memory store to MongoDB-backed persistence for safer production behavior.
+- Added synchronizer-token CSRF protection for login/signup/logout forms and authenticated JSON mutation routes.
+- Updated page-route render payloads to pass `csrfToken` explicitly so EJS templates can rely on the token consistently after the CSRF rollout.
 - Regenerated the session on successful login, destroyed the session on logout, and cleared the session cookie instead of relying on `req.logout()` alone.
+- Removed provider-specific login failure handling and duplicate-email signup messaging to reduce account enumeration risk.
 - Removed `GET /auth/logout` and changed the development seed route to `POST /seed` so state-changing behavior is no longer exposed over GET.
-- Extended automated coverage with new tests for log analysis, scan parsing, security/scan routes, and session hardening, bringing the suite to 173 passing tests with ESLint clean.
+- Added a Research landing page to group Log Analysis, Scan Importer, and Correlations behind a single authenticated entry point.
+- Fixed a `connect-mongo` CommonJS import mismatch by using the package's `MongoStore` export directly, restoring runtime startup after the session-store migration.
+- Extended automated coverage with new tests for log analysis, scan parsing, security/scan routes, CSRF behavior, and session hardening, bringing the suite to 182 passing tests with ESLint clean.
 
 
 MAJOR CHALLENGES AND SOLUTIONS
@@ -35,7 +43,7 @@ Authentication and authorization proved most challenging. Securing user sessions
 
 Input validation and sanitization balanced security with user experience. The challenge was preventing XSS attacks while validating diverse field types without exposing system internals. This was addressed by creating centralized validation utilities in `src/utils/validation.js`, implementing multi-layer validation across client, server, and database, and using an `isUpdate` flag to differentiate create from update operations. Inputs were sanitized using regex to remove dangerous script tags while preserving legitimate content.
 
-Comprehensive test coverage without a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Sinon for stubs, spies, and mocks alongside consistent test patterns solved this. Proper cleanup in `afterEach` blocks prevented state leakage, achieving 122 tests covering models, controllers, routes, and utilities.
+Comprehensive test coverage without a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Sinon for stubs, spies, and mocks alongside consistent test patterns solved this. Proper cleanup in `afterEach` blocks prevented state leakage, eventually reaching 182 tests covering models, controllers, routes, middleware, and utilities.
 
 Production deployment preparation revealed technical debt: hardcoded values, insecure cookie settings, and mixed indentation. Resolution involved environment variables with fallbacks, secure cookies for production (`secure: process.env.NODE_ENV === 'production'`), proper npm scripts, protected seed routes, and ESLint `--fix` for standardized formatting.
 
@@ -77,7 +85,9 @@ TECHNICAL INSIGHTS
 
 Mongoose quirks: validation runs on save but not update unless `runValidators: true` is specified, `findOne` returns null when no document is found, ObjectId casting errors need explicit handling, virtual fields don't persist, and timestamps only update on save/update operations.
 
-Express sessions store data server-side while cookies hold only session IDs. Session secrets should be long and random, sessions persist across restarts when using a store (memory by default), Passport serializes only the user ID, and logout requires both `req.logout()` and session destruction.
+Express sessions store data server-side while cookies hold only session IDs. Session secrets should be long and random, sessions now persist across restarts through MongoDB-backed storage, Passport serializes only the user ID, and logout requires both `req.logout()` and session destruction.
+
+CSRF protection in server-rendered apps requires coordination between middleware, route handlers, templates, and client-side fetch calls. The synchronizer-token pattern worked well here, but it also showed that templates should not assume locals are implicitly present unless render paths are covered by tests.
 
 Passport.js patterns: local strategy handles username/password authentication, serialization stores user identifiers in sessions, deserialization fetches the full user from the database, callbacks use `done(err, user)` or `done(err, false, { message })`, and `req.isAuthenticated()` checks login status. Local auth must guard against accounts without local hashes (for example Google-only users) before calling `bcrypt.compare`.
 
@@ -99,11 +109,11 @@ Centralizing validation early by creating utilities before building features pre
 
 FINAL REFLECTION
 
-This project achieved 122 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, RESTful API design with proper status codes, production-ready configuration, a concise README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and security best practices.
+This project now achieves 182 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, encrypted notes at rest, CSRF protection, Mongo-backed sessions, RESTful API design with proper status codes, a dedicated Research workflow, production-ready configuration, a concise README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and stronger security defaults.
 
 Building software is inherently iterative. The first version may work, but achieving security, maintainability, and production readiness requires conscious effort and continuous improvement. The most valuable lesson is that honesty about technical debt surpasses claiming perfection. Real projects involve trade-offs, and understanding them makes for better development decisions.
 
 ================================================================================
-Project: Note App | Developer: Ryan V | Date: February 18, 2026
-Repository: https://github.com/k0jir0/test-app
+Project: Note App | Developer: Ryan V | Date: March 13, 2026
+Repository: https://github.com/k0jir0/note-app
 ================================================================================

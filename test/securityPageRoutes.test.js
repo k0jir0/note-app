@@ -12,6 +12,7 @@ const getHandler = (method, path, stackIndex = 1) => {
 };
 
 const buildRes = () => ({
+    locals: { csrfToken: 'test-csrf-token' },
     render: sinon.stub(),
     status: sinon.stub().returnsThis(),
     send: sinon.stub().returnsThis()
@@ -49,7 +50,8 @@ describe('Security Page Routes', () => {
 
         expect(res.render.calledWith('pages/security-logs.ejs', {
             title: 'Log Analysis Assistant',
-            alerts: fakeAlerts
+            alerts: fakeAlerts,
+            csrfToken: 'test-csrf-token'
         })).to.be.true;
     });
 
@@ -72,5 +74,6 @@ describe('Security Page Routes', () => {
         expect(res.render.firstCall.args[0]).to.equal('pages/security-correlations.ejs');
         expect(res.render.firstCall.args[1].correlations).to.deep.equal([]);
         expect(res.render.firstCall.args[1].overview.total).to.equal(0);
+        expect(res.render.firstCall.args[1].csrfToken).to.equal('test-csrf-token');
     });
 });

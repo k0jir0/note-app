@@ -4,6 +4,7 @@ document.getElementById('note-form').addEventListener('submit', async (e) => {
     try {
         const form = e.target;
         const id = form.dataset.id;
+        const csrfToken = window.getCsrfToken();
 
         // Clear any existing error messages
         clearErrors();
@@ -24,7 +25,8 @@ document.getElementById('note-form').addEventListener('submit', async (e) => {
         const response = await fetch(url, {
             method,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-csrf-token': csrfToken
             },
             body: JSON.stringify(noteData)
         });

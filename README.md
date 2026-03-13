@@ -10,16 +10,19 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Encryption for note fields at rest
 - User-specific data isolation
 - Input validation & XSS protection
+- Session-backed CSRF protection for forms and authenticated JSON mutations
+- MongoDB-backed session persistence via connect-mongo
 - Security alert log analysis dashboard
 - Scan import and findings dashboard
 - Correlation dashboard linking scan findings with observed security alerts
+- Research landing page that groups log analysis, scan importer, and correlation workflows
 - RESTful API with JSON responses
 - Responsive UI with Bootstrap 5
 - Test coverage with Mocha, Chai, and Sinon
 
 ## Tech Stack
 
-**Backend:** Node.js, Express 5.2, MongoDB 8.10 (Mongoose), Passport.js, bcrypt  
+**Backend:** Node.js, Express 5.2, MongoDB 8.10 (Mongoose), Passport.js, bcrypt, express-session, connect-mongo  
 **Frontend:** EJS 4.0, Bootstrap 5.3, Vanilla JS  
 **Testing:** Mocha, Chai, Sinon, ESLint
 
@@ -34,8 +37,8 @@ A full-stack note-taking application with user authentication, built with Node.j
 
 1. **Clone & Install**
 ```bash
-git clone https://github.com/k0jir0/notes-app.git
-cd notes-app
+git clone https://github.com/k0jir0/note-app.git
+cd note-app
 npm install
 ```
 
@@ -78,6 +81,7 @@ Server: `http://localhost:3000`
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account
 - Login and start creating notes
+- Use `/research` to access Log Analysis, Scan Importer, and Correlations from one page
 - Optional: send a `POST` request to `/seed` after logging in (dev only) for sample data
 
 ## API Documentation
@@ -97,8 +101,9 @@ Server: `http://localhost:3000`
 - Email: Valid format, max 254 chars, unique
 - Password: Min 8 chars, contains uppercase, lowercase, number
 - Login payload: only `email` and `password` fields are accepted
-- If a Google-only account attempts local email/password login, user is redirected to Google sign-in
+- Local login failures return a generic invalid-credentials response to avoid account/provider enumeration
 - Google OAuth routes require both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
+- Login, signup, logout, note mutations, log analysis, scan import, and sample-correlation actions require a valid CSRF token
 
 ### Notes API Endpoints
 
@@ -169,6 +174,7 @@ PUT /api/notes/:id
 - `POST /api/notes` and `PUT /api/notes/:id` only accept `title`, `content`, and `image`
 - Unexpected fields are rejected with `400 Validation failed`
 - Note IDs from route params are trimmed and validated before database queries
+- Authenticated form posts and JSON mutations must include the session-issued CSRF token
 
 #### HTTP Status Codes
 
@@ -191,6 +197,7 @@ PUT /api/notes/:id
 | `GET /notes/new` | Create note form | ✅ |
 | `GET /notes/:id` | View note | ✅ |
 | `GET /notes/:id/edit` | Edit note form | ✅ |
+| `GET /research` | Research landing page | ✅ |
 | `GET /auth/login` | Login page | - |
 | `GET /auth/signup` | Signup page | - |
 | `GET /security/logs` | Security alerts dashboard | ✅ |
@@ -287,11 +294,14 @@ npm run lint       # ESLint code quality check
 - Environment variables for secrets
 - Password hashing (bcrypt, 10 salt rounds)
 - Session-based authentication with Passport.js
+- MongoDB-backed persistent session storage
 - Session regeneration on login and session destruction on logout
+- CSRF protection for form posts and authenticated JSON mutations
+- Explicit CSRF token injection in rendered page view-models
 - Startup validation for required secret configuration
 - Dedicated encryption key for notes at rest
 - Optional compatibility support for note-encryption key rotation
-- Safe fallback for Google-only accounts in local login flow
+- Generic authentication responses for login/signup enumeration resistance
 - Input validation & XSS sanitization
 - User-specific authorization checks
 - MongoDB ObjectId validation
@@ -301,9 +311,8 @@ npm run lint       # ESLint code quality check
 - [ ] Strong `SESSION_SECRET` (32+ random chars)
 - [ ] Dedicated `NOTE_ENCRYPTION_KEY` (32 bytes, separate from `SESSION_SECRET`)
 - [ ] HTTPS enabled with `cookie.secure: true`
-- [ ] Rate limiting (e.g., `express-rate-limit`)
+- [x] Rate limiting (`express-rate-limit`) on authentication and destructive development actions
 - [ ] Security headers (helmet.js)
-- [ ] CSRF protection
 - [ ] Regular dependency updates
 - [ ] MongoDB connection with TLS
 
@@ -351,6 +360,8 @@ pm2 save && pm2 startup
 | Missing NOTE_ENCRYPTION_KEY error | Generate a 32-byte key and set `NOTE_ENCRYPTION_KEY` |
 | Google sign-in unavailable | Set both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, or leave both unset |
 | Older encrypted notes no longer decrypt after key rotation | Set `LEGACY_NOTE_ENCRYPTION_KEY`, re-save affected notes, then remove the compatibility setting |
+| `csrfToken is not defined` in an EJS page | Ensure the route renders the page with `csrfToken: res.locals.csrfToken` and the request passed through the CSRF middleware |
+| `MongoStore.create is not a function` on startup | Use `const { MongoStore } = require('connect-mongo')` with the installed CommonJS package version |
 | Tests fail | Run `npm install`, ensure Node.js v18+ |
 | Port already in use | Set `PORT` env variable or kill process on port 3000 |
 | Database connection fails | Check MongoDB Atlas IP whitelist or local MongoDB status |

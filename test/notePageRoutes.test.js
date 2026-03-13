@@ -17,6 +17,7 @@ const getHandler = (method, path, stackIndex = 1) => {
 };
 
 const buildRes = () => ({
+    locals: { csrfToken: 'test-csrf-token' },
     render: sinon.stub(),
     status: sinon.stub().returnsThis(),
     send: sinon.stub().returnsThis()
@@ -69,7 +70,10 @@ describe('Note Page Routes', () => {
         await handler(req, res);
 
         expect(
-            res.render.calledWith('pages/note-form.ejs', { note: null })
+            res.render.calledWith('pages/note-form.ejs', {
+                note: null,
+                csrfToken: 'test-csrf-token'
+            })
         ).to.be.true;
     });
 
@@ -95,7 +99,8 @@ describe('Note Page Routes', () => {
         expect(
             res.render.calledWith('pages/home.ejs', {
                 title: 'Note App',
-                notes: fakeNotes
+                notes: fakeNotes,
+                csrfToken: 'test-csrf-token'
             })
         ).to.be.true;
     });
@@ -113,7 +118,8 @@ describe('Note Page Routes', () => {
 
         expect(
             res.render.calledWith('pages/research.ejs', {
-                title: 'Research'
+                title: 'Research',
+                csrfToken: 'test-csrf-token'
             })
         ).to.be.true;
     });
@@ -158,7 +164,10 @@ describe('Note Page Routes', () => {
         await handler(req, res);
 
         expect(
-            res.render.calledWith('pages/note.ejs', { note: fakeNote })
+            res.render.calledWith('pages/note.ejs', {
+                note: fakeNote,
+                csrfToken: 'test-csrf-token'
+            })
         ).to.be.true;
     });
 
@@ -219,7 +228,10 @@ describe('Note Page Routes', () => {
         await handler(req, res);
 
         expect(
-            res.render.calledWith('pages/note-form.ejs', { note: fakeNote })
+            res.render.calledWith('pages/note-form.ejs', {
+                note: fakeNote,
+                csrfToken: 'test-csrf-token'
+            })
         ).to.be.true;
     });
 

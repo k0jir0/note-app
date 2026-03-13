@@ -4,6 +4,7 @@ const resultBox = document.getElementById('correlation-result');
 const refreshButton = document.getElementById('refresh-correlations');
 const injectSampleButton = document.getElementById('inject-sample-correlations');
 const clearButton = document.getElementById('clear-correlations');
+const csrfToken = window.getCsrfToken();
 
 const escapeHtml = (value = '') => {
     return String(value)
@@ -149,7 +150,10 @@ const refreshCorrelations = async () => {
 const injectSampleCorrelations = async () => {
     const response = await fetch('/api/security/correlations/sample', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken
+        }
     });
 
     if (!response.ok) {

@@ -6,7 +6,10 @@ const mongoose = require('mongoose');
 const { handlePageError } = require('../utils/errorHandler');
 
 router.get('/notes/new', requireAuth, (req, res) => {
-    res.render('pages/note-form.ejs', { note: null });
+    res.render('pages/note-form.ejs', {
+        note: null,
+        csrfToken: res.locals.csrfToken
+    });
 });
 
 router.get('/notes', requireAuth, async (req, res) => {
@@ -15,7 +18,8 @@ router.get('/notes', requireAuth, async (req, res) => {
 
         res.render('pages/home.ejs', {
             title: 'Note App',
-            notes: notes
+            notes: notes,
+            csrfToken: res.locals.csrfToken
         });
     } catch (error) {
         handlePageError(res, error, 'Unable to load notes');
@@ -24,7 +28,8 @@ router.get('/notes', requireAuth, async (req, res) => {
 
 router.get('/research', requireAuth, (req, res) => {
     res.render('pages/research.ejs', {
-        title: 'Research'
+        title: 'Research',
+        csrfToken: res.locals.csrfToken
     });
 });
 
@@ -44,7 +49,10 @@ router.get('/notes/:id', requireAuth, async (req, res) => {
             return res.status(404).send('Note not found or access denied');
         }
 
-        res.render('pages/note.ejs', { note });
+        res.render('pages/note.ejs', {
+            note,
+            csrfToken: res.locals.csrfToken
+        });
     } catch (error) {
         handlePageError(res, error, 'Unable to load note');
     }
@@ -66,7 +74,10 @@ router.get('/notes/:id/edit', requireAuth, async (req, res) => {
             return res.status(404).send('Note not found or access denied');
         }
 
-        res.render('pages/note-form.ejs', { note });
+        res.render('pages/note-form.ejs', {
+            note,
+            csrfToken: res.locals.csrfToken
+        });
     } catch (error) {
         handlePageError(res, error, 'Unable to load note for editing');
     }

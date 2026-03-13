@@ -12,7 +12,8 @@ router.get('/security/logs', requireAuth, async (req, res) => {
 
         res.render('pages/security-logs.ejs', {
             title: 'Log Analysis Assistant',
-            alerts
+            alerts,
+            csrfToken: res.locals.csrfToken
         });
     } catch (error) {
         handlePageError(res, error, 'Unable to load security dashboard');
@@ -24,6 +25,7 @@ router.get('/security/correlations', requireAuth, async (req, res) => {
         res.render('pages/security-correlations.ejs', {
             title: 'Correlation Dashboard',
             correlations: [],
+            csrfToken: res.locals.csrfToken,
             overview: {
                 total: 0,
                 highPriority: 0,

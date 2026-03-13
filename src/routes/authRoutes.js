@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const { hasGoogleAuthCredentials } = require('../config/runtimeConfig');
 const { authRateLimiter } = require('../middleware/rateLimit');
+const { CSRF_BODY_FIELD } = require('../middleware/csrf');
 const {
     validateEmail,
     validatePassword,
@@ -12,6 +13,16 @@ const {
 } = require('../utils/validation');
 
 const router = express.Router();
+
+const GENERIC_LOGIN_ERROR = 'Invalid email or password';
+const AUTH_PAYLOAD_FIELDS = ['email', 'password', CSRF_BODY_FIELD];
+
+function renderLogoutPage(res) {
+    return res.render('pages/logout', {
+        title: 'Logout',
+        csrfToken: res.locals.csrfToken
+    });
+}
 
 function destroyAuthenticatedSession(req, res, next) {
     req.logout((logoutError) => {
@@ -45,7 +56,11 @@ function destroyAuthenticatedSession(req, res, next) {
 
 // GET login page
 router.get('/login', (req, res) => {
-    res.render('pages/login', { title: 'Login', error: null });
+    res.render('pages/login', {
+        title: 'Login',
+        error: null,
+        csrfToken: res.locals.csrfToken
+    });
 });
 
 // POST login
@@ -54,11 +69,12 @@ router.post('/login', authRateLimiter, (req, res, next) => {
 
     // Only process expected fields in auth payloads
     const bodyKeys = Object.keys(req.body || {});
-    const hasUnexpectedFields = bodyKeys.some((key) => !['email', 'password'].includes(key));
+    const hasUnexpectedFields = bodyKeys.some((key) => !AUTH_PAYLOAD_FIELDS.includes(key));
     if (hasUnexpectedFields) {
         return res.status(400).render('pages/login', {
             title: 'Login',
-            error: 'Invalid login request payload'
+            error: 'Invalid login request payload',
+            csrfToken: res.locals.csrfToken
         });
     }
 
@@ -66,7 +82,8 @@ router.post('/login', authRateLimiter, (req, res, next) => {
     if (!email || !password) {
         return res.status(400).render('pages/login', {
             title: 'Login',
-            error: 'Please provide both email and password'
+            error: 'Please provide both email and password',
+            csrfToken: res.locals.csrfToken
         });
     }
 
@@ -75,7 +92,8 @@ router.post('/login', authRateLimiter, (req, res, next) => {
     if (!emailValidation.isValid) {
         return res.status(400).render('pages/login', {
             title: 'Login',
-            error: emailValidation.error
+            error: emailValidation.error,
+            csrfToken: res.locals.csrfToken
         });
     }
 
@@ -83,26 +101,24 @@ router.post('/login', authRateLimiter, (req, res, next) => {
     if (!passwordValidation.isValid) {
         return res.status(400).render('pages/login', {
             title: 'Login',
-            error: passwordValidation.error
+            error: passwordValidation.error,
+            csrfToken: res.locals.csrfToken
         });
     }
 
     req.body.email = email;
     req.body.password = password;
 
-    passport.authenticate('local', (err, user, info) => {
+    passport.authenticate('local', (err, user, _info) => {
         if (err) {
             return next(err);
         }
 
         if (!user) {
-            if (info && info.code === 'GOOGLE_AUTH_REQUIRED') {
-                return res.redirect('/auth/login/federated/google');
-            }
-
             return res.status(401).render('pages/login', {
                 title: 'Login',
-                error: info.message || 'Invalid email or password'
+                error: GENERIC_LOGIN_ERROR,
+                csrfToken: res.locals.csrfToken
             });
         }
 
@@ -128,20 +144,25 @@ router.post('/login', authRateLimiter, (req, res, next) => {
 
 // GET signup page
 router.get('/signup', (req, res) => {
-    res.render('pages/signup', { title: 'Sign Up', error: null });
+    res.render('pages/signup', {
+        title: 'Sign Up',
+        error: null,
+        csrfToken: res.locals.csrfToken
+    });
 });
 
 // POST signup
-router.post('/signup', async (req, res) => {
+router.post('/signup', authRateLimiter, async (req, res) => {
     try {
         const { email, password } = sanitizeAuthPayload(req.body);
 
         const bodyKeys = Object.keys(req.body || {});
-        const hasUnexpectedFields = bodyKeys.some((key) => !['email', 'password'].includes(key));
+        const hasUnexpectedFields = bodyKeys.some((key) => !AUTH_PAYLOAD_FIELDS.includes(key));
         if (hasUnexpectedFields) {
             return res.status(400).render('pages/signup', {
                 title: 'Sign Up',
-                error: 'Invalid signup request payload'
+                error: 'Invalid signup request payload',
+                csrfToken: res.locals.csrfToken
             });
         }
 
@@ -150,7 +171,8 @@ router.post('/signup', async (req, res) => {
         if (!emailValidation.isValid) {
             return res.status(400).render('pages/signup', {
                 title: 'Sign Up',
-                error: emailValidation.error
+                error: emailValidation.error,
+                csrfToken: res.locals.csrfToken
             });
         }
 
@@ -159,17 +181,15 @@ router.post('/signup', async (req, res) => {
         if (!passwordValidation.isValid) {
             return res.status(400).render('pages/signup', {
                 title: 'Sign Up',
-                error: passwordValidation.errors.join('. ')
+                error: passwordValidation.errors.join('. '),
+                csrfToken: res.locals.csrfToken
             });
         }
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return res.status(409).render('pages/signup', {
-                title: 'Sign Up',
-                error: 'This email is already registered. Please login or use a different email.'
-            });
+            return res.redirect('/auth/login');
         }
 
         // Hash the password
@@ -192,15 +212,26 @@ router.post('/signup', async (req, res) => {
             const errorMessages = Object.values(err.errors).map(e => e.message);
             return res.status(400).render('pages/signup', {
                 title: 'Sign Up',
-                error: errorMessages.join('. ')
+                error: errorMessages.join('. '),
+                csrfToken: res.locals.csrfToken
             });
         }
 
         res.status(500).render('pages/signup', {
             title: 'Sign Up',
-            error: 'An error occurred during signup. Please try again.'
+            error: 'An error occurred during signup. Please try again.',
+            csrfToken: res.locals.csrfToken
         });
     }
+});
+
+// GET logout confirmation page
+router.get('/logout', (req, res) => {
+    if (!req.user) {
+        return res.redirect('/auth/login');
+    }
+
+    return renderLogoutPage(res);
 });
 
 // POST logout
@@ -213,7 +244,8 @@ router.get('/login/federated/google', (req, res, next) => {
     if (!hasGoogleAuthCredentials()) {
         return res.status(503).render('pages/login', {
             title: 'Login',
-            error: 'Google sign-in is not configured'
+            error: 'Google sign-in is not configured',
+            csrfToken: res.locals.csrfToken
         });
     }
 
@@ -224,7 +256,8 @@ router.get('/oauth2/redirect/google', (req, res, next) => {
     if (!hasGoogleAuthCredentials()) {
         return res.status(503).render('pages/login', {
             title: 'Login',
-            error: 'Google sign-in is not configured'
+            error: 'Google sign-in is not configured',
+            csrfToken: res.locals.csrfToken
         });
     }
 

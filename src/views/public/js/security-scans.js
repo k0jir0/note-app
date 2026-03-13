@@ -22,6 +22,8 @@ const SAMPLE_SCAN_TEXT = `- Nikto v2.1.6
 + X-Powered-By header leaks technology: PHP/7.4.3
 ---------------------------------------------------------------------------`;
 
+const csrfToken = window.getCsrfToken();
+
 const escapeHtml = (value = '') => {
     return String(value)
         .replaceAll('&', '&amp;')
@@ -125,7 +127,10 @@ form.addEventListener('submit', async (event) => {
 
         const response = await fetch('/api/security/scan-import', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': csrfToken
+            },
             body: JSON.stringify({ rawInput })
         });
 

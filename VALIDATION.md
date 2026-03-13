@@ -54,7 +54,7 @@ Comprehensive server-side validation has been implemented across the note-taking
   - "Email cannot be empty"
   - "Email is too long"
   - "Please enter a valid email address (e.g., user@example.com)"
-  - "This email is already registered. Please login or use a different email."
+  - Duplicate emails are handled without revealing whether the address already exists
 
 #### Password
 - **Required**: Yes
@@ -151,7 +151,7 @@ To test validation, try these scenarios:
 3. ✗ Password without uppercase → "Password must contain at least one uppercase letter"
 4. ✗ Password without lowercase → "Password must contain at least one lowercase letter"
 5. ✗ Password without number → "Password must contain at least one number"
-6. ✗ Duplicate email → "This email is already registered"
+6. ✗ Duplicate email → Redirect to login without revealing whether the address already exists
 7. ✓ Valid credentials → Account created
 
 ### Note Access Control

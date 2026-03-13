@@ -12,7 +12,8 @@ router.get('/security/scans', requireAuth, async (req, res) => {
 
         res.render('pages/security-scans.ejs', {
             title: 'Vulnerability Scan Importer',
-            scans
+            scans,
+            csrfToken: res.locals.csrfToken
         });
     } catch (error) {
         handlePageError(res, error, 'Unable to load scan dashboard');

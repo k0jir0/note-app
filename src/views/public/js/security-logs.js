@@ -38,6 +38,8 @@ const SAMPLE_LOG_TEXT = [
     '2026-03-12 10:14:40 172.16.3.10 GET /api/notes 503'
 ].join('\n');
 
+const csrfToken = window.getCsrfToken();
+
 const renderResult = (message, type = 'secondary') => {
     resultBox.innerHTML = `<div class="alert alert-${type} mb-0">${message}</div>`;
 };
@@ -122,7 +124,8 @@ form.addEventListener('submit', async (event) => {
         const response = await fetch('/api/security/log-analysis', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-csrf-token': csrfToken
             },
             body: JSON.stringify({ logText })
         });
