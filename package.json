@@ -34,7 +34,7 @@
   },
   "homepage": "https://github.com/k0jir0/note-app#readme",
   "devDependencies": {
-    "chai": "^6.2.2",
+    "chai": "^4.3.7",
     "eslint": "^8.57.1",
     "mocha": "^11.7.5",
     "nodemon": "^3.1.11",
