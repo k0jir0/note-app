@@ -17,7 +17,17 @@
             <%= note ? "Edit Note" : "Create Note" %>
         </h1>
 
-        <form id="note-form" data-id="<%= note ? note._id : '' %>">
+        <% if (typeof errors !== 'undefined' && Array.isArray(errors) && errors.length > 0) { %>
+            <div class="alert alert-danger" role="alert">
+                <ul class="mb-0">
+                    <% errors.forEach(function(err){ %>
+                        <li><%= err %></li>
+                    <% }) %>
+                </ul>
+            </div>
+        <% } %>
+
+        <form id="note-form" method="post" action="<%= note ? ('/notes/' + note._id) : '/notes' %>" data-id="<%= note ? note._id : '' %>">
         
             <div class="mb-3">
                 <label class="form-label" for="title">Title</label>
@@ -25,11 +35,14 @@
                     type="text"
                     name="title"
                     id="title"
-                    class="form-control"
+                    class="form-control <%= (typeof fieldErrors !== 'undefined' && fieldErrors.title) ? 'is-invalid' : '' %>"
                     required
                     placeholder="Enter note title"
                     value="<%= note ? note.title : '' %>"
                 />
+                <% if (typeof fieldErrors !== 'undefined' && fieldErrors.title) { %>
+                    <div class="invalid-feedback"><%= fieldErrors.title %></div>
+                <% } %>
             </div>
         
             <div class="mb-3">
@@ -37,10 +50,13 @@
                 <textarea
                     name="content"
                     id="content"
-                    class="form-control"
+                    class="form-control <%= (typeof fieldErrors !== 'undefined' && fieldErrors.content) ? 'is-invalid' : '' %>"
                     rows="10"
                     placeholder="Write your note here..."
                 ><%= note ? note.content : '' %></textarea>
+                <% if (typeof fieldErrors !== 'undefined' && fieldErrors.content) { %>
+                    <div class="invalid-feedback d-block"><%= fieldErrors.content %></div>
+                <% } %>
             </div>
         
             <div class="mb-3">
@@ -49,10 +65,13 @@
                     type="url"
                     name="image"
                     id="image"
-                    class="form-control"
+                    class="form-control <%= (typeof fieldErrors !== 'undefined' && fieldErrors.image) ? 'is-invalid' : '' %>"
                     placeholder="https://example.com/image.jpg"
                     value="<%= note ? note.image : '' %>"
                 />
+                <% if (typeof fieldErrors !== 'undefined' && fieldErrors.image) { %>
+                    <div class="invalid-feedback"><%= fieldErrors.image %></div>
+                <% } %>
             </div>
 
             <button type="submit" class="btn btn-dark">
