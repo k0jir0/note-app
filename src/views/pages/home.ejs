@@ -13,13 +13,19 @@
 
 <body>
     <div class="container mt-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="notes-title">Notes</h1>
                 <% if (user) { %>
                     <p class="text-muted mb-0">Welcome, <%= user.name || user.email %></p>
+                    <div class="mt-2">
+                        <div class="alert alert-secondary small mb-0" role="alert" style="padding: .35rem .6rem;">
+                            Notes are encrypted at rest using the application's note-encryption key; data is decrypted by the server only for your authenticated session.
+                        </div>
+                    </div>
                 <% } %>
             </div>
+            
             <div class="d-flex align-items-center flex-wrap gap-2">
                 <a href="/notes/new" class="btn btn-dark">Create Note</a>
                 <a href="/research" class="btn btn-outline-dark">Research</a>

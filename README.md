@@ -414,7 +414,7 @@ SCAN_BATCH_DEDUPE_WINDOW_MS=3600000
 
 The automation mode is meant to stay simple: an external log writer and an external scanner refresh the files, and the app ingests them on a schedule.
 
-Use `LEGACY_NOTE_ENCRYPTION_KEY` during note-encryption key rotation when existing data must remain readable under a previous key. Use `ALLOW_LEGACY_SESSION_SECRET_FALLBACK=true` only for compatibility with older data that used a session-secret-derived key, then disable it after re-saving affected notes.
+
 
 **Deploy Commands:**
 

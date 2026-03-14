@@ -42,13 +42,16 @@ describe('Note API Routes', () => {
         );
     });
 
+    const { validateCreateNote, validateUpdateNote } = require('../src/middleware/requestValidator');
+
     it('maps POST /api/notes to createNote with auth middleware', () => {
         const layer = findRouteLayer('post', '/api/notes');
 
         expect(layer).to.exist;
-        expect(layer.route.stack).to.have.length(2);
+        expect(layer.route.stack).to.have.length(3);
         expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
-        expect(layer.route.stack[1].handle).to.equal(
+        expect(layer.route.stack[1].handle).to.equal(validateCreateNote);
+        expect(layer.route.stack[2].handle).to.equal(
             noteApiController.createNote
         );
     });
@@ -57,9 +60,10 @@ describe('Note API Routes', () => {
         const layer = findRouteLayer('put', '/api/notes/:id');
 
         expect(layer).to.exist;
-        expect(layer.route.stack).to.have.length(2);
+        expect(layer.route.stack).to.have.length(3);
         expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
-        expect(layer.route.stack[1].handle).to.equal(
+        expect(layer.route.stack[1].handle).to.equal(validateUpdateNote);
+        expect(layer.route.stack[2].handle).to.equal(
             noteApiController.updateNote
         );
     });
