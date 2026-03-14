@@ -175,6 +175,17 @@ app.use(securityPageRoute);
 app.use(scanApiRoute);
 app.use(scanPageRoute);
 
+// Development-only runtime config debug route
+if (process.env.NODE_ENV !== 'production') {
+    app.get('/__runtime-config', (req, res) => {
+        try {
+            return res.status(200).json({ runtimeConfig: app.locals.runtimeConfig || null });
+        } catch (e) {
+            return res.status(500).json({ error: 'unable to read runtime config' });
+        }
+    });
+}
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
