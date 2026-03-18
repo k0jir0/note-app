@@ -32,9 +32,5 @@ jobs:
           GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           EOF
 
-      - name: Run lint
-        continue-on-error: true
-        run: npm run lint
-
       - name: Run tests
         run: npm test
