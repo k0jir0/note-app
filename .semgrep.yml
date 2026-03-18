@@ -1,17 +1,20 @@
 rules:
   - id: nodejs-sqli
+    languages: [javascript]
     patterns:
       - pattern: "$OBJ.find($ARGS)"
     message: "Potential unsafe MongoDB query - ensure inputs are validated and sanitized"
     severity: WARNING
 
   - id: no-eval
+    languages: [javascript]
     patterns:
       - pattern: "eval($X)"
     message: "Avoid eval() - use safer alternatives"
     severity: ERROR
 
   - id: insecure-random
+    languages: [javascript]
     patterns:
       - pattern-either:
           - pattern: "Math.random()"
