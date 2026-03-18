@@ -562,7 +562,7 @@ refreshWorkspace()
             if (payload && payload.type === 'alerts') {
                 logRealtime(`Realtime: ${payload.created} new alert(s)`,'muted');
                 // refresh the alerts panel to show saved alerts
-                refreshWorkspace().catch(() => {});
+                refreshWorkspace().catch(() => void 0);
             } else {
                 logRealtime(`Realtime event: ${payload && payload.type ? payload.type : 'unknown'}`,'muted');
             }
@@ -586,7 +586,7 @@ refreshWorkspace()
 
     const disconnectRealtime = () => {
         if (!es) return;
-        try { es.close(); } catch (e) {}
+        try { es.close(); } catch (e) { void e; }
         es = null;
         setConnectedState(false);
         logRealtime('Realtime disconnected', 'secondary');
@@ -613,7 +613,7 @@ refreshWorkspace()
             logRealtime(`Simulation injected: ${payload.data && payload.data.createdAlerts ? payload.data.createdAlerts : 0} alert(s)`, 'success');
             // If realtime is connected, the worker will publish events and the UI will refresh via the message handler
             // As a fallback, refresh the workspace after a short delay
-            setTimeout(() => refreshWorkspace().catch(() => {}), 1200);
+            setTimeout(() => refreshWorkspace().catch(() => void 0), 1200);
         } catch (e) {
             logRealtime('Simulation error', 'danger');
         }

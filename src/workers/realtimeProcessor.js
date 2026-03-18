@@ -84,6 +84,7 @@ async function handleMessage(id, fields) {
 }
 
 async function loop() {
+    /* eslint-disable no-constant-condition */
     while (true) {
         try {
             const resp = await redis.xreadgroup('GROUP', GROUP, CONSUMER, 'BLOCK', 5000, 'COUNT', 10, 'STREAMS', STREAM_KEY, '>');
@@ -104,6 +105,7 @@ async function loop() {
             await new Promise((r) => setTimeout(r, 2000));
         }
     }
+    /* eslint-enable no-constant-condition */
 }
 
 async function start() {

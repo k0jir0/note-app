@@ -228,7 +228,7 @@ exports.realtimeIngest = async (req, res) => {
         await redis.xadd('security:ingest', '*', 'payload', JSON.stringify(message));
 
         // increment Prometheus counter
-        try { ingestCounter.inc({ type }); } catch (e) {}
+        try { ingestCounter.inc({ type }); } catch (e) { void e; }
 
         return res.status(202).json({ success: true, message: 'Enqueued for real-time processing' });
     } catch (error) {
@@ -270,13 +270,13 @@ exports.streamEvents = async (req, res) => {
 
         subscriber.subscribe(channel).then(() => {
             subscriber.on('message', onMessage);
-        }).catch(() => {});
+        }).catch((e) => { void e; });
 
         // Cleanup when client disconnects
         req.on('close', () => {
             clearInterval(keepAlive);
-            try { subscriber.removeListener('message', onMessage); } catch (e) {}
-            try { subscriber.unsubscribe(channel); } catch (e) {}
+            try { subscriber.removeListener('message', onMessage); } catch (e) { void e; }
+            try { subscriber.unsubscribe(channel); } catch (e) { void e; }
             res.end();
         });
     } catch (error) {
