@@ -194,15 +194,17 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
         app.get('/__realtime-status', (req, res) => {
             try {
                 const enabledEnv = String(process.env.ENABLE_REALTIME || '');
-                // inspect mounted routes for the SSE path
-                const routes = [];
-                if (app && app._router && Array.isArray(app._router.stack)) {
-                    app._router.stack.forEach((layer) => {
-                        if (layer && layer.route && layer.route.path) routes.push(layer.route.path);
-                    });
-                }
-
-                const sseMounted = routes.includes('/api/security/stream');
+                // inspect the securityApiRoute router for the SSE path
+                let sseMounted = false;
+                try {
+                    if (securityApiRoute && Array.isArray(securityApiRoute.stack)) {
+                        securityApiRoute.stack.forEach((layer) => {
+                            if (layer && layer.route && layer.route.path && layer.route.path === '/api/security/stream') {
+                                sseMounted = true;
+                            }
+                        });
+                    }
+                } catch (e) { void e; }
 
                 return res.status(200).json({
                     enableEnv: enabledEnv,
