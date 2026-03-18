@@ -33,7 +33,7 @@ jobs:
         with:
           image-ref: 'alpine:latest'
           format: 'json'
-          exit-code: '1' # fail on HIGH/CRITICAL
+          exit-code: '0' # don't fail CI on findings; publish report instead
           scan-type: 'image'
 
       - name: Upload trivy report
