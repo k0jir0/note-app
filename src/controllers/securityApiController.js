@@ -212,8 +212,6 @@ exports.realtimeIngest = async (req, res) => {
         if (!req.app || !req.app.locals || !req.app.locals.realtimeEnabled) {
             return res.status(404).json({ success: false, message: 'Realtime ingestion is disabled' });
         }
-    } catch (e) { void e; }
-    try {
         const payload = req.body || {};
         const { type = 'log', logText = '', raw = '' } = payload;
 
@@ -247,7 +245,6 @@ exports.streamEvents = async (req, res) => {
         if (!req.app || !req.app.locals || !req.app.locals.realtimeEnabled) {
             return res.status(404).json({ success: false, message: 'Realtime endpoint disabled' });
         }
-    } catch (e) { void e; }
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
