@@ -13,7 +13,10 @@ router.post('/api/security/log-analysis', requireAuthAPI, securityAnalysisRateLi
 // Real-time ingestion and event stream
 // Real-time endpoints are optional and can be enabled with ENABLE_REALTIME=1
 // Always mount realtime endpoints; runtime gating happens in the handlers
-router.post('/api/security/realtime-ingest', requireAuthAPI, realtimeIngestRateLimiter, securityApiController.realtimeIngest);
-router.get('/api/security/stream', requireAuthAPI, securityApiController.streamEvents);
+// Only mount realtime endpoints when explicitly enabled via environment
+if (process.env.ENABLE_REALTIME === '1') {
+	router.post('/api/security/realtime-ingest', requireAuthAPI, realtimeIngestRateLimiter, securityApiController.realtimeIngest);
+	router.get('/api/security/stream', requireAuthAPI, securityApiController.streamEvents);
+}
 
 module.exports = router;
