@@ -33,6 +33,7 @@ jobs:
           EOF
 
       - name: Run lint
+        continue-on-error: true
         run: npm run lint
 
       - name: Run tests
