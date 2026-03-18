@@ -538,6 +538,7 @@ refreshWorkspace()
 (() => {
     const connectBtn = document.getElementById('realtime-connect-btn');
     const simulateBtn = document.getElementById('realtime-simulate-btn');
+    const realtimeBadge = document.getElementById('realtime-server-badge');
     const realtimeLog = document.getElementById('workspace-realtime-log');
     let es = null;
 
@@ -572,16 +573,51 @@ refreshWorkspace()
     };
 
     const connectRealtime = () => {
-        if (es) return;
-        try {
-            es = new EventSource('/api/security/stream');
-            es.onopen = () => { setConnectedState(true); logRealtime('Realtime connected', 'success'); };
-            es.onerror = () => { setConnectedState(false); logRealtime('Realtime connection error', 'danger'); es.close(); es = null; };
-            es.onmessage = handleMessage;
-        } catch (e) {
-            logRealtime('Unable to open realtime connection', 'danger');
-            if (es) { es.close(); es = null; }
+        if (es) {
+            logRealtime('Already connected to realtime', 'secondary');
+            return;
         }
+
+        // Probe the SSE endpoint with XHR to provide a clear error message
+        const probe = new XMLHttpRequest();
+        probe.open('GET', '/api/security/stream', true);
+        probe.withCredentials = true;
+        probe.timeout = 3000;
+        let probed = false;
+        probe.onreadystatechange = () => {
+            if (probe.readyState >= 2 && !probed) {
+                probed = true;
+                const status = probe.status;
+                if (status === 200) {
+                    // OK to open EventSource
+                    try {
+                        es = new EventSource('/api/security/stream');
+                        es.onopen = () => { setConnectedState(true); logRealtime('Realtime connected', 'success'); };
+                        es.onerror = () => { setConnectedState(false); logRealtime('Realtime connection error', 'danger'); try { es.close(); } catch (e) { void e; } es = null; };
+                        es.onmessage = handleMessage;
+                    } catch (e) {
+                        logRealtime('Unable to open realtime connection', 'danger');
+                        if (es) { try { es.close(); } catch (e2) { void e2; } es = null; }
+                    }
+                } else if (status === 401 || status === 403) {
+                    logRealtime('Realtime connection denied (authentication required). Please log in and try again.', 'danger');
+                } else if (status === 404) {
+                    logRealtime('Realtime endpoint not available on server (disabled).', 'danger');
+                } else if (status === 0) {
+                    logRealtime('Realtime probe timed out or network error. Ensure the server is reachable.', 'danger');
+                } else {
+                    logRealtime(`Realtime unavailable: HTTP ${status}`, 'danger');
+                }
+                try { probe.abort(); } catch (e) { void e; }
+            }
+        };
+        probe.ontimeout = () => {
+            logRealtime('Realtime probe timed out. Server may be unreachable.', 'danger');
+        };
+        probe.onerror = () => {
+            logRealtime('Realtime probe failed (network error).', 'danger');
+        };
+        try { probe.send(); } catch (e) { logRealtime('Realtime probe failed to send', 'danger'); }
     };
 
     const disconnectRealtime = () => {
