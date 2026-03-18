@@ -35,6 +35,8 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
     const isProduction = process.env.NODE_ENV === 'production';
 
     app.locals.runtimeConfig = runtimeConfig;
+    // runtime toggle for realtime (can be changed without restarting)
+    app.locals.realtimeEnabled = Boolean(process.env.ENABLE_REALTIME === '1' || process.env.REDIS_URL);
 
     // Model layer
     const dbURI = runtimeConfig.dbURI;
@@ -186,6 +188,47 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
                 return res.status(200).json({ runtimeConfig: app.locals.runtimeConfig || null });
             } catch (e) {
                 return res.status(500).json({ error: 'unable to read runtime config' });
+            }
+        });
+
+        app.get('/__realtime-status', (req, res) => {
+            try {
+                const enabledEnv = String(process.env.ENABLE_REALTIME || '');
+                // inspect mounted routes for the SSE path
+                const routes = [];
+                if (app && app._router && Array.isArray(app._router.stack)) {
+                    app._router.stack.forEach((layer) => {
+                        if (layer && layer.route && layer.route.path) routes.push(layer.route.path);
+                    });
+                }
+
+                const sseMounted = routes.includes('/api/security/stream');
+
+                return res.status(200).json({
+                    enableEnv: enabledEnv,
+                    sseMounted
+                });
+            } catch (e) {
+                return res.status(500).json({ error: 'unable to determine realtime status' });
+            }
+        });
+
+        // Runtime toggle endpoint for realtime feature (authenticated)
+        app.post('/api/runtime/realtime', requireAuth, (req, res) => {
+            try {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(403).json({ success: false, message: 'Runtime toggles are disabled in production' });
+                }
+
+                const bodyEnabled = typeof req.body?.enabled !== 'undefined' ? Boolean(req.body.enabled) : null;
+                if (bodyEnabled === null) {
+                    return res.status(400).json({ success: false, message: 'Missing enabled property' });
+                }
+
+                app.locals.realtimeEnabled = bodyEnabled;
+                return res.status(200).json({ success: true, realtimeEnabled: app.locals.realtimeEnabled });
+            } catch (e) {
+                return res.status(500).json({ success: false, message: 'Unable to toggle realtime' });
             }
         });
     }
