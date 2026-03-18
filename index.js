@@ -13,6 +13,7 @@ const securityPageRoute = require('./src/routes/securityPageRoutes');
 const scanApiRoute = require('./src/routes/scanApiRoutes');
 const scanPageRoute = require('./src/routes/scanPageRoutes');
 const authRoutes = require('./src/routes/authRoutes');
+const metricsRoute = require('./src/routes/metrics');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { requireAuth } = require('./src/middleware/auth');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
@@ -113,6 +114,9 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 
     // Authentication routes (must be before requireAuth middleware)
     app.use('/auth', authRoutes);
+
+    // Metrics endpoint (Prometheus)
+    app.use(metricsRoute.router);
 
     // Redirect home to notes page
     app.get('/', requireAuth, (req, res) => {

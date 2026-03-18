@@ -49,6 +49,7 @@ router.get('/security/module', requireAuth, async (req, res) => {
         res.render('pages/security-automation.ejs', {
             title: 'Security Module',
             csrfToken: res.locals.csrfToken,
+            realtimeEnabled: Boolean(process.env.ENABLE_REALTIME === '1' || process.env.REDIS_URL),
             automation: {
                 anyEnabled: Boolean((automation.logBatch && automation.logBatch.enabled)
                     || (automation.scanBatch && automation.scanBatch.enabled)),

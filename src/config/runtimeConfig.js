@@ -172,6 +172,36 @@ function buildScanBatchConfig(env, errors) {
     };
 }
 
+function buildIntrusionBatchConfig(env, errors) {
+    const enabled = parseBooleanEnv('INTRUSION_BATCH_ENABLED', env, errors);
+
+    if (!enabled) {
+        return { enabled: false };
+    }
+
+    const filePath = isNonEmptyString(env.INTRUSION_BATCH_FILE_PATH) ? env.INTRUSION_BATCH_FILE_PATH.trim() : '';
+    if (!filePath) {
+        errors.push('INTRUSION_BATCH_FILE_PATH is required when INTRUSION_BATCH_ENABLED=true');
+    }
+
+    return {
+        enabled: true,
+        filePath,
+        userId: validateUserId('INTRUSION_BATCH_USER_ID', env.INTRUSION_BATCH_USER_ID, errors),
+        source: isNonEmptyString(env.INTRUSION_BATCH_SOURCE) ? env.INTRUSION_BATCH_SOURCE.trim() : 'intrusion-runner',
+        intervalMs: parseIntegerEnv('INTRUSION_BATCH_INTERVAL_MS', env, {
+            defaultValue: 5000,
+            min: 1000,
+            max: MAX_AUTOMATION_INTERVAL_MS
+        }, errors),
+        dedupeWindowMs: parseIntegerEnv('INTRUSION_BATCH_DEDUPE_WINDOW_MS', env, {
+            defaultValue: 300000,
+            min: 0,
+            max: MAX_AUTOMATION_INTERVAL_MS
+        }, errors)
+    };
+}
+
 function validateRuntimeConfig(env = process.env) {
     const errors = [];
 
@@ -231,6 +261,7 @@ function validateRuntimeConfig(env = process.env) {
 
     const logBatch = buildLogBatchConfig(env, errors);
     const scanBatch = buildScanBatchConfig(env, errors);
+    const intrusionBatch = buildIntrusionBatchConfig(env, errors);
 
     if (errors.length > 0) {
         throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
@@ -243,7 +274,8 @@ function validateRuntimeConfig(env = process.env) {
         googleAuthEnabled: hasGoogleAuthCredentials(env),
         automation: {
             logBatch,
-            scanBatch
+            scanBatch,
+            intrusionBatch
         }
     };
 }

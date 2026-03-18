@@ -3,8 +3,12 @@ const fs = require('fs/promises');
 
 const SecurityAlert = require('../models/SecurityAlert');
 const ScanResult = require('../models/ScanResult');
+const metrics = require('../routes/metrics');
+const blockingService = require('./blockingService');
+const notificationService = require('./notificationService');
 const { analyzeLogText } = require('../utils/logAnalysis');
 const { parseScanInput } = require('../utils/scanParser');
+const { parseFalcoJson } = require('../utils/intrusionParser');
 
 function buildScanSummary(parsedScan) {
     const findings = Array.isArray(parsedScan.findings) ? parsedScan.findings : [];
@@ -67,8 +71,27 @@ async function persistAutomatedAlerts(config, logText) {
             detectedAt: new Date()
         }));
 
+    let inserted = [];
     if (alertsToCreate.length > 0) {
-        await SecurityAlert.insertMany(alertsToCreate);
+        inserted = await SecurityAlert.insertMany(alertsToCreate);
+    }
+
+    // Emit metrics and optionally trigger blocking for high severity
+    try {
+        for (const doc of inserted) {
+            const sev = doc.severity || 'low';
+            metrics.intrusionIngestCounter.inc({ severity: sev }, 1);
+        }
+
+        const highAlerts = inserted.filter((d) => d.severity === 'high');
+        if (highAlerts.length > 0) {
+            // Attempt to send block requests for high severity alerts (best-effort)
+            void blockingService.sendBlockRequestsForAlerts(highAlerts).catch((e) => {
+                console.warn('[automation] blocking service failed', e && e.message ? e.message : e);
+            });
+        }
+    } catch (e) {
+        console.warn('[automation] metrics/blocking hook failed', e && e.message ? e.message : e);
     }
 
     return {
@@ -115,6 +138,27 @@ async function persistAutomatedScan(config, rawInput) {
         fingerprint
     });
 
+    // Metrics: increment scan import counter and set findings gauge
+    try {
+        const toolLabel = parsedScan.tool || 'unknown';
+        metrics.scanImportCounter.inc({ tool: toolLabel }, 1);
+        metrics.scanFindingsGauge.set({ tool: toolLabel }, parsedScan.findings.length || 0);
+    } catch (e) {
+        console.warn('[automation] failed to emit scan metrics', e && e.message ? e.message : e);
+    }
+
+    // Notify if there are high severity findings
+    try {
+        const highFindings = Array.isArray(parsedScan.findings) ? parsedScan.findings.filter((f) => f.severity === 'high') : [];
+        if (highFindings.length > 0) {
+            void notificationService.notifyScanImport(parsedScan, {
+                findingsCount: parsedScan.findings.length,
+                summary: buildScanSummary(parsedScan)
+            }).catch((e) => console.warn('[automation] notifyScanImport failed', e && e.message ? e.message : e));
+        }
+    } catch (e) {
+        console.warn('[automation] scan notification failed', e && e.message ? e.message : e);
+    }
     return {
         created: true,
         skipped: false,
@@ -123,6 +167,77 @@ async function persistAutomatedScan(config, rawInput) {
         findingsCount: parsedScan.findings.length,
         truncated: parsedScan.truncated,
         linesAnalyzed: parsedScan.linesAnalyzed
+    };
+}
+
+async function persistAutomatedIntrusions(config, rawInput) {
+    const trimmedInput = String(rawInput || '').trim();
+    if (!trimmedInput) {
+        return { created: false, skipped: true, reason: 'empty' };
+    }
+
+    const fingerprint = createContentFingerprint(trimmedInput);
+    const cutoff = config.dedupeWindowMs > 0
+        ? new Date(Date.now() - config.dedupeWindowMs)
+        : null;
+
+    if (cutoff) {
+        const existing = await SecurityAlert.findOne({
+            user: config.userId,
+            source: config.source,
+            'details._fingerprint': fingerprint,
+            detectedAt: { $gte: cutoff }
+        }).select('_id');
+
+        if (existing) {
+            return { created: false, skipped: true, reason: 'duplicate', fingerprint };
+        }
+    }
+
+    const parsed = parseFalcoJson(trimmedInput);
+    if (!parsed.events || !parsed.events.length) {
+        return { created: false, skipped: true, reason: 'no-events', linesAnalyzed: parsed.linesAnalyzed };
+    }
+
+    const alertsToCreate = parsed.events.map((ev) => ({
+        type: ev.type,
+        severity: ev.severity,
+        summary: ev.summary,
+        details: { ...ev.details, _fingerprint: fingerprint },
+        user: config.userId,
+        source: config.source,
+        detectedAt: new Date()
+    }));
+
+    let inserted = [];
+    if (alertsToCreate.length > 0) {
+        inserted = await SecurityAlert.insertMany(alertsToCreate);
+    }
+
+    // Emit metrics and optionally trigger blocking for high severity
+    try {
+        for (const doc of inserted) {
+            const sev = doc.severity || 'low';
+            metrics.intrusionIngestCounter.inc({ severity: sev }, 1);
+        }
+
+        const highAlerts = inserted.filter((d) => d.severity === 'high');
+        if (highAlerts.length > 0) {
+            void blockingService.sendBlockRequestsForAlerts(highAlerts).catch((e) => {
+                console.warn('[automation] blocking service failed', e && e.message ? e.message : e);
+            });
+            void notificationService.notifyAlertsSummary(highAlerts).catch(() => {});
+        }
+    } catch (e) {
+        console.warn('[automation] metrics/blocking hook failed', e && e.message ? e.message : e);
+    }
+
+    return {
+        created: true,
+        skipped: false,
+        fingerprint,
+        createdCount: alertsToCreate.length,
+        linesAnalyzed: parsed.linesAnalyzed
     };
 }
 
@@ -217,6 +332,44 @@ function createScanBatchRunner(config) {
     };
 }
 
+function createIntrusionBatchRunner(config) {
+    const state = {
+        lastFingerprint: null,
+        lastMtimeMs: 0,
+        running: false
+    };
+
+    return async () => {
+        if (state.running) return;
+        state.running = true;
+
+        try {
+            const stats = await fs.stat(config.filePath);
+            if (stats.mtimeMs === state.lastMtimeMs && state.lastFingerprint) {
+                return;
+            }
+
+            const rawInput = await fs.readFile(config.filePath, 'utf8');
+            const fingerprint = createContentFingerprint(rawInput.trim());
+
+            state.lastMtimeMs = stats.mtimeMs;
+
+            if (fingerprint === state.lastFingerprint) return;
+
+            const result = await persistAutomatedIntrusions(config, rawInput);
+            state.lastFingerprint = fingerprint;
+
+            if (result.created) {
+                console.log(`[automation] intrusion batch created ${result.createdCount} alert(s) from ${config.filePath}`);
+            }
+        } catch (error) {
+            console.error(`[automation] intrusion batch failed for ${config.filePath}: ${error.message}`);
+        } finally {
+            state.running = false;
+        }
+    };
+}
+
 function startAutomation(automationConfig = {}) {
     const stopCallbacks = [];
 
@@ -240,6 +393,16 @@ function startAutomation(automationConfig = {}) {
         stopCallbacks.push(() => clearInterval(scanTimer));
     }
 
+    if (automationConfig.intrusionBatch && automationConfig.intrusionBatch.enabled) {
+        const runIntrusionBatch = createIntrusionBatchRunner(automationConfig.intrusionBatch);
+        const intrusionTimer = setInterval(() => {
+            void runIntrusionBatch();
+        }, automationConfig.intrusionBatch.intervalMs);
+        intrusionTimer.unref();
+        void runIntrusionBatch();
+        stopCallbacks.push(() => clearInterval(intrusionTimer));
+    }
+
     return {
         stop() {
             stopCallbacks.forEach((stopCallback) => stopCallback());
@@ -252,5 +415,6 @@ module.exports = {
     createContentFingerprint,
     persistAutomatedAlerts,
     persistAutomatedScan,
+    persistAutomatedIntrusions,
     startAutomation
 };

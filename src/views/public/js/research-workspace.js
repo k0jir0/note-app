@@ -533,3 +533,89 @@ refreshWorkspace()
     .catch(() => {
         renderWorkspaceStatus('Workspace loaded with partial data. Use the refresh controls to retry.', 'warning');
     });
+
+// Realtime: SSE connection and demo simulation
+(() => {
+    const connectBtn = document.getElementById('realtime-connect-btn');
+    const simulateBtn = document.getElementById('realtime-simulate-btn');
+    const realtimeLog = document.getElementById('workspace-realtime-log');
+    let es = null;
+
+    const logRealtime = (msg, tone = 'secondary') => {
+        if (!realtimeLog) return;
+        const el = document.createElement('div');
+        el.className = `small text-${tone} mb-1`;
+        el.textContent = msg;
+        realtimeLog.prepend(el);
+        // keep limited history
+        while (realtimeLog.childNodes.length > 10) realtimeLog.removeChild(realtimeLog.lastChild);
+    };
+
+    const setConnectedState = (connected) => {
+        if (connectBtn) connectBtn.textContent = connected ? 'Disconnect Realtime' : 'Connect Realtime';
+        if (connectBtn) connectBtn.className = connected ? 'btn btn-outline-danger' : 'btn btn-outline-dark';
+    };
+
+    const handleMessage = (evt) => {
+        try {
+            const payload = JSON.parse(evt.data);
+            if (payload && payload.type === 'alerts') {
+                logRealtime(`Realtime: ${payload.created} new alert(s)`,'muted');
+                // refresh the alerts panel to show saved alerts
+                refreshWorkspace().catch(() => {});
+            } else {
+                logRealtime(`Realtime event: ${payload && payload.type ? payload.type : 'unknown'}`,'muted');
+            }
+        } catch (e) {
+            logRealtime('Realtime: malformed event', 'danger');
+        }
+    };
+
+    const connectRealtime = () => {
+        if (es) return;
+        try {
+            es = new EventSource('/api/security/stream');
+            es.onopen = () => { setConnectedState(true); logRealtime('Realtime connected', 'success'); };
+            es.onerror = () => { setConnectedState(false); logRealtime('Realtime connection error', 'danger'); es.close(); es = null; };
+            es.onmessage = handleMessage;
+        } catch (e) {
+            logRealtime('Unable to open realtime connection', 'danger');
+            if (es) { es.close(); es = null; }
+        }
+    };
+
+    const disconnectRealtime = () => {
+        if (!es) return;
+        try { es.close(); } catch (e) {}
+        es = null;
+        setConnectedState(false);
+        logRealtime('Realtime disconnected', 'secondary');
+    };
+
+    connectBtn?.addEventListener('click', () => {
+        if (!es) connectRealtime(); else disconnectRealtime();
+    });
+
+    // Simulate realtime by invoking the existing automation sample action
+    simulateBtn?.addEventListener('click', async () => {
+        try {
+            logRealtime('Injecting automation sample...', 'info');
+            const response = await fetch('/api/security/automation/sample', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+                body: '{}'
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                logRealtime('Simulation failed', 'danger');
+                return;
+            }
+            logRealtime(`Simulation injected: ${payload.data && payload.data.createdAlerts ? payload.data.createdAlerts : 0} alert(s)`, 'success');
+            // If realtime is connected, the worker will publish events and the UI will refresh via the message handler
+            // As a fallback, refresh the workspace after a short delay
+            setTimeout(() => refreshWorkspace().catch(() => {}), 1200);
+        } catch (e) {
+            logRealtime('Simulation error', 'danger');
+        }
+    });
+})();

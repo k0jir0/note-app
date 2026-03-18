@@ -5,6 +5,8 @@ const { analyzeLogText, MAX_LOG_TEXT_LENGTH } = require('../utils/logAnalysis');
 const { handleApiError } = require('../utils/errorHandler');
 const { buildPersistedCorrelationDemo, buildSampleCorrelationInputs } = require('../utils/sampleCorrelationData');
 const { persistAutomatedAlerts, persistAutomatedScan } = require('../services/automationService');
+const { redis, publisher, subscriber } = require('../lib/redisClient');
+const { ingestCounter } = require('../routes/metrics');
 
 const parseLimit = (value, fallback = 20, max = 100) => {
     const parsed = Number.parseInt(value, 10);
@@ -201,5 +203,83 @@ exports.injectAutomationSample = async (req, res) => {
         });
     } catch (error) {
         return handleApiError(res, error, 'Inject automation sample');
+    }
+};
+
+// Enqueue inbound log text (real-time ingestion)
+exports.realtimeIngest = async (req, res) => {
+    try {
+        const payload = req.body || {};
+        const { type = 'log', logText = '', raw = '' } = payload;
+
+        if (type === 'log' && typeof logText !== 'string') {
+            return res.status(400).json({ success: false, errors: ['logText must be a string'] });
+        }
+
+        // Create a message for Redis Stream
+        const message = {
+            type,
+            user: String(req.user._id),
+            logText: type === 'log' ? logText : '',
+            raw: raw || ''
+        };
+
+        // XADD to stream (auto id)
+        await redis.xadd('security:ingest', '*', 'payload', JSON.stringify(message));
+
+        // increment Prometheus counter
+        try { ingestCounter.inc({ type }); } catch (e) {}
+
+        return res.status(202).json({ success: true, message: 'Enqueued for real-time processing' });
+    } catch (error) {
+        return handleApiError(res, error, 'Realtime ingest');
+    }
+};
+
+// Server-Sent Events endpoint for live alerts
+exports.streamEvents = async (req, res) => {
+    try {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders?.();
+
+        const send = (data) => {
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+        };
+
+        // Send a simple keep-alive every 25s
+        const keepAlive = setInterval(() => {
+            res.write(': keep-alive\n\n');
+        }, 25000);
+
+        // Subscribe to a per-user Redis pubsub channel for immediate events
+        const userId = String(req.user && req.user._id ? req.user._id : 'global');
+        const channel = `security:events:${userId}`;
+
+        const onMessage = (chan, message) => {
+            if (chan === channel) {
+                try {
+                    const payload = JSON.parse(message);
+                    send(payload);
+                } catch (_e) {
+                    send({ error: 'malformed event' });
+                }
+            }
+        };
+
+        subscriber.subscribe(channel).then(() => {
+            subscriber.on('message', onMessage);
+        }).catch(() => {});
+
+        // Cleanup when client disconnects
+        req.on('close', () => {
+            clearInterval(keepAlive);
+            try { subscriber.removeListener('message', onMessage); } catch (e) {}
+            try { subscriber.unsubscribe(channel); } catch (e) {}
+            res.end();
+        });
+    } catch (error) {
+        return handleApiError(res, error, 'Stream events');
     }
 };
