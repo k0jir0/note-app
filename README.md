@@ -7,19 +7,23 @@ A full-stack note-taking application with user authentication, built with Node.j
 - User authentication (signup/login) with Passport.js & bcrypt
 - Optional Google OAuth sign-in with account linking by email
 - CRUD operations for notes (create, read, update, delete)
-- Encryption for note fields at rest
-- User-specific data isolation
+- Encryption for note fields at rest (AES-256-GCM integration)
+- User-specific data isolation and authorization checks
 - Input validation & XSS protection
 - Session-backed CSRF protection for forms and authenticated JSON mutations
 - MongoDB-backed session persistence via connect-mongo
 - Helmet security headers with Content Security Policy
 - Route-specific rate limiting for auth, destructive actions, and security analysis
-- Security alert log analysis dashboard
-- Scan import and findings dashboard
+- Security alert log analysis dashboard (server-side log analysis)
+- Scan import and findings dashboard (multi-format parsers: Nmap, Nikto, JSON)
 - Correlation dashboard linking scan findings with observed security alerts
 - Consolidated Research Workspace that unifies log analysis, scan import, correlations, and automation status
-- Optional scheduled ingestion for one log file and one scan file to keep research dashboards populated automatically
-- Dedicated Security Module page for background-ingestion status, demo sample injection, and security controls reachable from the Research Workspace
+- Optional scheduled ingestion for logs and scans (Falco JSON ingestion helper + Trivy runner support)
+- Built-in automation runners: Falco ingestion, Trivy scanner wrappers, and batch dedupe persistence
+- Metrics endpoint exposed (`/metrics`) with `prom-client` counters/gauges for automation and scan ingestion
+- Notification service (Slack integration + optional SMTP via lazy `nodemailer`) for alerting
+- CI-friendly test harnesses and smoke/integration scripts (Mocha integration tests included)
+- Trivy report artifacts in CI (report-only mode) to enable triage without blocking merges
 - RESTful API with JSON responses
 - Responsive UI with Bootstrap 5
 - Test coverage with Mocha, Chai, and Sinon
@@ -267,6 +271,12 @@ notes-app/
 ├── package.json
 ├── .env.example
 ├── README.md
+├── .github/                # CI workflows (ci.yml, security-scan.yml)
+├── automation/             # Falco/Trivy runners, smoke/integration harnesses
+│   ├── falco-runner.js
+│   ├── trivy-runner.js
+│   ├── test-smoke.js
+│   └── test-integration.js
 ├── src/
 │   ├── config/
 │   │   ├── passport.js
@@ -298,6 +308,7 @@ notes-app/
 │   ├── utils/
 │   │   ├── errorHandler.js
 │   │   ├── logAnalysis.js
+│   │   ├── intrusionParser.js   # Falco JSON parser
 │   │   ├── noteEncryption.js
 │   │   ├── pagination.js
 │   │   ├── scanParser.js
@@ -316,13 +327,14 @@ notes-app/
 │           ├── css/
 │           └── js/
 └── test/
-    ├── authRoutes.test.js
-    ├── csrf.test.js
-    ├── noteApiController.test.js
-    ├── notePageRoutes.test.js
-    ├── scanApiRoutes.test.js
-    ├── securityApiRoutes.test.js
-    └── ...
+  ├── authRoutes.test.js
+  ├── csrf.test.js
+  ├── noteApiController.test.js
+  ├── notePageRoutes.test.js
+  ├── scanApiRoutes.test.js
+  ├── securityApiRoutes.test.js
+  └── integration/
+    └── automation.test.js
 ```
 
 ## Development
@@ -342,6 +354,48 @@ npm run lint       # ESLint code quality check
 4. Define routes in `src/routes/`
 5. Create/update EJS templates in `src/views/`
 6. Write tests in `test/`
+
+## CI & Automation Notes
+
+- **Node version (CI):** Workflows use Node.js 20.8.0 to satisfy engine constraints for some deps (e.g., connect-mongo). If you change engines, update `.github/workflows/*.yml` accordingly.
+- **Lockfile:** If `npm ci` fails with a lockfile mismatch, run `npm install` locally and commit the updated `package-lock.json`.
+- **Semgrep:** Some custom rules require a `languages` field. If Semgrep aborts, add `languages: [javascript]` to each rule in `.semgrep.yml`.
+- **Linting in CI:** Linting was temporarily removed from the blocking CI path to allow tests to run while lint issues are fixed. Run `npm run lint` locally and fix issues before re-enabling the lint step.
+- **Trivy (security-scan):** The security scan workflow uploads Trivy reports as artifacts but is configured as report-only (`exit-code: 0`). Download artifacts from the run to triage vulnerabilities.
+
+### How to run the automation runners locally
+
+1. Start the app (so services can connect to MongoDB):
+```bash
+npm run start-dev
+```
+2. In another shell, run the Falco or Trivy runners for local testing:
+```bash
+node automation/falco-runner.js   # Falco JSON ingestion helper
+node automation/trivy-runner.js   # Trivy image/file scanner wrapper
+```
+3. To run the smoke/integration harnesses:
+```bash
+node automation/test-smoke.js
+node automation/test-integration.js
+npx mocha --exit test/integration/automation.test.js
+```
+
+### Troubleshooting quick commands
+- Update lockfile and push:
+```bash
+npm install
+git add package-lock.json
+git commit -m "chore: update package-lock.json"
+git push
+```
+- Fix Semgrep rule schema:
+```bash
+# edit .semgrep.yml and add `languages: [javascript]` to custom rules
+git add .semgrep.yml
+git commit -m "fix(semgrep): add languages to rules"
+git push
+```
 
 ## Security
 
@@ -398,6 +452,7 @@ ALLOW_LEGACY_SESSION_SECRET_FALLBACK=false
 ```env
 LOG_BATCH_ENABLED=false
 LOG_BATCH_FILE_PATH=
+
 LOG_BATCH_USER_ID=
 LOG_BATCH_SOURCE=server-log-batch
 LOG_BATCH_INTERVAL_MS=60000

@@ -47,6 +47,14 @@ Recent developments (March 12-13, 2026) expanded security-focused functionality:
 - Fixed a `connect-mongo` CommonJS import mismatch by using the package's `MongoStore` export directly, restoring runtime startup after the session-store migration.
 - Extended automated coverage with new tests for log analysis, scan parsing, security/scan routes, CSRF behavior, session hardening, and automation-sample dedupe behavior, bringing the verified suite to 185 passing tests with ESLint clean.
 
+RECENT ADDITIONS — Security Automation & CI (small essay)
+
+Over the last development cycle the project gained a focused security automation surface that ties together live ingestion, scanner imports, and observability. Rather than treating scans and logs as separate artifacts, I added lightweight runners and parsers that normalize Falco JSON events and Trivy outputs into the application's existing `ScanResult` and `SecurityAlert` models. This design keeps the ingestion code intentionally small and testable: runners write to a watched file or emit parsed objects, the `intrusionParser` normalizes source-specific fields to a compact alert schema, and `automationService` performs dedupe and persistence while emitting `prom-client` metrics so ingestion health is visible at `/metrics`.
+
+Practically, this made two workflows easier: (1) local development and demos (via the `Inject Automation Sample` action and smoke/integration harnesses), and (2) CI-assisted security triage (Trivy runs in GitHub Actions, uploads reports as artifacts, and Falco/Trivy runners can be exercised locally). The CI changes focused on reliability: aligning Node engine versions with dependency constraints, updating the lockfile to remove `npm ci` failures, and configuring Trivy as report-only so scans produce artifacts without blocking merges while the team triages findings.
+
+The main lessons were pragmatic: favor small, auditable parsers over heavyweight adapters; keep optional integrations lazy (e.g., SMTP lazy-require) so tests remain deterministic; and surface operational signals (metrics, artifacts) to enable triage without making the pipeline brittle. The next practical steps are automated triage playbooks for Trivy artifacts and restoring stricter CI enforcement once fixes or documented mitigations are in place.
+
 
 MAJOR CHALLENGES AND SOLUTIONS
 
@@ -67,6 +75,23 @@ The project initially pointed to a different repository and required migration. 
 Legacy code maintenance required updating older controllers and routes that lacked authentication. Rather than deleting these files, they were updated with `requireAuth` middleware and user-specific filtering to maintain backward compatibility while improving security. Tests were updated accordingly with documentation explaining preservation.
 
 Model naming standardization involved renaming `notes.js` to `Notes.js` for consistency with JavaScript conventions. This required updating all import statements across controllers (`noteController.js`, `noteApiController.js`), routes (`notePageRoutes.js`), test files, and `index.js`. Git's `mv` command preserved file history during the rename.
+
+TROUBLESHOOTING (recent CI & automation issues)
+
+- Symptom: Semgrep job aborts with "Invalid rule schema".
+	Fix: Add `languages: [javascript]` to each custom rule in `.semgrep.yml`, commit and push.
+
+- Symptom: `npm ci` fails: "package.json and package-lock.json are not in sync".
+	Fix: Run `npm install` locally, commit the updated `package-lock.json`, and push. Use `npm ci` in CI after lockfile is updated.
+
+- Symptom: CI job fails due to Node engine mismatch (eg. connect-mongo requires >=20.8.0).
+	Fix: Update `.github/workflows/*.yml` to use `node-version: 20.8.0` (or an appropriate version matching engines) and re-run workflow.
+
+- Symptom: Integration tests fail locally due to missing optional dependency (e.g., nodemailer).
+	Fix: The codebase lazy-requires optional packages; if you need to run integration scripts that expect SMTP, install `nodemailer` or run the integration harness which avoids SMTP paths.
+
+- Symptom: Trivy scan reports vulnerabilities and fails CI.
+	Fix: Trivy is currently configured as report-only in CI. Download artifacts from the GitHub Actions run, triage HIGH/CRITICAL findings, then patch dependencies or document acceptable mitigations. Re-enable failing behavior when triage is complete.
 
 
 KEY LEARNINGS
