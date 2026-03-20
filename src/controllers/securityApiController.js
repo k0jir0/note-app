@@ -245,6 +245,9 @@ exports.streamEvents = async (req, res) => {
         if (!req.app || !req.app.locals || !req.app.locals.realtimeEnabled) {
             return res.status(404).json({ success: false, message: 'Realtime endpoint disabled' });
         }
+        if (req.query && req.query.probe === '1') {
+            return res.status(200).json({ success: true, enabled: true });
+        }
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');

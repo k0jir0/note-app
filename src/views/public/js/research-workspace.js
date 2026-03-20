@@ -577,19 +577,9 @@ refreshWorkspace()
             return;
         }
 
-        // Quick client-side check: ensure a session cookie exists before probing
-        // This helps avoid confusing "probe timed out" messages when the user
-        // is not authenticated and the browser won't send a session cookie.
-        try {
-            if (!document.cookie || document.cookie.indexOf('connect.sid=') === -1) {
-                logRealtime('Realtime connection requires login. Please sign in and refresh this page.', 'danger');
-                return;
-            }
-        } catch (e) { void e; }
-
-        // Probe the SSE endpoint with XHR to provide a clear error message
+        // Probe realtime availability without opening a throwaway SSE connection.
         const probe = new XMLHttpRequest();
-        probe.open('GET', '/api/security/stream', true);
+        probe.open('GET', '/api/security/stream?probe=1', true);
         probe.withCredentials = true;
         probe.timeout = 3000;
         let probed = false;
@@ -640,6 +630,10 @@ refreshWorkspace()
     connectBtn?.addEventListener('click', () => {
         if (!es) connectRealtime(); else disconnectRealtime();
     });
+
+    if (connectBtn && !connectBtn.disabled) {
+        setConnectedState(false);
+    }
 
     // Simulate realtime by invoking the existing automation sample action
     simulateBtn?.addEventListener('click', async () => {

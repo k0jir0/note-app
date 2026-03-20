@@ -100,4 +100,21 @@ describe('Security API controller behavior', () => {
         expect(insertScansStub.calledOnce).to.equal(true);
         expect(insertAlertsStub.calledOnce).to.equal(true);
     });
+
+    it('streamEvents returns a lightweight probe response when requested', async () => {
+        const req = {
+            app: { locals: { realtimeEnabled: true } },
+            query: { probe: '1' }
+        };
+        const res = makeRes();
+
+        await securityApiController.streamEvents(req, res);
+
+        expect(res.status.calledWith(200)).to.equal(true);
+        expect(res._jsonSpy.calledOnce).to.equal(true);
+        expect(res._jsonSpy.firstCall.args[0]).to.deep.equal({
+            success: true,
+            enabled: true
+        });
+    });
 });

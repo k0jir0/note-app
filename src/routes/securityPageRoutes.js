@@ -45,11 +45,13 @@ router.get('/security/module', requireAuth, async (req, res) => {
     try {
         const runtimeConfig = req.app.locals.runtimeConfig || {};
         const automation = runtimeConfig.automation || {};
+        const realtimeAvailable = Boolean(req.app && req.app.locals && req.app.locals.realtimeAvailable);
         const realtimeEnabled = Boolean(req.app && req.app.locals && req.app.locals.realtimeEnabled);
 
         res.render('pages/security-automation.ejs', {
             title: 'Security Module',
             csrfToken: res.locals.csrfToken,
+            realtimeAvailable,
             realtimeEnabled,
             automation: {
                 anyEnabled: Boolean((automation.logBatch && automation.logBatch.enabled)

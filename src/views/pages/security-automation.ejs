@@ -83,13 +83,29 @@
                         <div>
                             <p class="mb-1 small text-muted">Realtime</p>
                             <p class="mb-0">
-                                <span id="realtime-server-badge" class="badge text-bg-<%= realtimeEnabled ? 'success' : 'secondary' %>"><%= realtimeEnabled ? 'Realtime Enabled' : 'Realtime Disabled' %></span>
+                                <span id="realtime-server-badge" class="badge text-bg-<%= realtimeEnabled ? 'success' : (realtimeAvailable ? 'warning' : 'secondary') %>">
+                                    <%= realtimeEnabled ? 'Realtime Enabled' : (realtimeAvailable ? 'Realtime Available, Off' : 'Realtime Unavailable') %>
+                                </span>
                             </p>
                         </div>
-                                <div class="ms-auto d-flex gap-2">
-                                    <button id="realtime-simulate-btn" type="button" class="btn btn-outline-primary">Simulate Realtime</button>
-                                </div>
+                        <div class="ms-auto d-flex gap-2 flex-wrap">
+                            <button
+                                id="realtime-connect-btn"
+                                type="button"
+                                class="btn btn-outline-dark"
+                                <%= realtimeEnabled ? '' : 'disabled' %>>
+                                <%= realtimeEnabled ? 'Connect Realtime' : (realtimeAvailable ? 'Realtime Off' : 'Realtime Unavailable') %>
+                            </button>
+                            <button id="realtime-simulate-btn" type="button" class="btn btn-outline-primary">Simulate Realtime</button>
+                        </div>
                     </div>
+                    <p class="small text-muted mt-2 mb-0">
+                        <%= realtimeEnabled
+                            ? 'Open a live stream for newly ingested alerts. Disconnect when you are done monitoring.'
+                            : (realtimeAvailable
+                                ? 'Realtime routes are mounted, but the stream is currently turned off.'
+                                : 'Configure Redis and enable realtime to use the live alert stream.') %>
+                    </p>
                     <div id="workspace-realtime-log" class="mt-2"></div>
                 </div>
             </div>

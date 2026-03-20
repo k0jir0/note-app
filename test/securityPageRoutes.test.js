@@ -108,7 +108,9 @@ describe('Security Page Routes', () => {
                                 enabled: false
                             }
                         }
-                    }
+                    },
+                    realtimeAvailable: true,
+                    realtimeEnabled: true
                 }
             }
         };
@@ -119,6 +121,8 @@ describe('Security Page Routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/security-automation.ejs');
         expect(res.render.firstCall.args[1].title).to.equal('Security Module');
+        expect(res.render.firstCall.args[1].realtimeAvailable).to.equal(true);
+        expect(res.render.firstCall.args[1].realtimeEnabled).to.equal(true);
         expect(res.render.firstCall.args[1].automation.anyEnabled).to.equal(true);
         expect(res.render.firstCall.args[1].automation.logBatch.filePath).to.equal('C:\\logs\\app.log');
         expect(res.render.firstCall.args[1].automation.scanBatch.statusLabel).to.equal('Disabled');

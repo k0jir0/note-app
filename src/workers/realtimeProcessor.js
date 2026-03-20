@@ -109,6 +109,11 @@ async function loop() {
 }
 
 async function start() {
+    if (!process.env.REDIS_URL || process.env.DISABLE_REDIS === '1') {
+        console.error('[realtime-worker] REDIS_URL is required to run the realtime worker');
+        process.exit(1);
+    }
+
     const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/note-app';
     try {
         await mongoose.connect(mongoUri, { /* useUnifiedTopology: true, useNewUrlParser: true */ });

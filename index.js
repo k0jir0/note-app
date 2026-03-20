@@ -15,13 +15,31 @@ const scanPageRoute = require('./src/routes/scanPageRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const metricsRoute = require('./src/routes/metrics');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
-const { requireAuth } = require('./src/middleware/auth');
+const { requireAuth, requireAuthAPI } = require('./src/middleware/auth');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { startAutomation } = require('./src/services/automationService');
 
 require('dotenv').config();
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
+
+function parseEnabledFlag(value) {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'true') {
+            return true;
+        }
+        if (normalized === 'false') {
+            return false;
+        }
+    }
+
+    return null;
+}
 
 (async function main() {
     const keyLoad = await tryLoadKeytarGoogleSecrets().catch((e) => ({ loaded: false, error: e }));
@@ -221,7 +239,7 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
         });
 
         // Runtime toggle endpoint for realtime feature (authenticated)
-        app.post('/api/runtime/realtime', requireAuth, (req, res) => {
+        app.post('/api/runtime/realtime', requireAuthAPI, (req, res) => {
             try {
                 if (process.env.NODE_ENV === 'production') {
                     return res.status(403).json({ success: false, message: 'Runtime toggles are disabled in production' });
@@ -231,9 +249,14 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
                     return res.status(503).json({ success: false, message: 'Realtime requires REDIS_URL to be configured' });
                 }
 
-                const bodyEnabled = typeof req.body?.enabled !== 'undefined' ? Boolean(req.body.enabled) : null;
+                const bodyEnabled = typeof req.body?.enabled !== 'undefined'
+                    ? parseEnabledFlag(req.body.enabled)
+                    : null;
                 if (bodyEnabled === null) {
-                    return res.status(400).json({ success: false, message: 'Missing enabled property' });
+                    return res.status(400).json({
+                        success: false,
+                        message: 'enabled must be a boolean or the string true/false'
+                    });
                 }
 
                 app.locals.realtimeEnabled = bodyEnabled;
