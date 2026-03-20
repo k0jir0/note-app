@@ -21,6 +21,7 @@ const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { startAutomation } = require('./src/services/automationService');
 
 require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env.local'), override: true });
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 
 function parseEnabledFlag(value) {
@@ -54,6 +55,7 @@ function parseEnabledFlag(value) {
     const realtimeAvailable = Boolean(process.env.REDIS_URL);
 
     app.locals.runtimeConfig = runtimeConfig;
+    app.locals.appBaseUrl = runtimeConfig.appBaseUrl;
     app.locals.realtimeAvailable = realtimeAvailable;
     // runtime toggle for realtime (can be changed without restarting when Redis is configured)
     app.locals.realtimeEnabled = realtimeAvailable && process.env.ENABLE_REALTIME === '1';

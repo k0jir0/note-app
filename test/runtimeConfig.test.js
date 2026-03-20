@@ -2,6 +2,7 @@ const { expect } = require('chai');
 
 const {
     MIN_SESSION_SECRET_LENGTH,
+    getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,
     validateRuntimeConfig
 } = require('../src/config/runtimeConfig');
@@ -50,6 +51,23 @@ describe('Runtime Config Validation', () => {
 
         expect(hasGoogleAuthCredentials(env)).to.equal(true);
         expect(validateRuntimeConfig(env).googleAuthEnabled).to.equal(true);
+    });
+
+    it('accepts a valid APP_BASE_URL and exposes it in config', () => {
+        const env = createValidEnv();
+        env.APP_BASE_URL = 'http://localhost:3000/';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.appBaseUrl).to.equal('http://localhost:3000');
+        expect(getConfiguredAppBaseUrl(env)).to.equal('http://localhost:3000');
+    });
+
+    it('rejects an invalid APP_BASE_URL', () => {
+        const env = createValidEnv();
+        env.APP_BASE_URL = 'not-a-url';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('APP_BASE_URL must be a valid http or https URL when set');
     });
 
     it('returns disabled automation config by default', () => {

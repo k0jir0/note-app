@@ -2,7 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
-const { hasGoogleAuthCredentials } = require('../config/runtimeConfig');
+const { getConfiguredAppBaseUrl, hasGoogleAuthCredentials } = require('../config/runtimeConfig');
 const { authRateLimiter } = require('../middleware/rateLimit');
 const { CSRF_BODY_FIELD } = require('../middleware/csrf');
 const {
@@ -22,6 +22,21 @@ function renderLogoutPage(res) {
         title: 'Logout',
         csrfToken: res.locals.csrfToken
     });
+}
+
+function maybeRedirectToConfiguredAppBaseUrl(req, res) {
+    const appBaseUrl = getConfiguredAppBaseUrl();
+    if (!appBaseUrl || !req || typeof req.get !== 'function') {
+        return false;
+    }
+
+    const currentOrigin = `${req.protocol}://${req.get('host')}`;
+    if (currentOrigin === appBaseUrl) {
+        return false;
+    }
+
+    res.redirect(`${appBaseUrl}${req.originalUrl}`);
+    return true;
 }
 
 function destroyAuthenticatedSession(req, res, next) {
@@ -249,6 +264,10 @@ router.get('/login/federated/google', (req, res, next) => {
         });
     }
 
+    if (maybeRedirectToConfiguredAppBaseUrl(req, res)) {
+        return undefined;
+    }
+
     return passport.authenticate('google')(req, res, next);
 });
 
@@ -259,6 +278,10 @@ router.get('/oauth2/redirect/google', (req, res, next) => {
             error: 'Google sign-in is not configured',
             csrfToken: res.locals.csrfToken
         });
+    }
+
+    if (maybeRedirectToConfiguredAppBaseUrl(req, res)) {
+        return undefined;
     }
 
     return passport.authenticate('google', {

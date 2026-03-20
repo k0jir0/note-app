@@ -50,6 +50,33 @@ function hasGoogleAuthCredentials(env = process.env) {
     return isNonEmptyString(env.GOOGLE_CLIENT_ID) && isNonEmptyString(env.GOOGLE_CLIENT_SECRET);
 }
 
+function normalizeAppBaseUrl(rawValue, errors) {
+    if (!isNonEmptyString(rawValue)) {
+        return '';
+    }
+
+    try {
+        const parsed = new URL(rawValue.trim());
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            throw new Error('Invalid protocol');
+        }
+
+        const normalizedPath = parsed.pathname && parsed.pathname !== '/'
+            ? parsed.pathname.replace(/\/+$/, '')
+            : '';
+        return `${parsed.origin}${normalizedPath}`;
+    } catch (_error) {
+        if (Array.isArray(errors)) {
+            errors.push('APP_BASE_URL must be a valid http or https URL when set');
+        }
+        return '';
+    }
+}
+
+function getConfiguredAppBaseUrl(env = process.env) {
+    return normalizeAppBaseUrl(env.APP_BASE_URL);
+}
+
 function parseBooleanEnv(name, env, errors) {
     const rawValue = env[name];
 
@@ -246,6 +273,8 @@ function validateRuntimeConfig(env = process.env) {
         errors.push('GOOGLE_CLIENT_SECRET must not use the example placeholder value');
     }
 
+    normalizeAppBaseUrl(env.APP_BASE_URL, errors);
+
     if (isNonEmptyString(env.LEGACY_NOTE_ENCRYPTION_KEY)) {
         if (isPlaceholderValue('LEGACY_NOTE_ENCRYPTION_KEY', env.LEGACY_NOTE_ENCRYPTION_KEY)) {
             errors.push('LEGACY_NOTE_ENCRYPTION_KEY must not use the example placeholder value');
@@ -271,6 +300,7 @@ function validateRuntimeConfig(env = process.env) {
         dbURI: env.MONGODB_URI.trim(),
         sessionSecret: env.SESSION_SECRET.trim(),
         noteEncryptionKey: env.NOTE_ENCRYPTION_KEY.trim(),
+        appBaseUrl: getConfiguredAppBaseUrl(env),
         googleAuthEnabled: hasGoogleAuthCredentials(env),
         automation: {
             logBatch,
@@ -282,6 +312,7 @@ function validateRuntimeConfig(env = process.env) {
 
 module.exports = {
     MIN_SESSION_SECRET_LENGTH,
+    getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,
     validateRuntimeConfig
 };

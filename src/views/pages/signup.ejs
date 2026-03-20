@@ -62,7 +62,7 @@
                             
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-dark">Sign Up</button>
-                                <a href="/auth/login/federated/google" class="btn btn-outline-secondary">
+                                <a href="<%= appBaseUrl ? `${appBaseUrl}/auth/login/federated/google` : '/auth/login/federated/google' %>" class="btn btn-outline-secondary">
                                     Sign up with Google
                                 </a>
                             </div>

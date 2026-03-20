@@ -2,7 +2,7 @@ const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oidc');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
-const { hasGoogleAuthCredentials } = require('./runtimeConfig');
+const { getConfiguredAppBaseUrl, hasGoogleAuthCredentials } = require('./runtimeConfig');
 
 module.exports = function (passport) {
     passport.use(new LocalStrategy({
@@ -39,10 +39,15 @@ module.exports = function (passport) {
     }));
 
     if (hasGoogleAuthCredentials()) {
+        const googleCallbackPath = '/auth/oauth2/redirect/google';
+        const configuredAppBaseUrl = getConfiguredAppBaseUrl();
+
         passport.use(new GoogleStrategy({
             clientID: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            callbackURL: '/auth/oauth2/redirect/google',
+            callbackURL: configuredAppBaseUrl
+                ? `${configuredAppBaseUrl}${googleCallbackPath}`
+                : googleCallbackPath,
             scope: ['profile', 'email']
         }, async (issuer, profile, cb) => {
             try {

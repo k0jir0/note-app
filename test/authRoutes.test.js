@@ -54,6 +54,53 @@ describe('Auth Routes', () => {
         });
     });
 
+    describe('Google auth routes', () => {
+        it('redirects Google auth to the configured canonical base URL before starting OAuth', () => {
+            const handler = getHandler('get', '/login/federated/google');
+            const originalAppBaseUrl = process.env.APP_BASE_URL;
+            const originalClientId = process.env.GOOGLE_CLIENT_ID;
+            const originalClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+            try {
+                process.env.APP_BASE_URL = 'http://localhost:3000';
+                process.env.GOOGLE_CLIENT_ID = 'client-id';
+                process.env.GOOGLE_CLIENT_SECRET = 'client-secret';
+
+                const authenticateStub = sinon.stub(passport, 'authenticate');
+                const req = {
+                    protocol: 'http',
+                    originalUrl: '/auth/login/federated/google',
+                    get: sinon.stub().withArgs('host').returns('127.0.0.1:3000')
+                };
+                const res = buildRes();
+                const next = sinon.stub();
+
+                handler(req, res, next);
+
+                expect(res.redirect.calledWith('http://localhost:3000/auth/login/federated/google')).to.be.true;
+                expect(authenticateStub.called).to.be.false;
+            } finally {
+                if (originalAppBaseUrl === undefined) {
+                    delete process.env.APP_BASE_URL;
+                } else {
+                    process.env.APP_BASE_URL = originalAppBaseUrl;
+                }
+
+                if (originalClientId === undefined) {
+                    delete process.env.GOOGLE_CLIENT_ID;
+                } else {
+                    process.env.GOOGLE_CLIENT_ID = originalClientId;
+                }
+
+                if (originalClientSecret === undefined) {
+                    delete process.env.GOOGLE_CLIENT_SECRET;
+                } else {
+                    process.env.GOOGLE_CLIENT_SECRET = originalClientSecret;
+                }
+            }
+        });
+    });
+
     describe('POST /login', () => {
         it('registers auth rate limiting before the login handler', () => {
             const layer = getRouteLayer('post', '/login');
