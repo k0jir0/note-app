@@ -5,9 +5,9 @@ Note-Taking Application Development Process
 
 PROJECT OVERVIEW
 
-This full-stack note-taking application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, and 182 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, and deployment readiness.
+This full-stack note-taking application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, and 216 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, deployment readiness, and the interaction between secure defaults and developer ergonomics.
 
-Current verified state (March 13, 2026): 185 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, and a clean production dependency audit.
+Current verified state (March 20, 2026): 216 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, a dedicated Security Module with optional realtime streaming, and stable local Google OAuth support via APP_BASE_URL plus gitignored `.env.local` overrides.
 
 Recent updates (March 5, 2026) hardened validation and authentication flows:
 - Added strict auth payload sanitization (`sanitizeAuthPayload`) and login password validation (`validateLoginPassword`).
@@ -45,7 +45,16 @@ Recent developments (March 12-13, 2026) expanded security-focused functionality:
 - Added targeted rate limiting to log-analysis, scan-import, and sample-correlation endpoints to reduce authenticated abuse potential.
 - Upgraded EJS to 5.0.1, removing the `jake -> filelist -> minimatch` dependency chain and clearing the production `npm audit` report.
 - Fixed a `connect-mongo` CommonJS import mismatch by using the package's `MongoStore` export directly, restoring runtime startup after the session-store migration.
-- Extended automated coverage with new tests for log analysis, scan parsing, security/scan routes, CSRF behavior, session hardening, and automation-sample dedupe behavior, bringing the verified suite to 185 passing tests with ESLint clean.
+- Extended automated coverage with new tests for log analysis, scan parsing, security/scan routes, CSRF behavior, session hardening, and automation-sample dedupe behavior, forming the basis for the larger 216-test suite now verified locally.
+
+Recent updates (March 20, 2026) focused on local developer experience and Security Module stability:
+- Reworked the Security Module realtime flow so the browser no longer tries to inspect the httpOnly session cookie; connection availability is derived from server state instead.
+- Added a lightweight realtime probe path so the UI can validate stream availability without opening a disposable SSE stream, and moved each connected client onto its own Redis subscriber to avoid cross-tab disconnect side effects.
+- Updated the realtime worker to fail fast when Redis is not configured, rather than spinning in a tight polling loop.
+- Tightened the development realtime toggle so it behaves like a JSON API and parses boolean enable-disable input safely.
+- Added support for `.env.local` overrides at startup, making it possible to keep machine-specific Google OAuth credentials out of the repository while still supporting local sign-in.
+- Introduced `APP_BASE_URL` as a canonical app origin so Google OAuth callback handling no longer depends on whether the browser entered through `localhost` or `127.0.0.1`.
+- Added regression tests for the canonical Google auth redirect behavior and for runtime config validation of `APP_BASE_URL`.
 
 RECENT ADDITIONS — Security Automation & CI (small essay)
 
@@ -62,7 +71,7 @@ Authentication and authorization proved most challenging. Securing user sessions
 
 Input validation and sanitization balanced security with user experience. The challenge was preventing XSS attacks while validating diverse field types without exposing system internals. This was addressed by creating centralized validation utilities in `src/utils/validation.js`, implementing multi-layer validation across client, server, and database, and using an `isUpdate` flag to differentiate create from update operations. Inputs were sanitized using regex to remove dangerous script tags while preserving legitimate content.
 
-Comprehensive test coverage without a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Sinon for stubs, spies, and mocks alongside consistent test patterns solved this. Proper cleanup in `afterEach` blocks prevented state leakage, eventually reaching 182 tests covering models, controllers, routes, middleware, and utilities.
+Comprehensive test coverage without a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Sinon for stubs, spies, and mocks alongside consistent test patterns solved this. Proper cleanup in `afterEach` blocks prevented state leakage, eventually reaching 216 tests covering models, controllers, routes, middleware, utilities, and edge cases around OAuth and realtime behavior.
 
 Production deployment preparation revealed technical debt: hardcoded values, insecure cookie settings, and mixed indentation. Resolution involved environment variables with fallbacks, secure cookies for production (`secure: process.env.NODE_ENV === 'production'`), proper npm scripts, protected seed routes, and ESLint `--fix` for standardized formatting.
 
@@ -102,7 +111,7 @@ Separation of concerns improves maintainability. Models handle data structure an
 
 Testing is non-negotiable. Write tests before or during development, not after. Mock external dependencies like databases and authentication, test success and error scenarios, focus on critical paths while aiming for high coverage, use descriptive test names, and clean up after each test.
 
-Environment configuration requires discipline. Use .env files for local development but never commit secrets. Provide .env.example as a template, use different configurations for dev/test/prod, default to safe values, and document all required variables.
+Environment configuration requires discipline. Use .env files for local development but never commit secrets. Provide .env.example as a template, prefer ignored `.env.local` overrides for workstation-only values such as OAuth credentials, use different configurations for dev/test/prod, default to safe values, and document all required variables.
 
 API design should follow consistent patterns. Use standardized response formats, RESTful conventions, appropriate HTTP status codes, detailed error messages for developers, partial updates with optional fields, and timestamps in all database records.
 
@@ -147,13 +156,13 @@ Centralizing validation early by creating utilities before building features pre
 
 FINAL REFLECTION
 
-This project now achieves 185 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, encrypted notes at rest, CSRF protection, Mongo-backed sessions, RESTful API design with proper status codes, a consolidated Research Workspace, production-ready configuration, a concise README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and stronger security defaults.
+This project now achieves 216 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, encrypted notes at rest, CSRF protection, Mongo-backed sessions, RESTful API design with proper status codes, a consolidated Research Workspace, a dedicated Security Module with improved realtime behavior, stable local Google OAuth ergonomics, production-ready configuration, a concise README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and stronger security defaults.
 
-Recent verification (March 13, 2026): focused tests and live checks confirm the grouping-by-target correlation totals and appended demo injection behavior. Focused mocha suites covering correlation analysis and security API routes pass locally; live injection increments alerts/scans counts and grouped correlation totals reflect unique targets as expected.
+Recent verification (March 20, 2026): focused tests and live checks confirm the grouped correlation totals, appended demo injection behavior, Security Module realtime connect flow, and canonical local Google OAuth redirects. The local suite now passes with 216 tests, ESLint is clean, `localhost:3000` serves the app, and Google auth is normalized onto the configured local origin before the OAuth handshake begins.
 
 Building software is inherently iterative. The first version may work, but achieving security, maintainability, and production readiness requires conscious effort and continuous improvement. The most valuable lesson is that honesty about technical debt surpasses claiming perfection. Real projects involve trade-offs, and understanding them makes for better development decisions.
 
 ================================================================================
-Project: Note App | Developer: Ryan V | Date: March 13, 2026
+Project: Note App | Developer: Ryan V | Date: March 20, 2026
 Repository: https://github.com/k0jir0/note-app
 ================================================================================

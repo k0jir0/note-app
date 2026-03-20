@@ -54,16 +54,21 @@ npm install
 2. **Configure Environment**
 ```bash
 cp .env.example .env
+cp .env.local.example .env.local  # optional local-only overrides
 ```
 
-Edit `.env`:
+Edit `.env` for shared local settings:
 ```env
 MONGODB_URI=<your-mongodb-connection-string>
 SESSION_SECRET=your-strong-random-secret-32-chars-minimum
 NOTE_ENCRYPTION_KEY=64-char-hex-key-for-note-encryption
 NODE_ENV=development
 PORT=3000
-# Optional: only if you want Google sign-in
+```
+
+If you want Google sign-in locally, put workstation-only values in `.env.local` instead of `.env`:
+```env
+APP_BASE_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
@@ -87,8 +92,12 @@ npm run lint       # ESLint
 
 Server: `http://localhost:3000`
 
+Notes:
+- `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
+- Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
+
 Current local verification:
-- `npm test` passes
+- `npm test` passes with 216 tests
 - `npm run lint` passes with 0 errors
 
 4. **Create Account & Use**
@@ -510,6 +519,7 @@ git push
 
 - The app attempts to load Google OAuth client secrets from the system keyring via `keytar` at startup (`src/config/localSecrets.js`). This is optional and intended for developer convenience on machines with a keyring.
 - In CI or container environments where `keytar` isn't available, the startup logs a warning and the app continues; provide secrets via environment variables instead.
+- For local development, prefer `.env.local` for `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `APP_BASE_URL`; `.env.local` overrides `.env` and is excluded from git.
 - If you do not want to rely on the local keyring, set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` directly in the environment instead.
 
 **Production Checklist:**
@@ -531,6 +541,13 @@ MONGODB_URI=<your-mongodb-connection-string>
 SESSION_SECRET=strong-random-secret-min-32-chars
 NOTE_ENCRYPTION_KEY=64-char-hex-key
 PORT=3000
+```
+
+**Optional Google OAuth Variables:**
+```env
+APP_BASE_URL=https://your-domain.example
+GOOGLE_CLIENT_ID=<google-oauth-client-id>
+GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
 ```
 
 **Optional Migration Variables:**
@@ -595,7 +612,8 @@ pm2 save && pm2 startup
 | Missing MONGODB_URI error | Create `.env` file with valid connection string |
 | Authentication fails | Clear cookies, verify `SESSION_SECRET` is set and not a placeholder |
 | Missing NOTE_ENCRYPTION_KEY error | Generate a 32-byte key and set `NOTE_ENCRYPTION_KEY` |
-| Google sign-in unavailable | Set both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, or leave both unset |
+| Google sign-in unavailable | Set both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` together, preferably in `.env.local`, or leave both unset |
+| Google shows "Access blocked: This app's request is invalid" | Make sure `APP_BASE_URL` matches the redirect URI registered in Google Cloud exactly. For local development, use `http://localhost:3000/auth/oauth2/redirect/google` |
 | Older encrypted notes no longer decrypt after key rotation | Set `LEGACY_NOTE_ENCRYPTION_KEY`, re-save affected notes, then remove the compatibility setting |
 | `csrfToken is not defined` in an EJS page | Ensure the route renders the page with `csrfToken: res.locals.csrfToken` and the request passed through the CSRF middleware |
 | `MongoStore.create is not a function` on startup | Use `const { MongoStore } = require('connect-mongo')` with the installed CommonJS package version |
