@@ -381,6 +381,46 @@ node automation/test-integration.js
 npx mocha --exit test/integration/automation.test.js
 ```
 
+### Automation Runners (Trivy / Falco)
+
+The repository includes small runner helpers that execute external scanner commands and write their output to files consumed by the app.
+
+- `automation/trivy-runner.js` — runs the configured `TRIVY_CMD` and writes JSON output to `TRIVY_OUTPUT_PATH` atomically. It now streams stdout using `spawn` to avoid process buffer limits for large JSON outputs.
+- `automation/falco-runner.js` — helper for reading Falco JSON output and writing to the configured input file for the ingestion pipeline.
+
+Key environment variables:
+
+```
+TRIVY_CMD="trivy image --format json --quiet my-image:latest"
+TRIVY_OUTPUT_PATH=automation/trivy-output.json
+TRIVY_INTERVAL_MS=0       # 0 runs once; >0 runs every N milliseconds
+
+LOG_BATCH_ENABLED=false
+LOG_BATCH_FILE_PATH=
+LOG_BATCH_USER_ID=
+LOG_BATCH_INTERVAL_MS=60000
+
+SCAN_BATCH_ENABLED=false
+SCAN_BATCH_FILE_PATH=
+SCAN_BATCH_USER_ID=
+SCAN_BATCH_INTERVAL_MS=300000
+```
+
+Notes:
+
+- The runners write output atomically to avoid partial reads by the app.
+- Provide full commands (including image name or file path) in `TRIVY_CMD` — the runner simply shells out and captures stdout.
+- Use `TRIVY_INTERVAL_MS` to schedule repeated scans. For long-running scans choose an interval larger than the scanner runtime to avoid overlap.
+- On CI or in containerized environments, prefer setting `TRIVY_CMD` and `TRIVY_OUTPUT_PATH` explicitly and ensure the scanner binary is available in the runtime image.
+
+Example (run Trivy once locally and view output):
+
+```bash
+TRIVY_CMD="trivy image --format json --quiet alpine:latest" TRIVY_OUTPUT_PATH=automation/trivy-output.json node automation/trivy-runner.js
+cat automation/trivy-output.json | jq '.'
+```
+
+
 ### Troubleshooting quick commands
 - Update lockfile and push:
 ```bash
@@ -420,6 +460,12 @@ git push
 - Clean production dependency audit after upgrading to EJS 5
 - Optional background ingestion for logs and scan files, with deduplication to reduce duplicate records during scheduled automation
 - Demo automation sample injection that bypasses historical dedupe when invoked with a zero dedupe window so visible alert records can be recreated on demand
+
+**Keytar / secrets note:**
+
+- The app attempts to load Google OAuth client secrets from the system keyring via `keytar` at startup (`src/config/localSecrets.js`). This is optional and intended for developer convenience on machines with a keyring.
+- In CI or container environments where `keytar` isn't available, the startup logs a warning and the app continues; provide secrets via environment variables instead.
+- To disable keyring attempts set `KEYTAR_DISABLED=true` in the environment or supply `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` as env vars.
 
 **Production Checklist:**
 - [ ] Strong `SESSION_SECRET` (32+ random chars)

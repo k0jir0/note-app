@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="<%= csrfToken %>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/custom.css">
 </head>
 
 <body>
@@ -16,7 +17,7 @@
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 <a href="/notes" class="btn btn-secondary">Back to Notes</a>
-                <form action="/auth/logout" method="POST" style="display: inline;">
+                <form action="/auth/logout" method="POST" class="inline-form">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button type="submit" class="btn btn-outline-secondary">Logout</button>
                 </form>

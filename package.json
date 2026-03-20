@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "start-dev": "npx nodemon index.js",
+    "check-env": "node scripts/env-check.js",
     "automation:trivy": "node automation/trivy-runner.js",
     "automation:falco": "node automation/falco-runner.js",
     "worker": "node src/workers/realtimeProcessor.js",

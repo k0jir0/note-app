@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs/promises');
 const path = require('path');
+const fsSync = require('fs');
 
 // Generic Trivy runner: runs a configured command and writes stdout to an output file.
 // Environment variables:
@@ -13,9 +14,19 @@ const cmd = process.env.TRIVY_CMD || '';
 const outPath = process.env.TRIVY_OUTPUT_PATH || path.join(__dirname, 'trivy-output.json');
 const intervalMs = Number(process.env.TRIVY_INTERVAL_MS || 0);
 
-async function writeAtomic(targetPath, data) {
+async function writeAtomicStream(targetPath, srcStream) {
     const tmp = `${targetPath}.${Date.now()}.tmp`;
-    await fs.writeFile(tmp, data, 'utf8');
+    await new Promise((resolve, reject) => {
+        const out = fsSync.createWriteStream(tmp, { encoding: 'utf8' });
+        srcStream.pipe(out);
+        srcStream.on('error', (err) => {
+            out.destroy();
+            reject(err);
+        });
+        out.on('finish', resolve);
+        out.on('error', reject);
+    });
+
     await fs.rename(tmp, targetPath);
 }
 
@@ -26,18 +37,33 @@ function runOnce() {
         return;
     }
 
-    exec(cmd, { maxBuffer: 10 * 1024 * 1024 }, async (err, stdout, stderr) => {
-        if (err) {
-            console.error('trivy-runner: command failed', err.message || err);
-            if (stderr) console.error(stderr);
-            return;
-        }
+    // Use spawn with shell to stream large outputs safely (avoids exec maxBuffer limits)
+    const child = spawn(cmd, { shell: true });
 
-        try {
-            await writeAtomic(outPath, stdout || '');
-            console.log(`trivy-runner: wrote output to ${outPath}`);
-        } catch (e) {
-            console.error('trivy-runner: write failed', e && e.message ? e.message : e);
+    child.on('error', (err) => {
+        console.error('trivy-runner: failed to start command', err && err.message ? err.message : err);
+    });
+
+    // Pipe stdout to an atomic file write
+    try {
+        await writeAtomicStream(outPath, child.stdout);
+        console.log(`trivy-runner: wrote output to ${outPath}`);
+    } catch (e) {
+        console.error('trivy-runner: write failed', e && e.message ? e.message : e);
+    }
+
+    // Log any stderr output
+    let stderrBuf = '';
+    child.stderr.on('data', (chunk) => {
+        stderrBuf += chunk.toString();
+    });
+
+    child.on('close', (code, signal) => {
+        if (stderrBuf && stderrBuf.trim()) {
+            console.error('trivy-runner stderr:', stderrBuf.trim());
+        }
+        if (code !== 0) {
+            console.warn(`trivy-runner: process exited with code ${code}${signal ? `, signal ${signal}` : ''}`);
         }
     });
 }

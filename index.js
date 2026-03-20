@@ -57,7 +57,8 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
             directives: {
                 defaultSrc: ['\'self\''],
                 scriptSrc: ['\'self\''],
-                styleSrc: ['\'self\'', 'https://cdn.jsdelivr.net', '\'unsafe-inline\''],
+                // Removed 'unsafe-inline' for styles; app uses external CSS files only
+                styleSrc: ['\'self\'', 'https://cdn.jsdelivr.net'],
                 imgSrc: ['\'self\'', 'data:', 'https:'],
                 fontSrc: ['\'self\'', 'data:', 'https://cdn.jsdelivr.net'],
                 connectSrc: ['\'self\''],

@@ -22,6 +22,11 @@ jobs:
       - name: Install dependencies (cached)
         run: npm ci --prefer-offline --no-audit --progress=false
 
+      - name: Check required env vars
+        run: npm run check-env
+        # Allow the workflow to continue if env-check fails (secrets often absent in forks/pull-requests)
+        continue-on-error: true
+
       - name: Run tests
         run: npm test --silent
 
