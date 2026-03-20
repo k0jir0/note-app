@@ -109,10 +109,9 @@ async function loop() {
 }
 
 async function start() {
-    // Connect mongoose using existing environment MONGO_URI if available
-    const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/note-app';
+    const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/note-app';
     try {
-        await mongoose.connect(MONGO_URI, { /* useUnifiedTopology: true, useNewUrlParser: true */ });
+        await mongoose.connect(mongoUri, { /* useUnifiedTopology: true, useNewUrlParser: true */ });
         console.log('[realtime-worker] connected to mongo');
     } catch (e) {
         console.error('[realtime-worker] mongo connect failed', e);

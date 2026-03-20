@@ -57,7 +57,6 @@ exports.createNote = async (req, res) => {
             user: req.user._id
         };
 
-        console.log('Creating note:', { ...noteData, user: req.user._id });
         const note = await Notes.create(noteData);
 
         res.status(201).json({
@@ -76,14 +75,13 @@ exports.getAllNotes = async (req, res) => {
         // Parse pagination parameters
         const { page, limit, skip } = parsePaginationParams(req.query);
 
-        // Get total count for pagination metadata
-        const totalCount = await Notes.countDocuments({ user: req.user._id });
-
-        // Get paginated notes for the authenticated user
-        const notes = await Notes.find({ user: req.user._id })
-            .sort({ updatedAt: -1 })
-            .skip(skip)
-            .limit(limit);
+        const [totalCount, notes] = await Promise.all([
+            Notes.countDocuments({ user: req.user._id }),
+            Notes.find({ user: req.user._id })
+                .sort({ updatedAt: -1 })
+                .skip(skip)
+                .limit(limit)
+        ]);
 
         // Create pagination metadata
         const pagination = createPaginationMeta(totalCount, page, limit);

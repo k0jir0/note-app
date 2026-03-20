@@ -1,5 +1,4 @@
 const assert = require('assert');
-const path = require('path');
 
 const automation = require('../src/services/automationService');
 const SecurityAlert = require('../src/models/SecurityAlert');

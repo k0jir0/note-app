@@ -2,9 +2,8 @@ const Redis = require('ioredis');
 
 const REDIS_URL = process.env.REDIS_URL || '';
 
-function makeNoopClient(name = 'noop') {
-    const noop = async () => null;
-    const client = {
+function makeNoopClient() {
+    return {
         xadd: async () => null,
         xack: async () => null,
         xreadgroup: async () => null,
@@ -15,18 +14,18 @@ function makeNoopClient(name = 'noop') {
         unsubscribe: async () => null,
         on: () => {},
         removeListener: () => {},
+        duplicate: () => makeNoopClient(),
         quit: async () => null,
         disconnect: () => {}
     };
-    return client;
 }
 
 // If REDIS_URL is not provided or tests are running, return noop clients to avoid
 // unhandled connection errors during local tests or CI where Redis may not run.
 if (!REDIS_URL || process.env.NODE_ENV === 'test' || process.env.DISABLE_REDIS === '1') {
-    const redis = makeNoopClient('redis');
-    const publisher = makeNoopClient('publisher');
-    const subscriber = makeNoopClient('subscriber');
+    const redis = makeNoopClient();
+    const publisher = makeNoopClient();
+    const subscriber = makeNoopClient();
     module.exports = { redis, publisher, subscriber };
 } else {
     // Create real clients and attach safe error handlers so failures don't crash the process

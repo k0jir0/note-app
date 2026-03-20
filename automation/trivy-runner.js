@@ -30,7 +30,7 @@ async function writeAtomicStream(targetPath, srcStream) {
     await fs.rename(tmp, targetPath);
 }
 
-function runOnce() {
+async function runOnce() {
     if (!cmd) {
         console.error('TRIVY_CMD not set. Set a command like: trivy image --format json --quiet <image>');
         process.exitCode = 2;
@@ -44,6 +44,12 @@ function runOnce() {
         console.error('trivy-runner: failed to start command', err && err.message ? err.message : err);
     });
 
+    // Log any stderr output
+    let stderrBuf = '';
+    child.stderr.on('data', (chunk) => {
+        stderrBuf += chunk.toString();
+    });
+
     // Pipe stdout to an atomic file write
     try {
         await writeAtomicStream(outPath, child.stdout);
@@ -51,12 +57,6 @@ function runOnce() {
     } catch (e) {
         console.error('trivy-runner: write failed', e && e.message ? e.message : e);
     }
-
-    // Log any stderr output
-    let stderrBuf = '';
-    child.stderr.on('data', (chunk) => {
-        stderrBuf += chunk.toString();
-    });
 
     child.on('close', (code, signal) => {
         if (stderrBuf && stderrBuf.trim()) {

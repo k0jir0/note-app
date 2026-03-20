@@ -45,14 +45,16 @@ router.get('/security/module', requireAuth, async (req, res) => {
     try {
         const runtimeConfig = req.app.locals.runtimeConfig || {};
         const automation = runtimeConfig.automation || {};
+        const realtimeEnabled = Boolean(req.app && req.app.locals && req.app.locals.realtimeEnabled);
 
         res.render('pages/security-automation.ejs', {
             title: 'Security Module',
             csrfToken: res.locals.csrfToken,
-            realtimeEnabled: Boolean(process.env.ENABLE_REALTIME === '1' || process.env.REDIS_URL),
+            realtimeEnabled,
             automation: {
                 anyEnabled: Boolean((automation.logBatch && automation.logBatch.enabled)
-                    || (automation.scanBatch && automation.scanBatch.enabled)),
+                    || (automation.scanBatch && automation.scanBatch.enabled)
+                    || (automation.intrusionBatch && automation.intrusionBatch.enabled)),
                 logBatch: buildAutomationSection(automation.logBatch, {
                     source: 'server-log-batch',
                     intervalMs: 60000,
@@ -63,6 +65,11 @@ router.get('/security/module', requireAuth, async (req, res) => {
                     source: 'scheduled-scan-import',
                     intervalMs: 300000,
                     dedupeWindowMs: 3600000
+                }),
+                intrusionBatch: buildAutomationSection(automation.intrusionBatch, {
+                    source: 'intrusion-runner',
+                    intervalMs: 5000,
+                    dedupeWindowMs: 300000
                 })
             }
         });

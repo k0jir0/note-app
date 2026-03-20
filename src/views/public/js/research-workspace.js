@@ -538,7 +538,6 @@ refreshWorkspace()
 (() => {
     const connectBtn = document.getElementById('realtime-connect-btn');
     const simulateBtn = document.getElementById('realtime-simulate-btn');
-    const realtimeBadge = document.getElementById('realtime-server-badge');
     const realtimeLog = document.getElementById('workspace-realtime-log');
     let es = null;
 

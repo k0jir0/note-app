@@ -33,10 +33,12 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
     require('./src/config/passport')(passport);
     const app = express();
     const isProduction = process.env.NODE_ENV === 'production';
+    const realtimeAvailable = Boolean(process.env.REDIS_URL);
 
     app.locals.runtimeConfig = runtimeConfig;
-    // runtime toggle for realtime (can be changed without restarting)
-    app.locals.realtimeEnabled = Boolean(process.env.ENABLE_REALTIME === '1' || process.env.REDIS_URL);
+    app.locals.realtimeAvailable = realtimeAvailable;
+    // runtime toggle for realtime (can be changed without restarting when Redis is configured)
+    app.locals.realtimeEnabled = realtimeAvailable && process.env.ENABLE_REALTIME === '1';
 
     // Model layer
     const dbURI = runtimeConfig.dbURI;
@@ -209,6 +211,8 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 
                 return res.status(200).json({
                     enableEnv: enabledEnv,
+                    realtimeAvailable: app.locals.realtimeAvailable,
+                    realtimeEnabled: app.locals.realtimeEnabled,
                     sseMounted
                 });
             } catch (e) {
@@ -221,6 +225,10 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
             try {
                 if (process.env.NODE_ENV === 'production') {
                     return res.status(403).json({ success: false, message: 'Runtime toggles are disabled in production' });
+                }
+
+                if (!app.locals.realtimeAvailable) {
+                    return res.status(503).json({ success: false, message: 'Realtime requires REDIS_URL to be configured' });
                 }
 
                 const bodyEnabled = typeof req.body?.enabled !== 'undefined' ? Boolean(req.body.enabled) : null;

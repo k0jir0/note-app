@@ -5,7 +5,7 @@ const { analyzeLogText, MAX_LOG_TEXT_LENGTH } = require('../utils/logAnalysis');
 const { handleApiError } = require('../utils/errorHandler');
 const { buildPersistedCorrelationDemo, buildSampleCorrelationInputs } = require('../utils/sampleCorrelationData');
 const { persistAutomatedAlerts, persistAutomatedScan } = require('../services/automationService');
-const { redis, publisher, subscriber } = require('../lib/redisClient');
+const { redis, subscriber } = require('../lib/redisClient');
 const { ingestCounter } = require('../routes/metrics');
 
 const parseLimit = (value, fallback = 20, max = 100) => {
@@ -262,6 +262,9 @@ exports.streamEvents = async (req, res) => {
         // Subscribe to a per-user Redis pubsub channel for immediate events
         const userId = String(req.user && req.user._id ? req.user._id : 'global');
         const channel = `security:events:${userId}`;
+        const localSubscriber = typeof subscriber.duplicate === 'function'
+            ? subscriber.duplicate()
+            : subscriber;
 
         const onMessage = (chan, message) => {
             if (chan === channel) {
@@ -274,15 +277,19 @@ exports.streamEvents = async (req, res) => {
             }
         };
 
-        subscriber.subscribe(channel).then(() => {
-            subscriber.on('message', onMessage);
+        localSubscriber.subscribe(channel).then(() => {
+            localSubscriber.on('message', onMessage);
         }).catch((e) => { void e; });
 
         // Cleanup when client disconnects
         req.on('close', () => {
             clearInterval(keepAlive);
-            try { subscriber.removeListener('message', onMessage); } catch (e) { void e; }
-            try { subscriber.unsubscribe(channel); } catch (e) { void e; }
+            try { localSubscriber.removeListener('message', onMessage); } catch (e) { void e; }
+            try { localSubscriber.unsubscribe(channel); } catch (e) { void e; }
+            if (localSubscriber !== subscriber) {
+                try { localSubscriber.quit(); } catch (e) { void e; }
+                try { localSubscriber.disconnect(); } catch (e) { void e; }
+            }
             res.end();
         });
     } catch (error) {

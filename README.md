@@ -18,7 +18,8 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Scan import and findings dashboard (multi-format parsers: Nmap, Nikto, JSON)
 - Correlation dashboard linking scan findings with observed security alerts
 - Consolidated Research Workspace that unifies log analysis, scan import, correlations, and automation status
-- Optional scheduled ingestion for logs and scans (Falco JSON ingestion helper + Trivy runner support)
+- Optional scheduled ingestion for logs, scans, and intrusion events (Falco JSON ingestion helper + Trivy runner support)
+- Optional Redis-backed realtime ingest endpoint and live alert stream
 - Built-in automation runners: Falco ingestion, Trivy scanner wrappers, and batch dedupe persistence
 - Metrics endpoint exposed (`/metrics`) with `prom-client` counters/gauges for automation and scan ingestion
 - Notification service (Slack integration + optional SMTP via lazy `nodemailer`) for alerting
@@ -86,6 +87,10 @@ npm run lint       # ESLint
 
 Server: `http://localhost:3000`
 
+Current local verification:
+- `npm test` passes
+- `npm run lint` passes with 0 errors
+
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account
 - Login and start creating notes
@@ -95,10 +100,11 @@ Server: `http://localhost:3000`
 
 ### Optional Automation
 
-The shortest path to self-sufficient research workflows is built in as two pollers:
+The shortest path to self-sufficient research workflows is built in as three pollers:
 
 - Log batch ingestion tails one configured log file, analyzes only new appended content, and creates deduplicated alerts.
 - Scan batch ingestion polls one configured scan output file, imports it when the content changes, and stores a fingerprint to avoid duplicate imports.
+- Intrusion batch ingestion polls one Falco-style JSON lines file, normalizes events into saved alerts, and deduplicates by content fingerprint.
 - Correlations do not need a separate job because they are derived from the saved alerts and scans whenever the dashboard loads.
 
 Example configuration:
@@ -113,9 +119,37 @@ SCAN_BATCH_ENABLED=true
 SCAN_BATCH_FILE_PATH=C:\scans\latest-nmap.xml
 SCAN_BATCH_USER_ID=<mongo-user-id>
 SCAN_BATCH_INTERVAL_MS=300000
+
+INTRUSION_BATCH_ENABLED=true
+INTRUSION_BATCH_FILE_PATH=C:\logs\falco-output.log
+INTRUSION_BATCH_USER_ID=<mongo-user-id>
+INTRUSION_BATCH_INTERVAL_MS=5000
 ```
 
 This is intentionally minimal: point the app at a live log file and a scanner output file that gets refreshed by some external job, and the Research pages begin updating themselves.
+
+### Optional Realtime Alerts
+
+Realtime APIs are mounted by default, but they only become active when Redis is configured and realtime is enabled.
+
+Required environment:
+
+```env
+REDIS_URL=redis://127.0.0.1:6379
+ENABLE_REALTIME=1
+```
+
+Then start the app and the worker in separate shells:
+
+```bash
+npm run start-dev
+npm run worker
+```
+
+Notes:
+- The web app uses `MONGODB_URI` and the worker now does the same, with `MONGO_URI` accepted only as a compatibility fallback.
+- In development, `POST /api/runtime/realtime` can toggle realtime on or off at runtime, but Redis still needs to be configured first.
+- The Security Module page will show realtime as disabled until both Redis is available and realtime is enabled.
 
 ### Security Module Demo Sample
 
@@ -235,21 +269,21 @@ PUT /api/notes/:id
 
 | Route | Description | Auth |
 |-------|-------------|------|
-| `GET /` | Home (notes list) | ✅ |
-| `GET /notes` | Notes list | ✅ |
-| `GET /notes/new` | Create note form | ✅ |
-| `GET /notes/:id` | View note | ✅ |
-| `GET /notes/:id/edit` | Edit note form | ✅ |
-| `GET /research` | Unified Research Workspace | ✅ |
+| `GET /` | Home (notes list) | Yes |
+| `GET /notes` | Notes list | Yes |
+| `GET /notes/new` | Create note form | Yes |
+| `GET /notes/:id` | View note | Yes |
+| `GET /notes/:id/edit` | Edit note form | Yes |
+| `GET /research` | Unified Research Workspace | Yes |
 | `GET /auth/login` | Login page | - |
 | `GET /auth/signup` | Signup page | - |
-| `GET /auth/logout` | Logout confirmation page | ✅ |
-| `GET /security/logs` | Redirects to the Logs section in `/research` | ✅ |
-| `GET /security/scans` | Redirects to the Scans section in `/research` | ✅ |
-| `GET /security/correlations` | Redirects to the Correlations section in `/research` | ✅ |
-| `GET /security/automation` | Redirects to `/security/module` | ✅ |
-| `GET /security/module` | Dedicated Security Module page | ✅ |
-| `POST /seed` | Seed database (dev only) | ✅ |
+| `GET /auth/logout` | Logout confirmation page | Yes |
+| `GET /security/logs` | Redirects to the Logs section in `/security/module` | Yes |
+| `GET /security/scans` | Redirects to the Scans section in `/security/module` | Yes |
+| `GET /security/correlations` | Redirects to the Correlations section in `/security/module` | Yes |
+| `GET /security/automation` | Redirects to the Automation section in `/security/module` | Yes |
+| `GET /security/module` | Dedicated Security Module page | Yes |
+| `POST /seed` | Seed database (dev only) | Yes |
 
 ### Security API Endpoints
 
@@ -262,6 +296,8 @@ PUT /api/notes/:id
 | `POST /api/security/log-analysis` | POST | Analyze log lines and generate alerts |
 | `GET /api/security/scans` | GET | Get imported vulnerability scans |
 | `POST /api/security/scan-import` | POST | Import parsed scan results |
+| `POST /api/security/realtime-ingest` | POST | Queue realtime ingestion payloads when realtime is enabled |
+| `GET /api/security/stream` | GET | Subscribe to live security events with Server-Sent Events when realtime is enabled |
 
 ## Project Structure
 
@@ -360,7 +396,7 @@ npm run lint       # ESLint code quality check
 - **Node version (CI):** Workflows use Node.js 20.8.0 to satisfy engine constraints for some deps (e.g., connect-mongo). If you change engines, update `.github/workflows/*.yml` accordingly.
 - **Lockfile:** If `npm ci` fails with a lockfile mismatch, run `npm install` locally and commit the updated `package-lock.json`.
 - **Semgrep:** Some custom rules require a `languages` field. If Semgrep aborts, add `languages: [javascript]` to each rule in `.semgrep.yml`.
-- **Linting in CI:** Linting was temporarily removed from the blocking CI path to allow tests to run while lint issues are fixed. Run `npm run lint` locally and fix issues before re-enabling the lint step.
+- **Linting:** Keep `npm run lint` green locally before pushing. The current repository state is lint-clean.
 - **Trivy (security-scan):** The security scan workflow uploads Trivy reports as artifacts but is configured as report-only (`exit-code: 0`). Download artifacts from the run to triage vulnerabilities.
 
 ### How to run the automation runners locally
@@ -374,7 +410,11 @@ npm run start-dev
 node automation/falco-runner.js   # Falco JSON ingestion helper
 node automation/trivy-runner.js   # Trivy image/file scanner wrapper
 ```
-3. To run the smoke/integration harnesses:
+3. If you want realtime delivery in the Security Module UI, start the worker with Redis configured:
+```bash
+npm run worker
+```
+4. To run the smoke/integration harnesses:
 ```bash
 node automation/test-smoke.js
 node automation/test-integration.js
@@ -404,6 +444,11 @@ SCAN_BATCH_ENABLED=false
 SCAN_BATCH_FILE_PATH=
 SCAN_BATCH_USER_ID=
 SCAN_BATCH_INTERVAL_MS=300000
+
+INTRUSION_BATCH_ENABLED=false
+INTRUSION_BATCH_FILE_PATH=
+INTRUSION_BATCH_USER_ID=
+INTRUSION_BATCH_INTERVAL_MS=5000
 ```
 
 Notes:
@@ -465,7 +510,7 @@ git push
 
 - The app attempts to load Google OAuth client secrets from the system keyring via `keytar` at startup (`src/config/localSecrets.js`). This is optional and intended for developer convenience on machines with a keyring.
 - In CI or container environments where `keytar` isn't available, the startup logs a warning and the app continues; provide secrets via environment variables instead.
-- To disable keyring attempts set `KEYTAR_DISABLED=true` in the environment or supply `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` as env vars.
+- If you do not want to rely on the local keyring, set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` directly in the environment instead.
 
 **Production Checklist:**
 - [ ] Strong `SESSION_SECRET` (32+ random chars)
@@ -511,6 +556,16 @@ SCAN_BATCH_USER_ID=
 SCAN_BATCH_SOURCE=scheduled-scan-import
 SCAN_BATCH_INTERVAL_MS=300000
 SCAN_BATCH_DEDUPE_WINDOW_MS=3600000
+
+INTRUSION_BATCH_ENABLED=false
+INTRUSION_BATCH_FILE_PATH=
+INTRUSION_BATCH_USER_ID=
+INTRUSION_BATCH_SOURCE=intrusion-runner
+INTRUSION_BATCH_INTERVAL_MS=5000
+INTRUSION_BATCH_DEDUPE_WINDOW_MS=300000
+
+REDIS_URL=
+ENABLE_REALTIME=0
 ```
 
 The automation mode is meant to stay simple: an external log writer and an external scanner refresh the files, and the app ingests them on a schedule.
@@ -544,6 +599,7 @@ pm2 save && pm2 startup
 | Older encrypted notes no longer decrypt after key rotation | Set `LEGACY_NOTE_ENCRYPTION_KEY`, re-save affected notes, then remove the compatibility setting |
 | `csrfToken is not defined` in an EJS page | Ensure the route renders the page with `csrfToken: res.locals.csrfToken` and the request passed through the CSRF middleware |
 | `MongoStore.create is not a function` on startup | Use `const { MongoStore } = require('connect-mongo')` with the installed CommonJS package version |
+| Realtime endpoints return 404 or 503 | Set `REDIS_URL`, enable realtime with `ENABLE_REALTIME=1` (or the dev toggle endpoint), and start `npm run worker` |
 | Tests fail | Run `npm install`, ensure Node.js v18+ |
 | Port already in use | Set `PORT` env variable or kill process on port 3000 |
 | Database connection fails | Check MongoDB Atlas IP whitelist or local MongoDB status |
@@ -562,3 +618,6 @@ pm2 save && pm2 startup
 ## License
 
 ISC
+
+
+

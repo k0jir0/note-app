@@ -4,16 +4,14 @@ const { validateCreateNote, validateUpdateNote } = require('../src/middleware/re
 describe('Request Validator middleware', () => {
     it('calls next() for valid create payload', (done) => {
         const req = { body: { title: 'Valid Title', content: 'Some content' } };
-        let nextCalled = false;
-
         const res = {
-            status: (code) => ({ json: (payload) => {
+            status: (_code) => ({ json: (payload) => {
                 // Should not be called for valid payload
                 throw new Error('Unexpected json call: ' + JSON.stringify(payload));
             }})
         };
 
-        validateCreateNote(req, res, () => { nextCalled = true; done(); });
+        validateCreateNote(req, res, done);
     });
 
     it('responds 400 for invalid create payload', () => {
@@ -34,7 +32,7 @@ describe('Request Validator middleware', () => {
     it('calls next() for valid update payload', (done) => {
         const req = { body: { title: 'Updated Title' } };
         const res = {
-            status: (code) => ({ json: (payload) => { throw new Error('Unexpected json call: ' + JSON.stringify(payload)); } })
+            status: (_code) => ({ json: (payload) => { throw new Error('Unexpected json call: ' + JSON.stringify(payload)); } })
         };
 
         validateUpdateNote(req, res, () => { done(); });

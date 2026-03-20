@@ -22,6 +22,10 @@ function createContentFingerprint(content) {
     return crypto.createHash('sha256').update(String(content || ''), 'utf8').digest('hex');
 }
 
+function normalizeInsertedDocs(documents) {
+    return Array.isArray(documents) ? documents : [];
+}
+
 async function readFileSlice(filePath, startPosition, length) {
     const fileHandle = await fs.open(filePath, 'r');
 
@@ -73,7 +77,7 @@ async function persistAutomatedAlerts(config, logText) {
 
     let inserted = [];
     if (alertsToCreate.length > 0) {
-        inserted = await SecurityAlert.insertMany(alertsToCreate);
+        inserted = normalizeInsertedDocs(await SecurityAlert.insertMany(alertsToCreate));
     }
 
     // Emit metrics and optionally trigger blocking for high severity
@@ -211,7 +215,7 @@ async function persistAutomatedIntrusions(config, rawInput) {
 
     let inserted = [];
     if (alertsToCreate.length > 0) {
-        inserted = await SecurityAlert.insertMany(alertsToCreate);
+        inserted = normalizeInsertedDocs(await SecurityAlert.insertMany(alertsToCreate));
     }
 
     // Emit metrics and optionally trigger blocking for high severity
