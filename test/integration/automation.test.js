@@ -9,6 +9,7 @@ describe('Automation integration (unit-stubbed)', function () {
     // backup originals
         const origAlertFindOne = SecurityAlert.findOne;
         const origAlertInsertMany = SecurityAlert.insertMany;
+        const origAlertBulkWrite = SecurityAlert.bulkWrite;
         const origScanFindOne = ScanResult.findOne;
         const origScanCreate = ScanResult.create;
 
@@ -30,6 +31,7 @@ describe('Automation integration (unit-stubbed)', function () {
             // stub DB
             SecurityAlert.findOne = async () => null;
             SecurityAlert.insertMany = async (arr) => arr.map((a, i) => ({ ...a, _id: `alert${i}` }));
+            SecurityAlert.bulkWrite = async () => ({ modifiedCount: 0 });
 
             ScanResult.findOne = async () => null;
             ScanResult.create = async (obj) => ({ ...obj, _id: 'scan1' });
@@ -59,6 +61,7 @@ describe('Automation integration (unit-stubbed)', function () {
             // restore
             SecurityAlert.findOne = origAlertFindOne;
             SecurityAlert.insertMany = origAlertInsertMany;
+            SecurityAlert.bulkWrite = origAlertBulkWrite;
             ScanResult.findOne = origScanFindOne;
             ScanResult.create = origScanCreate;
             metrics.intrusionIngestCounter.inc = origIntrusionInc;

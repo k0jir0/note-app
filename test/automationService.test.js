@@ -2,6 +2,7 @@ const { expect } = require('chai');
 const sinon = require('sinon');
 
 const SecurityAlert = require('../src/models/SecurityAlert');
+const incidentResponseService = require('../src/services/incidentResponseService');
 
 const {
     buildScanSummary,
@@ -57,5 +58,37 @@ describe('Automation Service', () => {
         expect(insertManyStub.calledOnce).to.equal(true);
         expect(result.createdAlerts).to.equal(1);
         expect(result.skippedAlerts).to.equal(0);
+    });
+
+    it('routes created automated alerts through the incident response service', async () => {
+        sinon.stub(SecurityAlert, 'insertMany').resolves([
+            {
+                _id: 'alert-1',
+                severity: 'high',
+                source: 'server-log-batch',
+                mlScore: 0.93,
+                scoreSource: 'trained-logistic-regression',
+                details: { ip: '203.0.113.7' }
+            }
+        ]);
+        const executeIncidentResponsesStub = sinon.stub(incidentResponseService, 'executeIncidentResponses').resolves({
+            alerts: []
+        });
+
+        const result = await persistAutomatedAlerts({
+            userId: '507f1f77bcf86cd799439011',
+            source: 'server-log-batch',
+            dedupeWindowMs: 0
+        }, [
+            '2026-03-13 09:14:10 203.0.113.25 POST /auth/login 401',
+            '2026-03-13 09:14:11 203.0.113.25 POST /auth/login 401',
+            '2026-03-13 09:14:12 203.0.113.25 POST /auth/login 403',
+            '2026-03-13 09:14:13 203.0.113.25 POST /auth/login 401',
+            '2026-03-13 09:14:14 203.0.113.25 POST /auth/login 401'
+        ].join('\n'));
+
+        expect(result.createdAlerts).to.equal(1);
+        expect(executeIncidentResponsesStub.calledOnce).to.equal(true);
+        expect(executeIncidentResponsesStub.firstCall.args[0]).to.have.length(1);
     });
 });

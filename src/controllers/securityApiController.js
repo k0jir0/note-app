@@ -10,7 +10,7 @@ const { persistAutomatedAlerts, persistAutomatedScan } = require('../services/au
 const { redis, subscriber } = require('../lib/redisClient');
 const { ingestCounter } = require('../routes/metrics');
 
-const ALERT_LIST_SELECT = 'type severity summary details detectedAt feedback mlScore mlLabel mlReasons mlFeatures scoreSource';
+const ALERT_LIST_SELECT = 'type severity summary details detectedAt feedback mlScore mlLabel mlReasons mlFeatures scoreSource response';
 const SCAN_LIST_SELECT = 'target tool findings summary importedAt';
 const ALERT_SORT_RECENT = { detectedAt: -1, createdAt: -1 };
 const ALERT_SORT_ML_SCORE = { mlScore: -1, detectedAt: -1, createdAt: -1 };
@@ -296,7 +296,8 @@ exports.injectAutomationSample = async (req, res) => {
             persistAutomatedAlerts({
                 userId: req.user._id,
                 source: alertSource,
-                dedupeWindowMs: 0
+                dedupeWindowMs: 0,
+                respondToIncidents: false
             }, sampleInput.sampleLogText),
             persistAutomatedScan({
                 userId: req.user._id,

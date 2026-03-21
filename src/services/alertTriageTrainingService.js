@@ -1,4 +1,5 @@
 const SecurityAlert = require('../models/SecurityAlert');
+const { getIncidentResponseConfig } = require('./incidentResponseService');
 const { enrichAlertsForTriage } = require('../utils/alertTriage');
 const {
     TRAINABLE_FEEDBACK_CONFIG,
@@ -52,6 +53,10 @@ const FEATURE_LABELS = {
     type_directory_enumeration: 'Type: Directory Enumeration',
     type_unknown: 'Type: Unknown'
 };
+
+function hasConfiguredValue(value) {
+    return typeof value === 'string' && value.trim().length > 0;
+}
 
 function getRuntimeModel(options = {}) {
     if (Object.prototype.hasOwnProperty.call(options, 'model')) {
@@ -159,6 +164,62 @@ function buildAlertTypePriorityBreakdown(alerts = []) {
     return Object.values(summary).sort((left, right) => right.total - left.total);
 }
 
+function buildAutonomousResponseOverview(alerts = [], options = {}) {
+    const config = getIncidentResponseConfig(options.env);
+    const eligibleAlerts = alerts.filter((alert) => config.allowedSources.includes(String(alert.source || '')));
+    const evaluatedAlerts = eligibleAlerts.filter((alert) => alert.response && alert.response.level);
+    const actionRecords = evaluatedAlerts.flatMap((alert) => Array.isArray(alert.response.actions) ? alert.response.actions : []);
+    const notifyCount = evaluatedAlerts.filter((alert) => alert.response.level === 'notify').length;
+    const blockCount = evaluatedAlerts.filter((alert) => alert.response.level === 'block').length;
+    const totalAlerts = eligibleAlerts.length || 1;
+    const totalActions = actionRecords.length || 1;
+
+    return {
+        enabled: config.enabled,
+        notifyThreshold: config.notifyThreshold,
+        blockThreshold: config.blockThreshold,
+        requireTrainedModelForBlock: config.requireTrainedModelForBlock,
+        notifyOnImportantFeedback: config.notifyOnImportantFeedback,
+        allowedSources: config.allowedSources,
+        eligibleAlertCount: eligibleAlerts.length,
+        evaluatedAlertCount: evaluatedAlerts.length,
+        notifyDecisionCount: notifyCount,
+        blockDecisionCount: blockCount,
+        providers: [
+            {
+                label: 'Slack',
+                configured: hasConfiguredValue((options.env || process.env).SLACK_WEBHOOK_URL)
+            },
+            {
+                label: 'Email',
+                configured: hasConfiguredValue((options.env || process.env).SMTP_HOST)
+                    && hasConfiguredValue((options.env || process.env).ALERT_EMAIL_TO)
+            },
+            {
+                label: 'Block Webhook',
+                configured: hasConfiguredValue((options.env || process.env).BLOCK_WEBHOOK_URL)
+                    && hasConfiguredValue((options.env || process.env).BLOCK_WEBHOOK_SECRET)
+            }
+        ],
+        levelCounts: summarizeCounts(
+            evaluatedAlerts,
+            (alert) => alert.response && alert.response.level ? alert.response.level : 'unrecorded',
+            ['block', 'notify', 'none', 'unrecorded']
+        ).map((item) => ({
+            ...item,
+            proportion: Number((item.count / totalAlerts).toFixed(3))
+        })),
+        actionStatusCounts: summarizeCounts(
+            actionRecords,
+            (action) => action.status || 'unknown',
+            ['sent', 'planned', 'skipped', 'failed']
+        ).map((item) => ({
+            ...item,
+            proportion: Number((item.count / totalActions).toFixed(3))
+        }))
+    };
+}
+
 function buildModelSummary(model, pathValue) {
     if (!model) {
         return {
@@ -185,7 +246,7 @@ function buildModelSummary(model, pathValue) {
 
 async function loadAlertsForOverview(userId) {
     return SecurityAlert.find({ user: userId })
-        .select('type severity summary details feedback mlScore mlLabel mlReasons scoreSource detectedAt')
+        .select('type severity summary details feedback mlScore mlLabel mlReasons scoreSource response source detectedAt')
         .sort({ detectedAt: -1, createdAt: -1 })
         .lean();
 }
@@ -250,6 +311,7 @@ async function buildAlertTriageModuleOverview(options = {}) {
     const enrichedAlerts = enrichAlertsForTriage(userAlerts, { model: runtimeModel });
     const recentAlerts = enrichedAlerts.slice(0, RECENT_ALERT_LIMIT);
     const trainableUserAlerts = enrichedAlerts.filter((alert) => TRAINABLE_FEEDBACK_LABELS.includes(alert.feedback.label));
+    const autonomy = buildAutonomousResponseOverview(enrichedAlerts, options);
 
     return {
         model: buildModelSummary(runtimeModel, modelPath),
@@ -281,7 +343,8 @@ async function buildAlertTriageModuleOverview(options = {}) {
             scoreBuckets: buildScoreBuckets(enrichedAlerts),
             typePriorityBreakdown: buildAlertTypePriorityBreakdown(enrichedAlerts),
             recentAlerts
-        }
+        },
+        autonomy
     };
 }
 

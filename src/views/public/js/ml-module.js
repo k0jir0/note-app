@@ -2,6 +2,7 @@ const csrfToken = window.getCsrfToken();
 const rootEl = document.getElementById('ml-module-root');
 const overviewEndpoint = rootEl && rootEl.dataset ? rootEl.dataset.mlOverviewEndpoint || '/api/ml/overview' : '/api/ml/overview';
 const trainEndpoint = rootEl && rootEl.dataset ? rootEl.dataset.mlTrainEndpoint || '/api/ml/train' : '/api/ml/train';
+const autonomyDemoEndpoint = rootEl && rootEl.dataset ? rootEl.dataset.mlAutonomyDemoEndpoint || '/api/ml/autonomy-demo' : '/api/ml/autonomy-demo';
 
 const statusTarget = document.getElementById('ml-status');
 const modelStateEl = document.getElementById('ml-model-state');
@@ -13,20 +14,25 @@ const modelBadgeEl = document.getElementById('ml-model-badge');
 const modelTypeBadgeEl = document.getElementById('ml-model-type-badge');
 const modelSummaryEl = document.getElementById('ml-model-summary');
 const trainingMetricsEl = document.getElementById('ml-training-metrics');
+const autonomySummaryEl = document.getElementById('ml-autonomy-summary');
+const autonomyOverviewGrid = document.getElementById('ml-autonomy-overview-grid');
 const userFeedbackGrid = document.getElementById('ml-user-feedback-grid');
 const projectFeedbackGrid = document.getElementById('ml-project-feedback-grid');
 const scoreLabelGrid = document.getElementById('ml-score-label-grid');
 const scoreSourceGrid = document.getElementById('ml-score-source-grid');
 const scoreBucketsGrid = document.getElementById('ml-score-buckets-grid');
+const responseLevelGrid = document.getElementById('ml-response-level-grid');
+const responseActionGrid = document.getElementById('ml-response-action-grid');
 const alertTypeBreakdownEl = document.getElementById('ml-alert-type-breakdown');
 const positiveFeaturesEl = document.getElementById('ml-positive-features');
 const negativeFeaturesEl = document.getElementById('ml-negative-features');
 const recentAlertsGrid = document.getElementById('ml-recent-alerts-grid');
 const refreshBtn = document.getElementById('ml-refresh-btn');
 const refreshAlertsBtn = document.getElementById('ml-refresh-alerts-btn');
+const autonomyDemoBtn = document.getElementById('ml-autonomy-demo-btn');
 const trainHybridBtn = document.getElementById('ml-train-hybrid-btn');
 const trainBootstrapBtn = document.getElementById('ml-train-bootstrap-btn');
-const trainingButtons = [trainHybridBtn, trainBootstrapBtn].filter(Boolean);
+const trainingButtons = [trainHybridBtn, trainBootstrapBtn, autonomyDemoBtn].filter(Boolean);
 
 function escapeHtml(value = '') {
     return String(value)
@@ -73,6 +79,23 @@ function formatScore(value) {
 function titleize(value = '') {
     const text = String(value).replaceAll('_', ' ');
     return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function formatResponseSummary(response = {}) {
+    if (!response || typeof response !== 'object' || !response.level) {
+        return 'No autonomous response recorded yet.';
+    }
+
+    const actions = Array.isArray(response.actions) ? response.actions : [];
+    if (!actions.length) {
+        return response.reason
+            ? `${titleize(response.level)}: ${String(response.reason)}`
+            : `${titleize(response.level)}: No action was taken.`;
+    }
+
+    return `${titleize(response.level)}: ${actions
+        .map((action) => `${titleize(action.type)} ${titleize(action.status)}`)
+        .join(' | ')}`;
 }
 
 function renderMetricCards(target, items = [], emptyMessage) {
@@ -242,6 +265,52 @@ function renderModelSummary(model = {}) {
     `;
 }
 
+function renderAutonomySummary(autonomy = {}) {
+    if (!autonomySummaryEl || !autonomyOverviewGrid) {
+        return;
+    }
+
+    const allowedSources = Array.isArray(autonomy.allowedSources) ? autonomy.allowedSources : [];
+    const providers = Array.isArray(autonomy.providers) ? autonomy.providers : [];
+    const providerBadges = providers.length > 0
+        ? providers.map((provider) => `
+            <span class="badge text-bg-${provider.configured ? 'success' : 'secondary'}">${escapeHtml(provider.label)} ${provider.configured ? 'Ready' : 'Off'}</span>
+        `).join(' ')
+        : '<span class="badge text-bg-secondary">No providers configured</span>';
+
+    autonomySummaryEl.innerHTML = `
+        <div class="research-panel">
+            <p class="mb-2">
+                <strong>${autonomy.enabled ? 'Autonomous response is enabled.' : 'Autonomous response is disabled.'}</strong>
+                ${autonomy.enabled
+        ? ' Eligible alerts from the configured ingest sources are scored, checked against policy thresholds, and then recorded with any notify or block action outcome.'
+        : ' The model may still rank alerts, but no autonomous notify or block policy is being applied.'}
+            </p>
+            <dl class="automation-metadata mb-3">
+                <div><dt>Eligible sources</dt><dd>${escapeHtml(allowedSources.length ? allowedSources.join(', ') : 'None')}</dd></div>
+                <div><dt>Notify threshold</dt><dd>${escapeHtml(formatScore(autonomy.notifyThreshold))}</dd></div>
+                <div><dt>Block threshold</dt><dd>${escapeHtml(formatScore(autonomy.blockThreshold))}</dd></div>
+                <div><dt>Require trained model for block</dt><dd>${autonomy.requireTrainedModelForBlock ? 'Yes' : 'No'}</dd></div>
+                <div><dt>Important feedback bypasses notify threshold</dt><dd>${autonomy.notifyOnImportantFeedback ? 'Yes' : 'No'}</dd></div>
+            </dl>
+            <div class="d-flex flex-wrap gap-2">
+                ${providerBadges}
+            </div>
+        </div>
+    `;
+
+    renderMetricCards(
+        autonomyOverviewGrid,
+        [
+            { label: 'Eligible Alerts', count: autonomy.eligibleAlertCount || 0 },
+            { label: 'Evaluated Alerts', count: autonomy.evaluatedAlertCount || 0 },
+            { label: 'Notify Decisions', count: autonomy.notifyDecisionCount || 0 },
+            { label: 'Block Decisions', count: autonomy.blockDecisionCount || 0 }
+        ],
+        'No autonomous response data is available yet.'
+    );
+}
+
 function renderRecentAlerts(alerts = []) {
     if (!recentAlertsGrid) {
         return;
@@ -258,6 +327,7 @@ function renderRecentAlerts(alerts = []) {
 
     recentAlertsGrid.innerHTML = alerts.map((alert) => {
         const reasons = Array.isArray(alert.mlReasons) ? alert.mlReasons.slice(0, 3) : [];
+        const responseSummary = formatResponseSummary(alert.response || {});
 
         return `
             <div class="col-lg-6 mb-3">
@@ -269,6 +339,7 @@ function renderRecentAlerts(alerts = []) {
                         </div>
                         <h3 class="h6 mb-2">${escapeHtml(alert.summary || 'Scored alert')}</h3>
                         <p class="small mb-1"><strong>Score:</strong> ${escapeHtml(formatScore(alert.mlScore))} (${escapeHtml(alert.mlLabel || 'low')})</p>
+                        <p class="small mb-1"><strong>Autonomous response:</strong> ${escapeHtml(responseSummary)}</p>
                         <p class="small text-muted mb-2"><strong>Feedback:</strong> ${escapeHtml(titleize(alert.feedback && alert.feedback.label ? alert.feedback.label : 'unreviewed'))} &middot; ${escapeHtml(alert.scoreSource || 'heuristic-baseline')}</p>
                         <div class="small text-muted">
                             ${reasons.length ? reasons.map((reason) => `<div>&rsaquo; ${escapeHtml(reason)}</div>`).join('') : 'No model rationale available yet.'}
@@ -328,6 +399,7 @@ async function fetchOverview() {
 
 function renderOverview(data) {
     renderModelSummary(data.model || {});
+    renderAutonomySummary(data.autonomy || {});
     trainableCountEl.textContent = String((data.training && data.training.currentUserTrainableCount) || 0);
     projectTrainableCountEl.textContent = String((data.training && data.training.projectTrainableCount) || 0);
     alertTotalCountEl.textContent = String((data.alerts && data.alerts.totalCount) || 0);
@@ -357,6 +429,18 @@ function renderOverview(data) {
         data.alerts && Array.isArray(data.alerts.scoreBuckets) ? data.alerts.scoreBuckets : [],
         'No score bucket distribution is available yet.',
         (item) => `${item.count} alert(s)`
+    );
+    renderDistributionBars(
+        responseLevelGrid,
+        data.autonomy && Array.isArray(data.autonomy.levelCounts) ? data.autonomy.levelCounts : [],
+        'No eligible autonomous-response records are available yet.',
+        (item) => `${item.count} alert(s)`
+    );
+    renderDistributionBars(
+        responseActionGrid,
+        data.autonomy && Array.isArray(data.autonomy.actionStatusCounts) ? data.autonomy.actionStatusCounts : [],
+        'No autonomous action attempts have been recorded yet.',
+        (item) => `${item.count} action(s)`
     );
     renderAlertTypeBreakdown(
         data.alerts && Array.isArray(data.alerts.typePriorityBreakdown) ? data.alerts.typePriorityBreakdown : []
@@ -389,6 +473,20 @@ async function trainModel(mode) {
             syntheticCount: mode === 'bootstrap' ? 1000 : 600
         })
     }, `Unable to train the ${mode === 'bootstrap' ? 'bootstrap' : 'hybrid'} model.`);
+
+    return payload.data;
+}
+
+async function injectAutonomyDemo() {
+    const payload = await requestJson(autonomyDemoEndpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken,
+            Accept: 'application/json'
+        },
+        body: JSON.stringify({})
+    }, 'Unable to inject the autonomy demo.');
 
     return payload.data;
 }
@@ -426,6 +524,24 @@ async function initializeMlModule() {
     }
 }
 
+async function handleAutonomyDemo() {
+    renderStatus('Injecting a dry-run autonomy demo and refreshing the module...', 'info');
+    setTrainingButtonsDisabled(true);
+
+    try {
+        const result = await injectAutonomyDemo();
+        await refreshModule(false);
+        renderStatus(
+            `Injected ${result.createdAlerts} autonomy demo alert(s) in dry-run mode. Notify decisions: ${result.levelCounts.notify || 0}. Block decisions: ${result.levelCounts.block || 0}.`,
+            'success'
+        );
+    } catch (error) {
+        renderStatus(error.message || 'Unable to inject the autonomy demo right now.', 'danger');
+    } finally {
+        setTrainingButtonsDisabled(false);
+    }
+}
+
 if (refreshBtn) {
     refreshBtn.addEventListener('click', () => {
         refreshModule(true).catch((error) => {
@@ -451,6 +567,12 @@ if (trainHybridBtn) {
 if (trainBootstrapBtn) {
     trainBootstrapBtn.addEventListener('click', () => {
         handleTraining('bootstrap');
+    });
+}
+
+if (autonomyDemoBtn) {
+    autonomyDemoBtn.addEventListener('click', () => {
+        handleAutonomyDemo();
     });
 }
 

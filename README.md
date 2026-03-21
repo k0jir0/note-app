@@ -19,6 +19,7 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Correlation dashboard linking scan findings with observed security alerts
 - Consolidated Research Workspace that unifies log analysis, scan import, correlations, and automation status
 - Dedicated ML Module for alert-triage model training, runtime inspection, and theory-backed dashboard interpretation
+- ML-driven autonomous response policy that can notify operators or trigger a block webhook for high-risk ingested alerts
 - Optional scheduled ingestion for logs, scans, and intrusion events (Falco JSON ingestion helper + Trivy runner support)
 - Optional Redis-backed realtime ingest endpoint and live alert stream, with separate server and browser connection status in the Security Module UI
 - Built-in automation runners: Falco ingestion, Trivy scanner wrappers, and batch dedupe persistence
@@ -107,7 +108,7 @@ Notes:
 - If you want a persistent process manager for local development, see the PM2 workflow in the Development section below.
 
 Current local verification:
-- `npm test` passes with 248 tests
+- `npm test` passes with 253 tests
 - `npm run lint` passes with 0 errors
 
 4. **Create Account & Use**
@@ -191,6 +192,46 @@ The Research Workspace links to a dedicated ML Module page at `/ml/module`.
 - `Train Hybrid Model` mixes project-wide analyst-labeled alerts with synthetic examples when coverage is sparse, producing a more realistic decision boundary once feedback begins to accumulate.
 - The dashboard visualizes score-label counts, score-source counts, score buckets, per-alert-type priority breakdowns, and the strongest positive and negative learned feature weights.
 - Every major panel now includes a short theoretical description so the UI explains what the numbers mean in ML terms instead of acting as a raw control surface.
+- Recent scored alerts in both the ML Module and Security Module now show the autonomous response decision and any recorded notify-block action outcomes.
+
+### Optional Autonomous Response
+
+The app can use trained alert-triage output to react to newly ingested incidents from the scheduled automation pipeline and the Redis-backed realtime worker.
+
+Typical flow:
+
+- log or intrusion ingestion creates a `SecurityAlert`
+- the ML triage layer assigns `mlScore`, `mlLabel`, `mlReasons`, and `scoreSource`
+- the autonomous response policy decides `none`, `notify`, or `block`
+- the alert stores a response audit trail so the dashboards can show what was attempted
+
+Optional environment:
+
+```env
+AUTONOMOUS_RESPONSE_ENABLED=true
+AUTONOMOUS_RESPONSE_ALLOWED_SOURCES=server-log-batch,intrusion-runner,realtime-ingest
+AUTONOMOUS_NOTIFY_SCORE_THRESHOLD=0.72
+AUTONOMOUS_BLOCK_SCORE_THRESHOLD=0.90
+AUTONOMOUS_REQUIRE_TRAINED_MODEL_FOR_BLOCK=true
+AUTONOMOUS_NOTIFY_ON_IMPORTANT_FEEDBACK=true
+
+SLACK_WEBHOOK_URL=
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+ALERT_EMAIL_TO=
+
+BLOCK_WEBHOOK_URL=
+BLOCK_WEBHOOK_SECRET=
+```
+
+Notes:
+
+- Autonomous response is intentionally scoped to ingested incidents, not manual demo actions such as the Security Module sample injector.
+- A `notify` decision uses the existing Slack-email summary notifier.
+- A `block` decision also requires a concrete target such as `details.ip`, `details.src`, or `details.target`.
+- If notification or block providers are not configured, the response is still recorded on the alert as a skipped action for auditability.
 
 ## API Documentation
 

@@ -1,5 +1,6 @@
 const { handleApiError } = require('../utils/errorHandler');
 const trainingService = require('../services/alertTriageTrainingService');
+const autonomyDemoService = require('../services/autonomyDemoService');
 
 function parsePositiveInteger(value, fallback) {
     const parsed = Number.parseInt(value, 10);
@@ -50,5 +51,19 @@ exports.trainModel = async (req, res) => {
         });
     } catch (error) {
         return handleApiError(res, error, 'Train ML model');
+    }
+};
+
+exports.injectAutonomyDemo = async (req, res) => {
+    try {
+        const result = await autonomyDemoService.injectAutonomyDemo(req.user._id);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Autonomy demo injected successfully',
+            data: result
+        });
+    } catch (error) {
+        return handleApiError(res, error, 'Inject autonomy demo');
     }
 };

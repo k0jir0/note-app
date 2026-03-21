@@ -7,7 +7,7 @@ const { redis, publisher } = require('../lib/redisClient');
 const SecurityAlert = require('../models/SecurityAlert');
 const { analyzeLogText } = require('../utils/logAnalysis');
 const { enrichAlertsForTriage } = require('../utils/alertTriage');
-const { sendBlockRequestsForAlerts } = require('../services/blockingService');
+const { executeIncidentResponses } = require('../services/incidentResponseService');
 const { workerPendingGauge } = require('../routes/metrics');
 
 const STREAM_KEY = 'security:ingest';
@@ -140,7 +140,7 @@ async function handleMessage(id, fields, options = {}) {
     const publisherClient = options.publisherClient || publisher;
     const SecurityAlertModel = options.SecurityAlertModel || SecurityAlert;
     const analyzeLogTextFn = options.analyzeLogTextFn || analyzeLogText;
-    const sendBlockRequestsForAlertsFn = options.sendBlockRequestsForAlertsFn || sendBlockRequestsForAlerts;
+    const executeIncidentResponsesFn = options.executeIncidentResponsesFn || executeIncidentResponses;
     const mongooseLib = options.mongooseLib || mongoose;
     const logger = options.logger || console;
     const streamKey = options.streamKey || STREAM_KEY;
@@ -162,6 +162,12 @@ async function handleMessage(id, fields, options = {}) {
             let saved = [];
             if (alertsToCreate.length > 0) {
                 saved = await SecurityAlertModel.insertMany(alertsToCreate);
+                const responseOutcome = await executeIncidentResponsesFn(saved, {
+                    SecurityAlertModel
+                });
+                saved = responseOutcome && Array.isArray(responseOutcome.alerts)
+                    ? responseOutcome.alerts
+                    : saved;
             }
 
             // Publish created alerts for SSE/clients per-user
@@ -180,19 +186,6 @@ async function handleMessage(id, fields, options = {}) {
                 }
                 // also publish to global channel for operators
                 await publisherClient.publish('security:events:global', JSON.stringify({ type: 'alerts', created: saved.length, alerts: saved }));
-            }
-
-            // Active blocking: send block webhook for high-severity alerts (best-effort)
-            try {
-                const highAlerts = saved.filter((a) => (a.severity === 'high'));
-                if (highAlerts.length > 0) {
-                    // saved documents may be mongoose documents; convert to plain objects
-                    const plain = highAlerts.map((d) => (d.toObject ? d.toObject() : d));
-                    const blockResults = await sendBlockRequestsForAlertsFn(plain);
-                    logInfo(logger, '[realtime-worker] block results', blockResults);
-                }
-            } catch (e) {
-                logError(logger, '[realtime-worker] active block error', e);
             }
         } else {
             // For non-log types, publish to user's channel if present else global

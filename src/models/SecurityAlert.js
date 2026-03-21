@@ -1,5 +1,78 @@
 const mongoose = require('mongoose');
 
+const responseActionSchema = new mongoose.Schema({
+    type: {
+        type: String,
+        enum: ['notify', 'block'],
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ['planned', 'sent', 'skipped', 'failed'],
+        default: 'planned'
+    },
+    provider: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    detail: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    target: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    recordedAt: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: false });
+
+const responseSchema = new mongoose.Schema({
+    policyVersion: {
+        type: String,
+        trim: true,
+        default: 'ml-autonomous-v1'
+    },
+    level: {
+        type: String,
+        enum: ['none', 'notify', 'block'],
+        default: 'none'
+    },
+    reason: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    scoreAtDecision: {
+        type: Number,
+        min: 0,
+        max: 1,
+        default: null
+    },
+    trainedScoreUsed: {
+        type: Boolean,
+        default: false
+    },
+    target: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    evaluatedAt: {
+        type: Date,
+        default: null
+    },
+    actions: {
+        type: [responseActionSchema],
+        default: []
+    }
+}, { _id: false });
+
 const alertSchema = new mongoose.Schema({
     type: {
         type: String,
@@ -61,6 +134,10 @@ const alertSchema = new mongoose.Schema({
         trim: true,
         default: 'heuristic-baseline'
     },
+    response: {
+        type: responseSchema,
+        default: () => ({})
+    },
     detectedAt: {
         type: Date,
         default: Date.now
@@ -80,5 +157,6 @@ alertSchema.index({ user: 1, source: 1, detectedAt: -1 });
 alertSchema.index({ user: 1, source: 1, 'details._fingerprint': 1, detectedAt: -1 });
 alertSchema.index({ user: 1, mlScore: -1, detectedAt: -1 });
 alertSchema.index({ user: 1, 'feedback.label': 1, detectedAt: -1 });
+alertSchema.index({ user: 1, 'response.level': 1, detectedAt: -1 });
 
 module.exports = mongoose.model('SecurityAlert', alertSchema);

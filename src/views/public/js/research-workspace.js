@@ -86,6 +86,32 @@ const formatAlertScore = (value) => {
     return Number.isFinite(score) ? score.toFixed(2) : '0.00';
 };
 
+const titleizeValue = (value = '') => {
+    const normalized = String(value).replaceAll('_', ' ');
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
+const formatResponseSummary = (response = {}) => {
+    if (!response || typeof response !== 'object' || !response.level) {
+        return 'No autonomous response recorded yet.';
+    }
+
+    const levelLabel = titleizeValue(response.level);
+    const actions = Array.isArray(response.actions) ? response.actions : [];
+
+    if (!actions.length) {
+        return response.reason
+            ? `${levelLabel}: ${String(response.reason)}`
+            : `${levelLabel}: No action was taken.`;
+    }
+
+    const actionSummary = actions
+        .map((action) => `${titleizeValue(action.type)} ${titleizeValue(action.status)}`)
+        .join(' | ');
+
+    return `${levelLabel}: ${actionSummary}`;
+};
+
 const renderMessage = (elementId, message, type = 'secondary') => {
     const target = document.getElementById(elementId);
     if (!target) {
@@ -162,6 +188,7 @@ const renderAlerts = (alerts = [], totalCount = alerts.length) => {
         const scoreLabel = escapeHtml(alert.mlLabel || 'low');
         const scoreValue = formatAlertScore(alert.mlScore);
         const scoreSource = escapeHtml(alert.scoreSource || 'heuristic-baseline');
+        const responseSummary = formatResponseSummary(alert.response || {});
         const triageReasons = Array.isArray(alert.mlReasons) ? alert.mlReasons.slice(0, 2) : [];
         const triageReasonHtml = triageReasons.length > 0
             ? `<div class="small text-muted mb-2">${triageReasons.map((reason) => escapeHtml(reason)).join(' · ')}</div>`
@@ -193,6 +220,7 @@ const renderAlerts = (alerts = [], totalCount = alerts.length) => {
                         <h3 class="h6 mb-2">${summary}</h3>
                         <p class="text-muted small mb-1">Type: ${type}</p>
                         <p class="small mb-1"><strong>Triage score:</strong> ${escapeHtml(scoreValue)} (${scoreLabel})</p>
+                        <p class="small mb-1"><strong>Autonomous response:</strong> ${escapeHtml(responseSummary)}</p>
                         <p class="small text-muted mb-2"><strong>Analyst state:</strong> ${escapeHtml(feedbackLabel)} · ${scoreSource}</p>
                         ${triageReasonHtml}
                         <div class="d-flex flex-wrap gap-2">

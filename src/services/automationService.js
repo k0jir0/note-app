@@ -4,8 +4,8 @@ const fs = require('fs/promises');
 const SecurityAlert = require('../models/SecurityAlert');
 const ScanResult = require('../models/ScanResult');
 const metrics = require('../routes/metrics');
-const blockingService = require('./blockingService');
 const notificationService = require('./notificationService');
+const incidentResponseService = require('./incidentResponseService');
 const { analyzeLogText } = require('../utils/logAnalysis');
 const { enrichAlertsForTriage } = require('../utils/alertTriage');
 const { parseScanInput } = require('../utils/scanParser');
@@ -27,25 +27,20 @@ function normalizeInsertedDocs(documents) {
     return Array.isArray(documents) ? documents : [];
 }
 
-async function emitInsertedAlertSideEffects(inserted, { notifySummary = false } = {}) {
+async function emitInsertedAlertSideEffects(inserted, { respondToIncidents = true } = {}) {
     try {
         for (const doc of inserted) {
             const sev = doc.severity || 'low';
             metrics.intrusionIngestCounter.inc({ severity: sev }, 1);
         }
 
-        const highAlerts = inserted.filter((doc) => doc.severity === 'high');
-        if (highAlerts.length > 0) {
-            void blockingService.sendBlockRequestsForAlerts(highAlerts).catch((e) => {
-                console.warn('[automation] blocking service failed', e && e.message ? e.message : e);
+        if (respondToIncidents && inserted.length > 0) {
+            await incidentResponseService.executeIncidentResponses(inserted, {
+                SecurityAlertModel: SecurityAlert
             });
-
-            if (notifySummary) {
-                void notificationService.notifyAlertsSummary(highAlerts).catch(() => {});
-            }
         }
     } catch (e) {
-        console.warn('[automation] metrics/blocking hook failed', e && e.message ? e.message : e);
+        console.warn('[automation] metrics/incident-response hook failed', e && e.message ? e.message : e);
     }
 }
 
@@ -103,7 +98,9 @@ async function persistAutomatedAlerts(config, logText) {
         inserted = normalizeInsertedDocs(await SecurityAlert.insertMany(alertsToCreate));
     }
 
-    await emitInsertedAlertSideEffects(inserted);
+    await emitInsertedAlertSideEffects(inserted, {
+        respondToIncidents: config.respondToIncidents !== false
+    });
 
     return {
         linesAnalyzed: analysis.linesAnalyzed,
@@ -225,7 +222,9 @@ async function persistAutomatedIntrusions(config, rawInput) {
         inserted = normalizeInsertedDocs(await SecurityAlert.insertMany(alertsToCreate));
     }
 
-    await emitInsertedAlertSideEffects(inserted, { notifySummary: true });
+    await emitInsertedAlertSideEffects(inserted, {
+        respondToIncidents: config.respondToIncidents !== false
+    });
 
     return {
         created: true,

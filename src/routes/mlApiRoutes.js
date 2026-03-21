@@ -7,5 +7,6 @@ const { securityAnalysisRateLimiter } = require('../middleware/rateLimit');
 
 router.get('/api/ml/overview', requireAuthAPI, mlApiController.getOverview);
 router.post('/api/ml/train', requireAuthAPI, securityAnalysisRateLimiter, mlApiController.trainModel);
+router.post('/api/ml/autonomy-demo', requireAuthAPI, securityAnalysisRateLimiter, mlApiController.injectAutonomyDemo);
 
 module.exports = router;

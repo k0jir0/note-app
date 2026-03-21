@@ -233,7 +233,11 @@ function stubSecurityModels(sandbox, stores) {
                 return;
             }
 
-            Object.entries(updateOne.update || {}).forEach(([key, value]) => {
+            const updateDocument = updateOne.update && updateOne.update.$set
+                ? updateOne.update.$set
+                : (updateOne.update || {});
+
+            Object.entries(updateDocument).forEach(([key, value]) => {
                 alert[key] = value;
             });
         });
@@ -713,6 +717,20 @@ describe('Application end-to-end flows', function () {
             summary: 'Potential SQL injection detected',
             details: { count: 8, sourceIps: { '203.0.113.8': 8 } },
             feedback: { label: 'important', updatedAt: new Date('2026-03-21T12:00:00.000Z') },
+            source: 'realtime-ingest',
+            response: {
+                level: 'notify',
+                evaluatedAt: new Date('2026-03-21T12:02:00.000Z'),
+                actions: [
+                    {
+                        type: 'notify',
+                        status: 'sent',
+                        provider: 'summary-notifier',
+                        detail: 'Notification accepted by one configured channel.',
+                        recordedAt: new Date('2026-03-21T12:02:00.000Z')
+                    }
+                ]
+            },
             detectedAt: new Date('2026-03-21T12:00:00.000Z'),
             user: TEST_USER_ID
         });
@@ -725,9 +743,12 @@ describe('Application end-to-end flows', function () {
         expect(mlPage.status).to.equal(200);
         expect(mlHtml).to.include('ML Module');
         expect(mlHtml).to.include('/api/ml/overview');
+        expect(mlHtml).to.include('/api/ml/autonomy-demo');
         expect(mlHtml).to.include('Score Buckets');
         expect(mlHtml).to.include('Alert Types by Priority');
         expect(mlHtml).to.include('Learned Feature Influence');
+        expect(mlHtml).to.include('Autonomous Response Loop');
+        expect(mlHtml).to.include('Observed Autonomous Outcomes');
 
         const overviewResponse = await client.request('/api/ml/overview', {
             headers: { 'x-test-auth': '1' }
@@ -742,5 +763,27 @@ describe('Application end-to-end flows', function () {
         expect(overviewPayload.data.alerts.typePriorityBreakdown[0].label).to.equal('Type: Injection Attempt');
         expect(overviewPayload.data.model.topPositiveFeatures).to.be.an('array');
         expect(overviewPayload.data.alerts.recentAlerts[0].feedback.label).to.equal('important');
+        expect(overviewPayload.data.autonomy.enabled).to.equal(true);
+        expect(overviewPayload.data.autonomy.eligibleAlertCount).to.equal(1);
+        expect(overviewPayload.data.autonomy.notifyDecisionCount).to.equal(1);
+        expect(overviewPayload.data.autonomy.levelCounts[0].label).to.equal('notify');
+
+        const csrfToken = await client.getCsrfToken();
+        const demoResponse = await client.request('/api/ml/autonomy-demo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': csrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({})
+        });
+        const demoPayload = await demoResponse.json();
+
+        expect(demoResponse.status).to.equal(200);
+        expect(demoPayload.success).to.equal(true);
+        expect(demoPayload.data.createdAlerts).to.equal(2);
+        expect(demoPayload.data.levelCounts.notify).to.equal(1);
+        expect(demoPayload.data.levelCounts.block).to.equal(1);
     });
 });

@@ -2,6 +2,7 @@ const sinon = require('sinon');
 const { expect } = require('chai');
 
 const mlApiController = require('../src/controllers/mlApiController');
+const autonomyDemoService = require('../src/services/autonomyDemoService');
 const trainingService = require('../src/services/alertTriageTrainingService');
 
 function makeRes() {
@@ -98,6 +99,30 @@ describe('ML API controller behavior', () => {
         })).to.equal(true);
         expect(res.status.calledWith(200)).to.equal(true);
         expect(res._jsonSpy.firstCall.args[0].message).to.equal('Bootstrap ML model trained successfully');
+        expect(res._jsonSpy.firstCall.args[0].data).to.deep.equal(fakeResult);
+    });
+
+    it('injects an autonomy demo and returns the recorded decision summary', async () => {
+        const req = {
+            user: { _id: 'user-overview' }
+        };
+        const res = makeRes();
+        const fakeResult = {
+            createdAlerts: 2,
+            levelCounts: {
+                notify: 1,
+                block: 1
+            },
+            mode: 'dry-run'
+        };
+
+        sandbox.stub(autonomyDemoService, 'injectAutonomyDemo').resolves(fakeResult);
+
+        await mlApiController.injectAutonomyDemo(req, res);
+
+        expect(autonomyDemoService.injectAutonomyDemo.calledWith('user-overview')).to.equal(true);
+        expect(res.status.calledWith(200)).to.equal(true);
+        expect(res._jsonSpy.firstCall.args[0].message).to.equal('Autonomy demo injected successfully');
         expect(res._jsonSpy.firstCall.args[0].data).to.deep.equal(fakeResult);
     });
 });
