@@ -12,6 +12,8 @@ const securityApiRoutes = require('../../src/routes/securityApiRoutes');
 const securityPageRoutes = require('../../src/routes/securityPageRoutes');
 const mlApiRoutes = require('../../src/routes/mlApiRoutes');
 const mlPageRoutes = require('../../src/routes/mlPageRoutes');
+const playwrightApiRoutes = require('../../src/routes/playwrightApiRoutes');
+const playwrightPageRoutes = require('../../src/routes/playwrightPageRoutes');
 const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
 const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
@@ -352,6 +354,8 @@ function createApp() {
     app.use(securityPageRoutes);
     app.use(mlApiRoutes);
     app.use(mlPageRoutes);
+    app.use(playwrightApiRoutes);
+    app.use(playwrightPageRoutes);
     app.use(seleniumApiRoutes);
     app.use(seleniumPageRoutes);
     app.use(scanApiRoutes);
@@ -713,8 +717,10 @@ describe('Application end-to-end flows', function () {
         expect(researchPage.status).to.equal(200);
         expect(researchHtml).to.include('ML Module');
         expect(researchHtml).to.include('Selenium Module');
+        expect(researchHtml).to.include('Playwright Module');
         expect(researchHtml).to.include('/ml/module');
         expect(researchHtml).to.include('/selenium/module');
+        expect(researchHtml).to.include('/playwright/module');
 
         stores.alerts.push({
             _id: new mongoose.Types.ObjectId(),
@@ -826,6 +832,7 @@ describe('Application end-to-end flows', function () {
         expect(seleniumHtml).to.include('/api/selenium/script');
         expect(seleniumHtml).to.include('Scenario Catalog');
         expect(seleniumHtml).to.include('Generated Script Preview');
+        expect(seleniumHtml).to.include('Open Playwright Module');
 
         const seleniumOverviewResponse = await client.request('/api/selenium/overview', {
             headers: { 'x-test-auth': '1' }
@@ -850,5 +857,43 @@ describe('Application end-to-end flows', function () {
         expect(seleniumScriptPayload.data.content).to.include('/security/module');
         expect(seleniumScriptPayload.data.content).to.include('/ml/module');
         expect(seleniumScriptPayload.data.content).to.include('/selenium/module');
+        expect(seleniumScriptPayload.data.content).to.include('/playwright/module');
+
+        const playwrightPage = await client.request('/playwright/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const playwrightHtml = await playwrightPage.text();
+
+        expect(playwrightPage.status).to.equal(200);
+        expect(playwrightHtml).to.include('Playwright Module');
+        expect(playwrightHtml).to.include('/api/playwright/overview');
+        expect(playwrightHtml).to.include('/api/playwright/script');
+        expect(playwrightHtml).to.include('Scenario Catalog');
+        expect(playwrightHtml).to.include('Generated Spec Preview');
+
+        const playwrightOverviewResponse = await client.request('/api/playwright/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const playwrightOverviewPayload = await playwrightOverviewResponse.json();
+
+        expect(playwrightOverviewResponse.status).to.equal(200);
+        expect(playwrightOverviewPayload.success).to.equal(true);
+        expect(playwrightOverviewPayload.data.module.name).to.equal('Playwright Module');
+        expect(playwrightOverviewPayload.data.coverage.scenarioCount).to.equal(6);
+        expect(playwrightOverviewPayload.data.defaultScenarioId).to.equal('research-full-suite');
+
+        const playwrightScriptResponse = await client.request('/api/playwright/script?scenarioId=research-full-suite', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const playwrightScriptPayload = await playwrightScriptResponse.json();
+
+        expect(playwrightScriptResponse.status).to.equal(200);
+        expect(playwrightScriptPayload.success).to.equal(true);
+        expect(playwrightScriptPayload.data.fileName).to.equal('playwright-research-full-suite.spec.js');
+        expect(playwrightScriptPayload.data.content).to.include('@playwright/test');
+        expect(playwrightScriptPayload.data.content).to.include('/security/module');
+        expect(playwrightScriptPayload.data.content).to.include('/ml/module');
+        expect(playwrightScriptPayload.data.content).to.include('/selenium/module');
+        expect(playwrightScriptPayload.data.content).to.include('/playwright/module');
     });
 });

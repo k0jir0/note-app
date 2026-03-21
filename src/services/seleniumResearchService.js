@@ -5,14 +5,15 @@ const SCENARIO_DEFINITIONS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Authenticate, open the Research Workspace, and verify that the Security, ML, and Selenium entry points render for a signed-in user.',
+        purpose: 'Authenticate, open the Research Workspace, and verify that the Security, ML, Selenium, and Playwright entry points render for a signed-in user.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Login form is reachable',
             'Research Workspace heading is visible',
             'Security Module card is present',
             'ML Module card is present',
-            'Selenium Module card is present'
+            'Selenium Module card is present',
+            'Playwright Module card is present'
         ],
         tags: ['smoke', 'auth', 'navigation'],
         requiresLogin: true,
@@ -69,14 +70,15 @@ const SCENARIO_DEFINITIONS = [
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated Selenium smoke script that moves through Research, Security, ML, and Selenium module pages to validate the product-level research workflow end to end.',
-        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module'],
+        purpose: 'Run one authenticated Selenium smoke script that moves through Research, Security, ML, Selenium, and Playwright module pages to validate the product-level research workflow end to end.',
+        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',
             'Research Workspace renders all module entry points',
             'Security Module renders its main controls',
             'ML Module renders training and autonomy panels',
-            'Selenium Module renders a script preview'
+            'Selenium Module renders a script preview',
+            'Playwright Module renders a script preview'
         ],
         tags: ['full-suite', 'research', 'smoke'],
         requiresLogin: true,
@@ -128,7 +130,7 @@ function buildPrerequisites(baseUrl) {
         {
             label: 'Authenticated test account',
             required: true,
-            description: 'Selenium smoke scripts target protected routes such as /research, /security/module, /ml/module, and /selenium/module.'
+            description: 'Selenium smoke scripts target protected routes such as /research, /security/module, /ml/module, /selenium/module, and /playwright/module.'
         },
         {
             label: 'Stable local app origin',
@@ -213,7 +215,8 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(driver, \'Research Workspace\');',
         'await expectBodyText(driver, \'Security Module\');',
         'await expectBodyText(driver, \'ML Module\');',
-        'await expectBodyText(driver, \'Selenium Module\');'
+        'await expectBodyText(driver, \'Selenium Module\');',
+        'await expectBodyText(driver, \'Playwright Module\');'
     ].join('\n    '),
     'security-module-smoke': [
         'await signIn(driver);',
@@ -247,6 +250,7 @@ const SCRIPT_STEP_MAP = {
         'await driver.get(`${baseUrl}/research`);',
         'await expectBodyText(driver, \'Research Workspace\');',
         'await expectBodyText(driver, \'Selenium Module\');',
+        'await expectBodyText(driver, \'Playwright Module\');',
         '',
         'await driver.get(`${baseUrl}/security/module`);',
         'await expectBodyText(driver, \'Security Module\');',
@@ -258,7 +262,11 @@ const SCRIPT_STEP_MAP = {
         '',
         'await driver.get(`${baseUrl}/selenium/module`);',
         'await expectBodyText(driver, \'Selenium Module\');',
-        'await expectBodyText(driver, \'Generated Script Preview\');'
+        'await expectBodyText(driver, \'Generated Script Preview\');',
+        '',
+        'await driver.get(`${baseUrl}/playwright/module`);',
+        'await expectBodyText(driver, \'Playwright Module\');',
+        'await expectBodyText(driver, \'Generated Spec Preview\');'
     ].join('\n    ')
 };
 
