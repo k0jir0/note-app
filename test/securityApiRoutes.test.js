@@ -15,7 +15,7 @@ describe('Security API Routes', () => {
     it('registers all security API routes', () => {
         const routeLayers = router.stack.filter((layer) => layer.route);
 
-        expect(routeLayers).to.have.length(7);
+        expect(routeLayers).to.have.length(8);
     });
 
     it('maps GET /api/security/alerts to getAlerts with auth middleware', () => {
@@ -25,6 +25,16 @@ describe('Security API Routes', () => {
         expect(layer.route.stack).to.have.length(2);
         expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
         expect(layer.route.stack[1].handle).to.equal(securityApiController.getAlerts);
+    });
+
+    it('maps POST /api/security/alerts/:id/feedback to updateAlertFeedback with auth middleware', () => {
+        const layer = findRouteLayer('post', '/api/security/alerts/:id/feedback');
+
+        expect(layer).to.exist;
+        expect(layer.route.stack).to.have.length(3);
+        expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
+        expect(layer.route.stack[1].handle).to.equal(securityAnalysisRateLimiter);
+        expect(layer.route.stack[2].handle).to.equal(securityApiController.updateAlertFeedback);
     });
 
     it('maps GET /api/security/correlations to getCorrelations with auth middleware', () => {

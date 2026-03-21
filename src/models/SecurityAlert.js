@@ -26,6 +26,41 @@ const alertSchema = new mongoose.Schema({
         trim: true,
         default: 'manual-log-input'
     },
+    feedback: {
+        label: {
+            type: String,
+            enum: ['unreviewed', 'important', 'needs_review', 'false_positive', 'resolved'],
+            default: 'unreviewed'
+        },
+        updatedAt: {
+            type: Date,
+            default: null
+        }
+    },
+    mlScore: {
+        type: Number,
+        min: 0,
+        max: 1,
+        default: null
+    },
+    mlLabel: {
+        type: String,
+        enum: ['low', 'medium', 'high'],
+        default: null
+    },
+    mlReasons: {
+        type: [String],
+        default: []
+    },
+    mlFeatures: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
+    },
+    scoreSource: {
+        type: String,
+        trim: true,
+        default: 'heuristic-baseline'
+    },
     detectedAt: {
         type: Date,
         default: Date.now
@@ -43,5 +78,7 @@ const alertSchema = new mongoose.Schema({
 alertSchema.index({ user: 1, detectedAt: -1, createdAt: -1 });
 alertSchema.index({ user: 1, source: 1, detectedAt: -1 });
 alertSchema.index({ user: 1, source: 1, 'details._fingerprint': 1, detectedAt: -1 });
+alertSchema.index({ user: 1, mlScore: -1, detectedAt: -1 });
+alertSchema.index({ user: 1, 'feedback.label': 1, detectedAt: -1 });
 
 module.exports = mongoose.model('SecurityAlert', alertSchema);

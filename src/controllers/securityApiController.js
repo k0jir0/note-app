@@ -1,15 +1,19 @@
+const mongoose = require('mongoose');
 const SecurityAlert = require('../models/SecurityAlert');
 const ScanResult = require('../models/ScanResult');
 const { buildScanAlertCorrelations } = require('../utils/correlationAnalysis');
 const { analyzeLogText, MAX_LOG_TEXT_LENGTH } = require('../utils/logAnalysis');
 const { handleApiError } = require('../utils/errorHandler');
 const { buildPersistedCorrelationDemo, buildSampleCorrelationInputs } = require('../utils/sampleCorrelationData');
+const { VALID_FEEDBACK_LABELS, enrichAlertForTriage, enrichAlertsForTriage } = require('../utils/alertTriage');
 const { persistAutomatedAlerts, persistAutomatedScan } = require('../services/automationService');
 const { redis, subscriber } = require('../lib/redisClient');
 const { ingestCounter } = require('../routes/metrics');
 
-const ALERT_LIST_SELECT = 'type severity summary details detectedAt';
+const ALERT_LIST_SELECT = 'type severity summary details detectedAt feedback mlScore mlLabel mlReasons mlFeatures scoreSource';
 const SCAN_LIST_SELECT = 'target tool findings summary importedAt';
+const ALERT_SORT_RECENT = { detectedAt: -1, createdAt: -1 };
+const ALERT_SORT_ML_SCORE = { mlScore: -1, detectedAt: -1, createdAt: -1 };
 
 const parseLimit = (value, fallback = 20, max = 100) => {
     const parsed = Number.parseInt(value, 10);
@@ -18,6 +22,22 @@ const parseLimit = (value, fallback = 20, max = 100) => {
     }
 
     return Math.min(parsed, max);
+};
+
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+const normalizeAlertSort = (value) => {
+    return String(value || '').trim().toLowerCase() === 'ml_score'
+        ? 'ml_score'
+        : 'recent';
+};
+
+const resolveLeanResult = async (queryOrValue) => {
+    if (queryOrValue && typeof queryOrValue.lean === 'function') {
+        return queryOrValue.lean();
+    }
+
+    return queryOrValue;
 };
 
 exports.analyzeLogs = async (req, res) => {
@@ -34,12 +54,12 @@ exports.analyzeLogs = async (req, res) => {
 
         const analysis = analyzeLogText(logText);
 
-        const alertsToCreate = analysis.alerts.map((alert) => ({
+        const alertsToCreate = enrichAlertsForTriage(analysis.alerts.map((alert) => ({
             ...alert,
             user: req.user._id,
             source: 'manual-log-input',
             detectedAt: new Date()
-        }));
+        })));
 
         let savedAlerts = [];
         if (alertsToCreate.length > 0) {
@@ -65,24 +85,109 @@ exports.analyzeLogs = async (req, res) => {
 exports.getAlerts = async (req, res) => {
     try {
         const limit = parseLimit(req.query.limit, 20, 100);
+        const sortMode = normalizeAlertSort(req.query.sort);
 
         const [alerts, totalCount] = await Promise.all([
             SecurityAlert.find({ user: req.user._id })
                 .select(ALERT_LIST_SELECT)
-                .sort({ detectedAt: -1, createdAt: -1 })
+                .sort(sortMode === 'ml_score' ? ALERT_SORT_ML_SCORE : ALERT_SORT_RECENT)
                 .lean()
                 .limit(limit),
             SecurityAlert.countDocuments({ user: req.user._id })
         ]);
 
+        const enrichedAlerts = enrichAlertsForTriage(alerts);
+        if (sortMode === 'ml_score') {
+            enrichedAlerts.sort((left, right) => {
+                const scoreDelta = Number(right.mlScore || 0) - Number(left.mlScore || 0);
+                if (scoreDelta !== 0) {
+                    return scoreDelta;
+                }
+
+                return new Date(right.detectedAt || 0).getTime() - new Date(left.detectedAt || 0).getTime();
+            });
+        }
+
         return res.status(200).json({
             success: true,
-            count: alerts.length,
+            count: enrichedAlerts.length,
             totalCount,
-            data: alerts
+            sort: sortMode,
+            data: enrichedAlerts
         });
     } catch (error) {
         return handleApiError(res, error, 'Get security alerts');
+    }
+};
+
+exports.updateAlertFeedback = async (req, res) => {
+    try {
+        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
+        const feedbackLabel = typeof req.body?.feedbackLabel === 'string'
+            ? req.body.feedbackLabel.trim()
+            : '';
+
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid alert ID format',
+                errors: ['The provided alert ID is not valid']
+            });
+        }
+
+        if (!VALID_FEEDBACK_LABELS.includes(feedbackLabel)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: [`feedbackLabel must be one of: ${VALID_FEEDBACK_LABELS.join(', ')}`]
+            });
+        }
+
+        const existingAlert = await resolveLeanResult(SecurityAlert.findOne({ _id: id, user: req.user._id }));
+        if (!existingAlert) {
+            return res.status(404).json({
+                success: false,
+                message: 'Alert not found or access denied',
+                errors: ['The alert does not exist or you do not have permission to update it']
+            });
+        }
+
+        const triagedAlert = enrichAlertForTriage({
+            ...existingAlert,
+            feedback: {
+                label: feedbackLabel,
+                updatedAt: new Date()
+            }
+        });
+
+        const updateQuery = SecurityAlert.findOneAndUpdate(
+            { _id: id, user: req.user._id },
+            {
+                feedback: triagedAlert.feedback,
+                mlScore: triagedAlert.mlScore,
+                mlLabel: triagedAlert.mlLabel,
+                mlReasons: triagedAlert.mlReasons,
+                mlFeatures: triagedAlert.mlFeatures,
+                scoreSource: triagedAlert.scoreSource
+            },
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+        if (updateQuery && typeof updateQuery.select === 'function') {
+            updateQuery.select(ALERT_LIST_SELECT);
+        }
+
+        const savedAlert = await resolveLeanResult(updateQuery);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Alert feedback updated',
+            data: enrichAlertForTriage(savedAlert)
+        });
+    } catch (error) {
+        return handleApiError(res, error, 'Update alert feedback');
     }
 };
 
@@ -130,11 +235,11 @@ exports.getSampleCorrelations = async (req, res) => {
                 user: req.user._id,
                 source: scanSource
             }))),
-            SecurityAlert.insertMany(sampleInput.alerts.map((alert) => ({
+            SecurityAlert.insertMany(enrichAlertsForTriage(sampleInput.alerts.map((alert) => ({
                 ...alert,
                 user: req.user._id,
                 source: alertSource
-            })))
+            }))))
         ]);
 
         // After inserting, include existing user alerts/scans when building correlations

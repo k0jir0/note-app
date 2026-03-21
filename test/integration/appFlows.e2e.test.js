@@ -10,6 +10,8 @@ const notePageRoutes = require('../../src/routes/notePageRoutes');
 const scanApiRoutes = require('../../src/routes/scanApiRoutes');
 const securityApiRoutes = require('../../src/routes/securityApiRoutes');
 const securityPageRoutes = require('../../src/routes/securityPageRoutes');
+const mlApiRoutes = require('../../src/routes/mlApiRoutes');
+const mlPageRoutes = require('../../src/routes/mlPageRoutes');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
 const Notes = require('../../src/models/Notes');
 const SecurityAlert = require('../../src/models/SecurityAlert');
@@ -60,6 +62,21 @@ function compareValues(left, right) {
     }
 
     return String(left).localeCompare(String(right));
+}
+
+function setNestedValue(target, path, value) {
+    const parts = String(path).split('.');
+    let current = target;
+
+    while (parts.length > 1) {
+        const nextPart = parts.shift();
+        if (!current[nextPart] || typeof current[nextPart] !== 'object') {
+            current[nextPart] = {};
+        }
+        current = current[nextPart];
+    }
+
+    current[parts[0]] = value;
 }
 
 function createQuery(items) {
@@ -189,6 +206,41 @@ function stubSecurityModels(sandbox, stores) {
         return stores.alerts.find((alert) => matchesQuery(alert, query)) || null;
     });
 
+    sandbox.stub(SecurityAlert, 'findOneAndUpdate').callsFake(async (query = {}, update = {}) => {
+        const alert = stores.alerts.find((entry) => matchesQuery(entry, query));
+        if (!alert) {
+            return null;
+        }
+
+        Object.entries(update).forEach(([key, value]) => {
+            if (key.includes('.')) {
+                setNestedValue(alert, key, value);
+                return;
+            }
+
+            alert[key] = value;
+        });
+
+        alert.updatedAt = new Date();
+        return alert;
+    });
+
+    sandbox.stub(SecurityAlert, 'bulkWrite').callsFake(async (operations = []) => {
+        operations.forEach((operation) => {
+            const updateOne = operation.updateOne || {};
+            const alert = stores.alerts.find((entry) => matchesQuery(entry, updateOne.filter || {}));
+            if (!alert) {
+                return;
+            }
+
+            Object.entries(updateOne.update || {}).forEach(([key, value]) => {
+                alert[key] = value;
+            });
+        });
+
+        return { modifiedCount: operations.length };
+    });
+
     sandbox.stub(ScanResult, 'countDocuments').callsFake(async (query = {}) => {
         return stores.scans.filter((scan) => matchesQuery(scan, query)).length;
     });
@@ -292,6 +344,8 @@ function createApp() {
     app.use(notePageRoutes);
     app.use(securityApiRoutes);
     app.use(securityPageRoutes);
+    app.use(mlApiRoutes);
+    app.use(mlPageRoutes);
     app.use(scanApiRoutes);
 
     return app;
@@ -596,6 +650,22 @@ describe('Application end-to-end flows', function () {
 
         expect(alertsResponse.status).to.equal(200);
         expect(alertsPayload.totalCount).to.be.greaterThan(0);
+        expect(alertsPayload.data[0]).to.have.property('mlScore');
+
+        const feedbackResponse = await client.request(`/api/security/alerts/${alertsPayload.data[0]._id}/feedback`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': csrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({ feedbackLabel: 'important' })
+        });
+        const feedbackPayload = await feedbackResponse.json();
+
+        expect(feedbackResponse.status).to.equal(200);
+        expect(feedbackPayload.data.feedback.label).to.equal('important');
+        expect(feedbackPayload.data.mlScore).to.be.greaterThan(0.9);
 
         const scansResponse = await client.request('/api/security/scans?limit=10', {
             headers: { 'x-test-auth': '1' }
@@ -624,5 +694,47 @@ describe('Application end-to-end flows', function () {
             success: true,
             enabled: true
         });
+    });
+
+    it('covers the research-page entry point and ML module overview flow', async function () {
+        const researchPage = await client.request('/research', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const researchHtml = await researchPage.text();
+
+        expect(researchPage.status).to.equal(200);
+        expect(researchHtml).to.include('ML Module');
+        expect(researchHtml).to.include('/ml/module');
+
+        stores.alerts.push({
+            _id: new mongoose.Types.ObjectId(),
+            type: 'injection_attempt',
+            severity: 'high',
+            summary: 'Potential SQL injection detected',
+            details: { count: 8, sourceIps: { '203.0.113.8': 8 } },
+            feedback: { label: 'important', updatedAt: new Date('2026-03-21T12:00:00.000Z') },
+            detectedAt: new Date('2026-03-21T12:00:00.000Z'),
+            user: TEST_USER_ID
+        });
+
+        const mlPage = await client.request('/ml/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const mlHtml = await mlPage.text();
+
+        expect(mlPage.status).to.equal(200);
+        expect(mlHtml).to.include('ML Module');
+        expect(mlHtml).to.include('/api/ml/overview');
+
+        const overviewResponse = await client.request('/api/ml/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const overviewPayload = await overviewResponse.json();
+
+        expect(overviewResponse.status).to.equal(200);
+        expect(overviewPayload.success).to.equal(true);
+        expect(overviewPayload.data.training.currentUserTrainableCount).to.equal(1);
+        expect(overviewPayload.data.alerts.totalCount).to.equal(1);
+        expect(overviewPayload.data.alerts.recentAlerts[0].feedback.label).to.equal('important');
     });
 });

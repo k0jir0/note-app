@@ -7,6 +7,7 @@ const metrics = require('../routes/metrics');
 const blockingService = require('./blockingService');
 const notificationService = require('./notificationService');
 const { analyzeLogText } = require('../utils/logAnalysis');
+const { enrichAlertsForTriage } = require('../utils/alertTriage');
 const { parseScanInput } = require('../utils/scanParser');
 const { parseFalcoJson } = require('../utils/intrusionParser');
 
@@ -88,14 +89,14 @@ async function persistAutomatedAlerts(config, logText) {
         });
     }
 
-    const alertsToCreate = analysis.alerts
+    const alertsToCreate = enrichAlertsForTriage(analysis.alerts
         .filter((alert) => !existingKeys.has(`${alert.type}::${alert.summary}`))
         .map((alert) => ({
             ...alert,
             user: config.userId,
             source: config.source,
             detectedAt: new Date()
-        }));
+        })));
 
     let inserted = [];
     if (alertsToCreate.length > 0) {
@@ -209,7 +210,7 @@ async function persistAutomatedIntrusions(config, rawInput) {
         return { created: false, skipped: true, reason: 'no-events', linesAnalyzed: parsed.linesAnalyzed };
     }
 
-    const alertsToCreate = parsed.events.map((ev) => ({
+    const alertsToCreate = enrichAlertsForTriage(parsed.events.map((ev) => ({
         type: ev.type,
         severity: ev.severity,
         summary: ev.summary,
@@ -217,7 +218,7 @@ async function persistAutomatedIntrusions(config, rawInput) {
         user: config.userId,
         source: config.source,
         detectedAt: new Date()
-    }));
+    })));
 
     let inserted = [];
     if (alertsToCreate.length > 0) {

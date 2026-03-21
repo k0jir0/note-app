@@ -5,6 +5,7 @@ const { securityAnalysisRateLimiter, realtimeIngestRateLimiter } = require('../m
 const securityApiController = require('../controllers/securityApiController');
 
 router.get('/api/security/alerts', requireAuthAPI, securityApiController.getAlerts);
+router.post('/api/security/alerts/:id/feedback', requireAuthAPI, securityAnalysisRateLimiter, securityApiController.updateAlertFeedback);
 router.get('/api/security/correlations', requireAuthAPI, securityApiController.getCorrelations);
 router.post('/api/security/automation/sample', requireAuthAPI, securityAnalysisRateLimiter, securityApiController.injectAutomationSample);
 router.post('/api/security/correlations/sample', requireAuthAPI, securityAnalysisRateLimiter, securityApiController.getSampleCorrelations);

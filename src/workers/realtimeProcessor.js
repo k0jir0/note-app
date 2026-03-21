@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const { redis, publisher } = require('../lib/redisClient');
 const SecurityAlert = require('../models/SecurityAlert');
 const { analyzeLogText } = require('../utils/logAnalysis');
+const { enrichAlertsForTriage } = require('../utils/alertTriage');
 const { sendBlockRequestsForAlerts } = require('../services/blockingService');
 const { workerPendingGauge } = require('../routes/metrics');
 
@@ -151,12 +152,12 @@ async function handleMessage(id, fields, options = {}) {
         const message = JSON.parse(raw);
         if (message.type === 'log' && message.logText) {
             const analysis = analyzeLogTextFn(message.logText);
-            const alertsToCreate = analysis.alerts.map((alert) => ({
+            const alertsToCreate = enrichAlertsForTriage(analysis.alerts.map((alert) => ({
                 ...alert,
                 user: new mongooseLib.Types.ObjectId(message.user),
                 source: 'realtime-ingest',
                 detectedAt: new Date()
-            }));
+            })));
 
             let saved = [];
             if (alertsToCreate.length > 0) {

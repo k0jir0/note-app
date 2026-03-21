@@ -50,6 +50,13 @@ const scansGrid = document.getElementById('workspace-scans-grid');
 const correlationGrid = document.getElementById('workspace-correlations-grid');
 const correlationOverview = document.getElementById('workspace-correlation-overview');
 const automationSampleResult = document.getElementById('automation-sample-result');
+const ALERT_FEEDBACK_BUTTONS = [
+    { value: 'important', label: 'Important', variant: 'success' },
+    { value: 'needs_review', label: 'Needs Review', variant: 'warning' },
+    { value: 'false_positive', label: 'False Positive', variant: 'secondary' },
+    { value: 'resolved', label: 'Resolved', variant: 'primary' },
+    { value: 'unreviewed', label: 'Reset', variant: 'dark' }
+];
 
 const resolveCount = (preferredCount, fallbackItems = []) => {
     const normalized = Number(preferredCount);
@@ -67,6 +74,16 @@ const escapeHtml = (value = '') => {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll('\'', '&#39;');
+};
+
+const formatAlertFeedback = (feedback = {}) => {
+    const label = String(feedback.label || 'unreviewed').replaceAll('_', ' ');
+    return label.charAt(0).toUpperCase() + label.slice(1);
+};
+
+const formatAlertScore = (value) => {
+    const score = Number(value);
+    return Number.isFinite(score) ? score.toFixed(2) : '0.00';
 };
 
 const renderMessage = (elementId, message, type = 'secondary') => {
@@ -141,6 +158,29 @@ const renderAlerts = (alerts = [], totalCount = alerts.length) => {
         const summary = escapeHtml(alert.summary || 'Security event detected');
         const type = escapeHtml(alert.type || 'unknown');
         const detectedAt = alert.detectedAt ? new Date(alert.detectedAt).toLocaleString() : 'Unknown time';
+        const feedbackLabel = formatAlertFeedback(alert.feedback || {});
+        const scoreLabel = escapeHtml(alert.mlLabel || 'low');
+        const scoreValue = formatAlertScore(alert.mlScore);
+        const scoreSource = escapeHtml(alert.scoreSource || 'heuristic-baseline');
+        const triageReasons = Array.isArray(alert.mlReasons) ? alert.mlReasons.slice(0, 2) : [];
+        const triageReasonHtml = triageReasons.length > 0
+            ? `<div class="small text-muted mb-2">${triageReasons.map((reason) => escapeHtml(reason)).join(' · ')}</div>`
+            : '';
+        const feedbackButtons = ALERT_FEEDBACK_BUTTONS.map((button) => {
+            const isActive = (alert.feedback && alert.feedback.label) === button.value;
+            const buttonClass = isActive
+                ? `btn btn-sm btn-${button.variant}`
+                : `btn btn-sm btn-outline-${button.variant}`;
+            return `
+                <button
+                    type="button"
+                    class="${buttonClass}"
+                    data-alert-feedback="${escapeHtml(button.value)}"
+                    data-alert-id="${escapeHtml(alert._id)}">
+                    ${escapeHtml(button.label)}
+                </button>
+            `;
+        }).join('');
 
         return `
             <div class="col-md-6 mb-3">
@@ -151,7 +191,13 @@ const renderAlerts = (alerts = [], totalCount = alerts.length) => {
                             <small class="text-muted">${escapeHtml(detectedAt)}</small>
                         </div>
                         <h3 class="h6 mb-2">${summary}</h3>
-                        <p class="text-muted small mb-0">Type: ${type}</p>
+                        <p class="text-muted small mb-1">Type: ${type}</p>
+                        <p class="small mb-1"><strong>Triage score:</strong> ${escapeHtml(scoreValue)} (${scoreLabel})</p>
+                        <p class="small text-muted mb-2"><strong>Analyst state:</strong> ${escapeHtml(feedbackLabel)} · ${scoreSource}</p>
+                        ${triageReasonHtml}
+                        <div class="d-flex flex-wrap gap-2">
+                            ${feedbackButtons}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -313,7 +359,7 @@ const renderCorrelationsPayload = (payload = {}) => {
 };
 
 const fetchAlerts = async () => {
-    const response = await fetch('/api/security/alerts?limit=6', {
+    const response = await fetch('/api/security/alerts?limit=6&sort=ml_score', {
         headers: { 'Content-Type': 'application/json' }
     });
 
@@ -322,6 +368,27 @@ const fetchAlerts = async () => {
     }
 
     return response.json();
+};
+
+const updateAlertFeedback = async (alertId, feedbackLabel) => {
+    const response = await fetch(`/api/security/alerts/${encodeURIComponent(alertId)}/feedback`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken
+        },
+        body: JSON.stringify({ feedbackLabel })
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+        const message = payload.errors && payload.errors.length > 0
+            ? payload.errors.join(', ')
+            : 'Unable to update alert feedback.';
+        throw new Error(message);
+    }
+
+    return payload;
 };
 
 const fetchScans = async () => {
@@ -412,6 +479,37 @@ document.getElementById('workspace-refresh-alerts')?.addEventListener('click', a
         renderWorkspaceStatus('Alerts refreshed.', 'success');
     } catch (_error) {
         renderWorkspaceStatus('Unable to refresh alerts right now.', 'danger');
+    }
+});
+
+alertsGrid?.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-alert-feedback][data-alert-id]');
+    if (!button) {
+        return;
+    }
+
+    const alertId = button.getAttribute('data-alert-id');
+    const feedbackLabel = button.getAttribute('data-alert-feedback');
+    if (!alertId || !feedbackLabel) {
+        return;
+    }
+
+    const previousText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Saving...';
+
+    try {
+        const payload = await updateAlertFeedback(alertId, feedbackLabel);
+        await refreshAlertsPanel();
+        renderWorkspaceStatus(
+            `Alert feedback updated: ${formatAlertFeedback(payload.data && payload.data.feedback ? payload.data.feedback : { label: feedbackLabel })}.`,
+            'success'
+        );
+    } catch (error) {
+        renderWorkspaceStatus(error.message || 'Unable to update alert feedback right now.', 'danger');
+    } finally {
+        button.disabled = false;
+        button.textContent = previousText;
     }
 });
 
