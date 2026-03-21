@@ -785,5 +785,28 @@ describe('Application end-to-end flows', function () {
         expect(demoPayload.data.createdAlerts).to.equal(2);
         expect(demoPayload.data.levelCounts.notify).to.equal(1);
         expect(demoPayload.data.levelCounts.block).to.equal(1);
+
+        const refreshedOverviewResponse = await client.request('/api/ml/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const refreshedOverviewPayload = await refreshedOverviewResponse.json();
+
+        expect(refreshedOverviewResponse.status).to.equal(200);
+        expect(refreshedOverviewPayload.data.autonomy.eligibleAlertCount).to.equal(3);
+        expect(refreshedOverviewPayload.data.autonomy.evaluatedAlertCount).to.equal(3);
+        expect(refreshedOverviewPayload.data.autonomy.notifyDecisionCount).to.equal(2);
+        expect(refreshedOverviewPayload.data.autonomy.blockDecisionCount).to.equal(1);
+        expect(refreshedOverviewPayload.data.autonomy.actionStatusCounts).to.deep.equal([
+            {
+                label: 'sent',
+                count: 1,
+                proportion: 0.25
+            },
+            {
+                label: 'skipped',
+                count: 3,
+                proportion: 0.75
+            }
+        ]);
     });
 });

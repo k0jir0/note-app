@@ -29,7 +29,7 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Trivy report artifacts in CI (report-only mode) to enable triage without blocking merges
 - RESTful API with JSON responses
 - Responsive UI with Bootstrap 5
-- Test coverage with Mocha, Chai, and Sinon, including end-to-end coverage for note, auth, and Security Module flows
+- Test coverage with Mocha, Chai, and Sinon, including end-to-end coverage for note, auth, Security Module, ML Module, and autonomy-demo proof flows
 
 ## Tech Stack
 
@@ -108,7 +108,7 @@ Notes:
 - If you want a persistent process manager for local development, see the PM2 workflow in the Development section below.
 
 Current local verification:
-- `npm test` passes with 253 tests
+- `npm test` passes with 259 tests
 - `npm run lint` passes with 0 errors
 
 4. **Create Account & Use**
@@ -193,6 +193,7 @@ The Research Workspace links to a dedicated ML Module page at `/ml/module`.
 - The dashboard visualizes score-label counts, score-source counts, score buckets, per-alert-type priority breakdowns, and the strongest positive and negative learned feature weights.
 - Every major panel now includes a short theoretical description so the UI explains what the numbers mean in ML terms instead of acting as a raw control surface.
 - Recent scored alerts in both the ML Module and Security Module now show the autonomous response decision and any recorded notify-block action outcomes.
+- `Autonomy Demo Inject` seeds a safe dry-run notify-plus-block scenario and should increase the ML Module's `Observed Autonomous Outcomes` counters, making it easy to prove that the policy loop is recording decisions on stored alerts.
 
 ### Optional Autonomous Response
 
@@ -232,6 +233,7 @@ Notes:
 - A `notify` decision uses the existing Slack-email summary notifier.
 - A `block` decision also requires a concrete target such as `details.ip`, `details.src`, or `details.target`.
 - If notification or block providers are not configured, the response is still recorded on the alert as a skipped action for auditability.
+- The ML Module's autonomy panels read stored alert response metadata, so after using `Autonomy Demo Inject` the `Observed Autonomous Outcomes` and `Action Outcomes` panels should move immediately on refresh.
 
 ## API Documentation
 
