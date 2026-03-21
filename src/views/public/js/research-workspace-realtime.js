@@ -5,6 +5,7 @@
     }
 
     const connectBtn = document.getElementById('realtime-connect-btn');
+    const connectionBadge = document.getElementById('realtime-connection-badge');
     const simulateBtn = document.getElementById('realtime-simulate-btn');
     const realtimeLog = document.getElementById('workspace-realtime-log');
     let connectionState = 'disconnected';
@@ -29,24 +30,41 @@
 
     const setConnectionState = (nextState) => {
         connectionState = nextState;
-        if (!connectBtn) {
+        if (connectBtn) {
+            connectBtn.setAttribute('aria-pressed', nextState === 'connected' ? 'true' : 'false');
+
+            if (nextState === 'connected') {
+                connectBtn.textContent = 'Disconnect Realtime';
+                connectBtn.className = 'btn btn-outline-danger';
+            } else if (nextState === 'connecting') {
+                connectBtn.textContent = 'Cancel Realtime';
+                connectBtn.className = 'btn btn-outline-warning';
+            } else {
+                connectBtn.textContent = 'Connect Realtime';
+                connectBtn.className = 'btn btn-outline-dark';
+            }
+        }
+
+        if (!connectionBadge) {
             return;
         }
 
         if (nextState === 'connected') {
-            connectBtn.textContent = 'Disconnect Realtime';
-            connectBtn.className = 'btn btn-outline-danger';
+            connectionBadge.textContent = 'Stream Connected';
+            connectionBadge.className = 'badge text-bg-success';
             return;
         }
 
         if (nextState === 'connecting') {
-            connectBtn.textContent = 'Cancel Realtime';
-            connectBtn.className = 'btn btn-outline-warning';
+            connectionBadge.textContent = 'Stream Connecting';
+            connectionBadge.className = 'badge text-bg-warning';
             return;
         }
 
-        connectBtn.textContent = 'Connect Realtime';
-        connectBtn.className = 'btn btn-outline-dark';
+        connectionBadge.textContent = connectBtn && connectBtn.disabled
+            ? 'Stream Unavailable'
+            : 'Stream Disconnected';
+        connectionBadge.className = 'badge text-bg-secondary';
     };
 
     const refreshRealtimePanels = async () => {

@@ -536,7 +536,8 @@ describe('Application end-to-end flows', function () {
 
         expect(modulePage.status).to.equal(200);
         expect(moduleHtml).to.include('Security Module');
-        expect(moduleHtml).to.include('Realtime Enabled');
+        expect(moduleHtml).to.include('Server Realtime Enabled');
+        expect(moduleHtml).to.include('Stream Disconnected');
 
         const logResponse = await client.request('/api/security/log-analysis', {
             method: 'POST',

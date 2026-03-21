@@ -82,10 +82,21 @@
                 <div id="realtime-panel" class="mt-3">
                     <div class="d-flex align-items-center gap-3">
                         <div>
-                            <p class="mb-1 small text-muted">Realtime</p>
+                            <p class="mb-1 small text-muted">Realtime Server</p>
                             <p class="mb-0">
                                 <span id="realtime-server-badge" class="badge text-bg-<%= realtimeEnabled ? 'success' : (realtimeAvailable ? 'warning' : 'secondary') %>">
-                                    <%= realtimeEnabled ? 'Realtime Enabled' : (realtimeAvailable ? 'Realtime Available, Off' : 'Realtime Unavailable') %>
+                                    <%= realtimeEnabled ? 'Server Realtime Enabled' : (realtimeAvailable ? 'Server Realtime Off' : 'Server Realtime Unavailable') %>
+                                </span>
+                            </p>
+                        </div>
+                        <div>
+                            <p class="mb-1 small text-muted">This Browser</p>
+                            <p class="mb-0">
+                                <span
+                                    id="realtime-connection-badge"
+                                    class="badge text-bg-<%= realtimeEnabled ? 'secondary' : 'secondary' %>"
+                                    aria-live="polite">
+                                    <%= realtimeEnabled ? 'Stream Disconnected' : 'Stream Unavailable' %>
                                 </span>
                             </p>
                         </div>
@@ -102,7 +113,7 @@
                     </div>
                     <p class="small text-muted mt-2 mb-0">
                         <%= realtimeEnabled
-                            ? 'Open a live stream for newly ingested alerts. Disconnect when you are done monitoring.'
+                            ? 'The server can accept realtime streams. Use the button to connect or disconnect only this browser tab.'
                             : (realtimeAvailable
                                 ? 'Realtime routes are mounted, but the stream is currently turned off.'
                                 : 'Configure Redis and enable realtime to use the live alert stream.') %>
