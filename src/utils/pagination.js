@@ -29,18 +29,6 @@ const parsePaginationParams = (query = {}) => {
 };
 
 /**
- * Apply pagination to a Mongoose query
- * @param {Query} query - Mongoose query object
- * @param {number} page - Page number (1-indexed)
- * @param {number} limit - Items per page
- * @returns {Query} Modified query with pagination
- */
-const applyPagination = (query, page = DEFAULT_PAGE, limit = DEFAULT_LIMIT) => {
-    const skip = (page - 1) * limit;
-    return query.skip(skip).limit(limit);
-};
-
-/**
  * Create pagination metadata for API responses
  * @param {number} totalCount - Total number of items
  * @param {number} page - Current page number
@@ -66,7 +54,6 @@ const createPaginationMeta = (totalCount, page, limit) => {
 
 module.exports = {
     parsePaginationParams,
-    applyPagination,
     createPaginationMeta,
     DEFAULT_PAGE,
     DEFAULT_LIMIT,

@@ -83,7 +83,7 @@ The project initially pointed to a different repository and required migration. 
 
 Legacy code maintenance required updating older controllers and routes that lacked authentication. Rather than deleting these files, they were updated with `requireAuth` middleware and user-specific filtering to maintain backward compatibility while improving security. Tests were updated accordingly with documentation explaining preservation.
 
-Model naming standardization involved renaming `notes.js` to `Notes.js` for consistency with JavaScript conventions. This required updating all import statements across controllers (`noteController.js`, `noteApiController.js`), routes (`notePageRoutes.js`), test files, and `index.js`. Git's `mv` command preserved file history during the rename.
+Model naming standardization involved renaming `notes.js` to `Notes.js` for consistency with JavaScript conventions. This required updating all import statements across the active note controller and route modules, related tests, and `index.js`. Git's `mv` command preserved file history during the rename.
 
 TROUBLESHOOTING (recent CI & automation issues)
 

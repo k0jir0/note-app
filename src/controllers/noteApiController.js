@@ -1,14 +1,8 @@
 const Notes = require('../models/Notes');
 const mongoose = require('mongoose');
-const { validateNoteData, sanitizeNoteData } = require('../utils/validation');
 const { handleApiError } = require('../utils/errorHandler');
 const { parsePaginationParams, createPaginationMeta } = require('../utils/pagination');
-
-const ALLOWED_NOTE_FIELDS = ['title', 'content', 'image'];
-
-const getDisallowedFields = (payload = {}) => {
-    return Object.keys(payload).filter((field) => !ALLOWED_NOTE_FIELDS.includes(field));
-};
+const { buildCreateNoteData, buildUpdateNoteData } = require('../utils/noteMutations');
 
 // Helper function to validate MongoDB ObjectId
 const isValidObjectId = (id) => {
@@ -18,46 +12,16 @@ const isValidObjectId = (id) => {
 // CREATE Operations
 exports.createNote = async (req, res) => {
     try {
-        // Validate request body existence
-        if (!req.body || Object.keys(req.body).length === 0) {
+        const noteResult = buildCreateNoteData(req.body, req.user._id);
+        if (!noteResult.isValid) {
             return res.status(400).json({
                 success: false,
-                message: 'Request body cannot be empty',
-                errors: ['Please provide note data']
+                message: noteResult.message,
+                errors: noteResult.errors
             });
         }
 
-        const disallowedFields = getDisallowedFields(req.body);
-        if (disallowedFields.length > 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors: [`Unexpected field(s): ${disallowedFields.join(', ')}`]
-            });
-        }
-
-        // Sanitize input data
-        const sanitizedData = sanitizeNoteData(req.body);
-
-        // Validate note data
-        const validation = validateNoteData(sanitizedData, false);
-        if (!validation.isValid) {
-            return res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors: validation.errors
-            });
-        }
-
-        // Prepare note data with user ID
-        const noteData = {
-            title: sanitizedData.title,
-            content: sanitizedData.content || '',
-            image: sanitizedData.image || '',
-            user: req.user._id
-        };
-
-        const note = await Notes.create(noteData);
+        const note = await Notes.create(noteResult.data);
 
         res.status(201).json({
             success: true,
@@ -144,55 +108,19 @@ exports.updateNote = async (req, res) => {
             });
         }
 
-        // Validate request body
-        if (!req.body || Object.keys(req.body).length === 0) {
+        const updateResult = buildUpdateNoteData(req.body);
+        if (!updateResult.isValid) {
             return res.status(400).json({
                 success: false,
-                message: 'Request body cannot be empty',
-                errors: ['Please provide data to update']
-            });
-        }
-
-        const disallowedFields = getDisallowedFields(req.body);
-        if (disallowedFields.length > 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors: [`Unexpected field(s): ${disallowedFields.join(', ')}`]
-            });
-        }
-
-        // Sanitize input data
-        const sanitizedData = sanitizeNoteData(req.body);
-
-        // Validate note data (for updates)
-        const validation = validateNoteData(sanitizedData, true);
-        if (!validation.isValid) {
-            return res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors: validation.errors
-            });
-        }
-
-        // Prepare update data (don't allow user field to be updated)
-        const updateData = {};
-        if (sanitizedData.title !== undefined) updateData.title = sanitizedData.title;
-        if (sanitizedData.content !== undefined) updateData.content = sanitizedData.content;
-        if (sanitizedData.image !== undefined) updateData.image = sanitizedData.image;
-
-        if (Object.keys(updateData).length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors: ['Please provide at least one valid field to update']
+                message: updateResult.message,
+                errors: updateResult.errors
             });
         }
 
         // Find and update only if owned by user
         const note = await Notes.findOneAndUpdate(
             { _id: id, user: req.user._id },
-            updateData,
+            updateResult.data,
             { new: true, runValidators: true }
         );
 

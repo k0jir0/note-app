@@ -167,7 +167,7 @@ To test validation, try these scenarios:
 - `src/routes/authRoutes.js` - Added email/password validation
 
 ### Frontend
-- `src/views/public/js/note-form.js` - Error display functionality
+- `src/views/pages/note-form.ejs` - Server-rendered validation display for create/edit note forms
 - `src/views/public/js/notes.js` - Error handling for delete operations
 
 ## Best Practices Implemented

@@ -328,7 +328,6 @@ notes-app/
 │   │   └── runtimeConfig.js
 │   ├── controllers/
 │   │   ├── noteApiController.js
-│   │   ├── noteController.js
 │   │   ├── scanApiController.js
 │   │   └── securityApiController.js
 │   ├── middleware/

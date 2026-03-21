@@ -33,7 +33,7 @@ const scanFindingsGauge = new client.Gauge({
 
 const workerPendingGauge = new client.Gauge({
     name: 'security_worker_pending',
-    help: 'Estimated pending messages in the realtime ingest stream'
+    help: 'Messages currently pending in the realtime ingest consumer group'
 });
 
 router.get('/metrics', async (req, res) => {

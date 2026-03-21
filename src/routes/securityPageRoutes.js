@@ -2,32 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { handlePageError } = require('../utils/errorHandler');
-
-function buildAutomationSection(config, defaults) {
-    if (!config || !config.enabled) {
-        return {
-            enabled: false,
-            statusLabel: 'Disabled',
-            statusTone: 'secondary',
-            source: defaults.source,
-            intervalMs: defaults.intervalMs,
-            dedupeWindowMs: defaults.dedupeWindowMs,
-            filePath: null,
-            maxReadBytes: defaults.maxReadBytes || null
-        };
-    }
-
-    return {
-        enabled: true,
-        statusLabel: 'Active',
-        statusTone: 'success',
-        source: config.source,
-        intervalMs: config.intervalMs,
-        dedupeWindowMs: config.dedupeWindowMs,
-        filePath: config.filePath,
-        maxReadBytes: config.maxReadBytes || null
-    };
-}
+const { buildAutomationSection } = require('../utils/automationViewModel');
 
 router.get('/security/logs', requireAuth, (req, res) => {
     res.redirect('/security/module#logs');
