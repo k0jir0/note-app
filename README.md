@@ -1,6 +1,6 @@
 # Note App
 
-A full-stack note-taking, applied security-research, and ML-assisted triage application built with Node.js, Express, MongoDB, and EJS. Alongside encrypted notes, it includes a Security Module for log and scan analysis and a dedicated ML Module that acts as a compact model-operations workspace for alert-triage training, runtime inspection, explainability, feedback-aware supervision, and audited autonomy experiments.
+A full-stack note-taking, applied security-research, and browser-automation application built with Node.js, Express, MongoDB, and EJS. Alongside encrypted notes, it includes a Security Module for log and scan analysis, an ML Module for trainable alert triage and audited autonomy, and a Selenium Module for exporting browser smoke suites across the Research Workspace.
 
 ## Features
 
@@ -19,6 +19,7 @@ A full-stack note-taking, applied security-research, and ML-assisted triage appl
 - Correlation dashboard linking scan findings with observed security alerts
 - Consolidated Research Workspace that unifies log analysis, scan import, correlations, and automation status
 - Dedicated ML Module for alert-triage model training, runtime inspection, explainable score analysis, feedback-aware supervision, and autonomy proof workflows
+- Dedicated Selenium Module for browser-automation coverage planning, scenario inspection, and generated Selenium WebDriver script templates
 - ML-driven autonomous response policy that can notify operators or trigger a block webhook for high-risk ingested alerts
 - Optional scheduled ingestion for logs, scans, and intrusion events (Falco JSON ingestion helper + Trivy runner support)
 - Optional Redis-backed realtime ingest endpoint and live alert stream, with separate server and browser connection status in the Security Module UI
@@ -29,7 +30,7 @@ A full-stack note-taking, applied security-research, and ML-assisted triage appl
 - Trivy report artifacts in CI (report-only mode) to enable triage without blocking merges
 - RESTful API with JSON responses
 - Responsive UI with Bootstrap 5
-- Test coverage with Mocha, Chai, and Sinon, including end-to-end coverage for note, auth, Security Module, ML Module, and autonomy-demo proof flows
+- Test coverage with Mocha, Chai, and Sinon, including end-to-end coverage for note, auth, Security Module, ML Module, Selenium Module, and autonomy-demo proof flows
 
 ## Tech Stack
 
@@ -100,15 +101,12 @@ For a more stable Windows local launch, prefer the included launcher instead of 
 .\run-local.ps1 -WithWorker
 ```
 
-That script opens dedicated PowerShell window(s) for the web app and optional realtime worker, which avoids the local-process teardown issues that can cause a browser refresh to briefly show "this site can't be reached."
-
 Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
-- If you want a persistent process manager for local development, see the PM2 workflow in the Development section below.
 
 Current local verification:
-- `npm test` passes with 259 tests
+- `npm test` passes with 272 tests
 - `npm run lint` passes with 0 errors
 
 4. **Create Account & Use**
@@ -117,6 +115,7 @@ Current local verification:
 - Use `/research` to access the unified Research Workspace
 - Use the Security Module link inside `/research` to run `Inject Automation Sample` and populate Alerts, Scans, and Correlations with demo data for the signed-in account
 - Use `/ml/module` to inspect the active alert-triage model, compare score provenance and score distributions, review learned feature influence, train either a bootstrap or hybrid model, and verify autonomous-response behavior with the built-in demo flow
+- Use `/selenium/module` to inspect browser-test scenarios, review Selenium prerequisites, and export WebDriver smoke templates for the Research, Security, ML, and Selenium module flows
 - Optional: send a `POST` request to `/seed` after logging in (dev only) for sample data
 
 ### Optional Automation
@@ -189,14 +188,20 @@ The Research Workspace links to a dedicated ML Module page at `/ml/module`.
 
 - The page acts as a compact model-operations surface for the alert-triage system rather than a single training button.
 - It ties together the full triage loop: label supply, model fitting, runtime model state, explainability, scored-alert inspection, and the downstream autonomy audit trail.
-- It exposes the current runtime model state, training metrics, dataset sizes, score provenance, and recent scored alerts used in the triage loop.
-- `Train Bootstrap Model` fits a synthetic-first logistic-regression model, which is useful for cold-start demos and environments without enough analyst labels yet.
-- `Train Hybrid Model` mixes project-wide analyst-labeled alerts with synthetic examples when coverage is sparse, producing a more realistic decision boundary once feedback begins to accumulate.
+- `Train Bootstrap Model` fits a synthetic-first logistic-regression model for cold-start demos and sparse-label environments.
+- `Train Hybrid Model` mixes project-wide analyst labels with synthetic examples when real coverage is still limited.
 - The dashboard visualizes feedback supply, score-label counts, score-source counts, score buckets, per-alert-type priority breakdowns, and the strongest positive and negative learned feature weights so the model can be inspected rather than simply trusted.
-- Every major panel now includes a short theoretical description so the UI explains what the numbers mean in ML terms instead of acting as a raw control surface.
-- Recent scored alerts in both the ML Module and Security Module now show the autonomous response decision and any recorded notify-block action outcomes, keeping scoring and downstream policy tied together visibly.
 - `Autonomy Demo Inject` seeds a safe dry-run notify-plus-block scenario and should increase the ML Module's `Observed Autonomous Outcomes` counters, making it easy to prove that the policy loop is recording decisions on stored alerts.
-- In practice, the ML Module is the best place to answer three operational questions quickly: what model is active, why is it scoring alerts this way, and has that scoring changed any downstream response behavior.
+
+### Selenium Module Overview
+
+The Research Workspace also links to a dedicated Selenium Module page at `/selenium/module`.
+
+- The page acts as a browser-automation planning and export surface for this app's authenticated research flows.
+- It exposes scenario metadata for the Research Workspace, Security Module, ML Module, Selenium Module itself, and a full cross-module smoke suite.
+- The module shows browser prerequisites, route-level coverage goals, stable assertion targets, and generated JavaScript templates built around `selenium-webdriver`.
+- The exported scripts are intentionally smoke-test oriented: they prioritize stable route navigation, headings, and module controls rather than brittle low-level DOM behavior.
+- In practice, the Selenium Module gives the project a bridge from in-app research tooling to external browser automation and CI smoke coverage.
 
 ### Optional Autonomous Response
 
@@ -355,6 +360,8 @@ PUT /api/notes/:id
 | `GET /research` | Unified Research Workspace | Yes |
 | `GET /ml` | Redirects to the dedicated ML Module page | Yes |
 | `GET /ml/module` | Dedicated ML Module page | Yes |
+| `GET /selenium` | Redirects to the dedicated Selenium Module page | Yes |
+| `GET /selenium/module` | Dedicated Selenium Module page | Yes |
 | `GET /auth/login` | Login page | - |
 | `GET /auth/signup` | Signup page | - |
 | `GET /auth/logout` | Logout confirmation page | Yes |
@@ -385,6 +392,14 @@ PUT /api/notes/:id
 |----------|--------|-------------|
 | `GET /api/ml/overview` | GET | Get the current ML Module overview, including model metadata, alert score distributions, and recent scored alerts |
 | `POST /api/ml/train` | POST | Train a bootstrap or hybrid alert-triage model and rescore stored alerts |
+| `POST /api/ml/autonomy-demo` | POST | Inject a dry-run autonomy demo so the ML Module can show stored notify-block outcomes |
+
+### Selenium API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/selenium/overview` | GET | Get Selenium module coverage metadata, scenario catalog entries, workflow notes, and browser prerequisites |
+| `GET /api/selenium/script` | GET | Generate a Selenium WebDriver script template for the selected scenario |
 
 ## Project Structure
 
@@ -405,9 +420,11 @@ notes-app/
 │   │   ├── passport.js
 │   │   └── runtimeConfig.js
 │   ├── controllers/
+│   │   ├── mlApiController.js
 │   │   ├── noteApiController.js
 │   │   ├── scanApiController.js
-│   │   └── securityApiController.js
+│   │   ├── securityApiController.js
+│   │   └── seleniumApiController.js
 │   ├── middleware/
 │   │   ├── auth.js
 │   │   ├── csrf.js
@@ -424,9 +441,15 @@ notes-app/
 │   │   ├── scanApiRoutes.js
 │   │   ├── scanPageRoutes.js
 │   │   ├── securityApiRoutes.js
-│   │   └── securityPageRoutes.js
+│   │   ├── securityPageRoutes.js
+│   │   ├── seleniumApiRoutes.js
+│   │   └── seleniumPageRoutes.js
 │   ├── services/
-│   │   └── automationService.js
+│   │   ├── alertTriageTrainingService.js
+│   │   ├── automationService.js
+│   │   ├── autonomyDemoService.js
+│   │   ├── incidentResponseService.js
+│   │   └── seleniumResearchService.js
 │   ├── utils/
 │   │   ├── errorHandler.js
 │   │   ├── logAnalysis.js
@@ -440,10 +463,12 @@ notes-app/
 │       │   ├── home.ejs
 │       │   ├── login.ejs
 │       │   ├── logout.ejs
+│       │   ├── ml-module.ejs
 │       │   ├── note-form.ejs
 │       │   ├── note.ejs
 │       │   ├── research.ejs
 │       │   ├── security-automation.ejs
+│       │   ├── selenium-module.ejs
 │       │   └── signup.ejs
 │       └── public/
 │           ├── css/
@@ -479,7 +504,7 @@ npm run lint       # ESLint code quality check
 
 **Testing Notes:**
 - `npm test` now loads `test/testSetup.js` before the suite so tests run in `NODE_ENV=test` with Redis-backed realtime disabled by default.
-- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, the Security Module workflow, and the ML Module overview path.
+- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, the Security Module workflow, the ML Module overview path, and the Selenium Module overview/script flow.
 
 ### Stable Local Run Paths
 
