@@ -10,7 +10,7 @@
     "automation:trivy": "node automation/trivy-runner.js",
     "automation:falco": "node automation/falco-runner.js",
     "worker": "node src/workers/realtimeProcessor.js",
-    "test": "mocha",
+    "test": "mocha --require ./test/testSetup.js \"test/**/*.js\"",
     "lint": "eslint . --ext .js"
   },
   "repository": {

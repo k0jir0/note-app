@@ -7,7 +7,10 @@
     const connectBtn = document.getElementById('realtime-connect-btn');
     const simulateBtn = document.getElementById('realtime-simulate-btn');
     const realtimeLog = document.getElementById('workspace-realtime-log');
+    let connectionState = 'disconnected';
     let eventSource = null;
+    let activeProbe = null;
+    let connectionAttemptId = 0;
 
     const logRealtime = (message, tone = 'secondary') => {
         if (!realtimeLog) {
@@ -24,13 +27,26 @@
         }
     };
 
-    const setConnectedState = (connected) => {
+    const setConnectionState = (nextState) => {
+        connectionState = nextState;
         if (!connectBtn) {
             return;
         }
 
-        connectBtn.textContent = connected ? 'Disconnect Realtime' : 'Connect Realtime';
-        connectBtn.className = connected ? 'btn btn-outline-danger' : 'btn btn-outline-dark';
+        if (nextState === 'connected') {
+            connectBtn.textContent = 'Disconnect Realtime';
+            connectBtn.className = 'btn btn-outline-danger';
+            return;
+        }
+
+        if (nextState === 'connecting') {
+            connectBtn.textContent = 'Cancel Realtime';
+            connectBtn.className = 'btn btn-outline-warning';
+            return;
+        }
+
+        connectBtn.textContent = 'Connect Realtime';
+        connectBtn.className = 'btn btn-outline-dark';
     };
 
     const refreshRealtimePanels = async () => {
@@ -55,29 +71,77 @@
         }
     };
 
-    const disconnectRealtime = () => {
-        if (!eventSource) {
+    const clearActiveProbe = ({ abort = false } = {}) => {
+        if (!activeProbe) {
             return;
         }
 
         try {
-            eventSource.close();
+            activeProbe.onreadystatechange = null;
+            activeProbe.ontimeout = null;
+            activeProbe.onerror = null;
+            if (abort) {
+                activeProbe.abort();
+            }
         } catch (_error) {
-            // no-op: disconnect should still clear local state
+            // best effort cleanup only
+        }
+
+        activeProbe = null;
+    };
+
+    const disconnectRealtime = ({ silent = false } = {}) => {
+        const wasConnected = connectionState === 'connected' || Boolean(eventSource);
+        const wasConnecting = connectionState === 'connecting';
+        connectionAttemptId += 1;
+
+        clearActiveProbe({ abort: true });
+
+        if (eventSource) {
+            try {
+                eventSource.onopen = null;
+                eventSource.onerror = null;
+                eventSource.onmessage = null;
+                eventSource.close();
+            } catch (_error) {
+                // no-op: disconnect should still clear local state
+            }
         }
 
         eventSource = null;
-        setConnectedState(false);
-        logRealtime('Realtime disconnected', 'secondary');
+        setConnectionState('disconnected');
+
+        if (silent) {
+            return;
+        }
+
+        if (wasConnecting) {
+            logRealtime('Realtime connection cancelled', 'secondary');
+            return;
+        }
+
+        if (wasConnected) {
+            logRealtime('Realtime disconnected', 'secondary');
+        }
     };
 
     const connectRealtime = () => {
-        if (eventSource) {
+        if (connectionState === 'connected' || eventSource) {
             logRealtime('Already connected to realtime', 'secondary');
             return;
         }
 
+        if (connectionState === 'connecting') {
+            logRealtime('Realtime connection is already in progress', 'secondary');
+            return;
+        }
+
+        const attemptId = connectionAttemptId + 1;
+        connectionAttemptId = attemptId;
+        setConnectionState('connecting');
+
         const probe = new XMLHttpRequest();
+        activeProbe = probe;
         probe.open('GET', '/api/security/stream?probe=1', true);
         probe.withCredentials = true;
         probe.timeout = 3000;
@@ -90,30 +154,53 @@
             }
 
             handledResponse = true;
+            if (attemptId !== connectionAttemptId) {
+                clearActiveProbe();
+                return;
+            }
 
             if (probe.status === 200) {
                 try {
                     eventSource = new EventSource('/api/security/stream');
                     eventSource.onopen = () => {
-                        setConnectedState(true);
+                        if (attemptId !== connectionAttemptId) {
+                            disconnectRealtime({ silent: true });
+                            return;
+                        }
+
+                        clearActiveProbe();
+                        setConnectionState('connected');
                         logRealtime('Realtime connected', 'success');
                     };
                     eventSource.onerror = () => {
+                        if (attemptId !== connectionAttemptId) {
+                            return;
+                        }
+
                         disconnectRealtime();
                         logRealtime('Realtime connection error', 'danger');
                     };
                     eventSource.onmessage = handleMessage;
                 } catch (_error) {
+                    clearActiveProbe();
+                    setConnectionState('disconnected');
                     logRealtime('Unable to open realtime connection', 'danger');
-                    disconnectRealtime();
                 }
             } else if (probe.status === 401 || probe.status === 403) {
+                clearActiveProbe();
+                setConnectionState('disconnected');
                 logRealtime('Realtime connection denied. Please log in and try again.', 'danger');
             } else if (probe.status === 404) {
+                clearActiveProbe();
+                setConnectionState('disconnected');
                 logRealtime('Realtime endpoint not available on server.', 'danger');
             } else if (probe.status === 0) {
+                clearActiveProbe();
+                setConnectionState('disconnected');
                 logRealtime('Realtime probe timed out or the server is unreachable.', 'danger');
             } else {
+                clearActiveProbe();
+                setConnectionState('disconnected');
                 logRealtime(`Realtime unavailable: HTTP ${probe.status}`, 'danger');
             }
 
@@ -125,22 +212,36 @@
         };
 
         probe.ontimeout = () => {
+            if (attemptId !== connectionAttemptId) {
+                return;
+            }
+
+            clearActiveProbe();
+            setConnectionState('disconnected');
             logRealtime('Realtime probe timed out. Server may be unreachable.', 'danger');
         };
 
         probe.onerror = () => {
+            if (attemptId !== connectionAttemptId) {
+                return;
+            }
+
+            clearActiveProbe();
+            setConnectionState('disconnected');
             logRealtime('Realtime probe failed.', 'danger');
         };
 
         try {
             probe.send();
         } catch (_error) {
+            clearActiveProbe();
+            setConnectionState('disconnected');
             logRealtime('Realtime probe failed to send.', 'danger');
         }
     };
 
     connectBtn?.addEventListener('click', () => {
-        if (eventSource) {
+        if (connectionState === 'connected' || connectionState === 'connecting') {
             disconnectRealtime();
             return;
         }
@@ -149,8 +250,12 @@
     });
 
     if (connectBtn && !connectBtn.disabled) {
-        setConnectedState(false);
+        setConnectionState('disconnected');
     }
+
+    window.addEventListener('beforeunload', () => {
+        disconnectRealtime({ silent: true });
+    });
 
     simulateBtn?.addEventListener('click', async () => {
         try {
