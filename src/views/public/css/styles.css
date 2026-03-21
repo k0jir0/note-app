@@ -374,6 +374,45 @@ ul {
   background: #2563eb;
 }
 
+.selenium-prereq-card,
+.selenium-scenario-card,
+.selenium-workflow-step {
+  padding: 1rem;
+  border: 1px solid #dbeafe;
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.selenium-tag {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.selenium-script-preview {
+  min-height: 26rem;
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  border: 1px solid #1e293b;
+  border-radius: 0.85rem;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.selenium-script-preview code {
+  display: block;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 @media (max-width: 767.98px) {
   .automation-metadata {
     grid-template-columns: 1fr;

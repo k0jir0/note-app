@@ -12,6 +12,8 @@ const securityApiRoutes = require('../../src/routes/securityApiRoutes');
 const securityPageRoutes = require('../../src/routes/securityPageRoutes');
 const mlApiRoutes = require('../../src/routes/mlApiRoutes');
 const mlPageRoutes = require('../../src/routes/mlPageRoutes');
+const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
+const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
 const Notes = require('../../src/models/Notes');
 const SecurityAlert = require('../../src/models/SecurityAlert');
@@ -350,6 +352,8 @@ function createApp() {
     app.use(securityPageRoutes);
     app.use(mlApiRoutes);
     app.use(mlPageRoutes);
+    app.use(seleniumApiRoutes);
+    app.use(seleniumPageRoutes);
     app.use(scanApiRoutes);
 
     return app;
@@ -708,7 +712,9 @@ describe('Application end-to-end flows', function () {
 
         expect(researchPage.status).to.equal(200);
         expect(researchHtml).to.include('ML Module');
+        expect(researchHtml).to.include('Selenium Module');
         expect(researchHtml).to.include('/ml/module');
+        expect(researchHtml).to.include('/selenium/module');
 
         stores.alerts.push({
             _id: new mongoose.Types.ObjectId(),
@@ -808,5 +814,41 @@ describe('Application end-to-end flows', function () {
                 proportion: 0.75
             }
         ]);
+
+        const seleniumPage = await client.request('/selenium/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const seleniumHtml = await seleniumPage.text();
+
+        expect(seleniumPage.status).to.equal(200);
+        expect(seleniumHtml).to.include('Selenium Module');
+        expect(seleniumHtml).to.include('/api/selenium/overview');
+        expect(seleniumHtml).to.include('/api/selenium/script');
+        expect(seleniumHtml).to.include('Scenario Catalog');
+        expect(seleniumHtml).to.include('Generated Script Preview');
+
+        const seleniumOverviewResponse = await client.request('/api/selenium/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const seleniumOverviewPayload = await seleniumOverviewResponse.json();
+
+        expect(seleniumOverviewResponse.status).to.equal(200);
+        expect(seleniumOverviewPayload.success).to.equal(true);
+        expect(seleniumOverviewPayload.data.module.name).to.equal('Selenium Module');
+        expect(seleniumOverviewPayload.data.coverage.scenarioCount).to.equal(5);
+        expect(seleniumOverviewPayload.data.defaultScenarioId).to.equal('research-full-suite');
+
+        const seleniumScriptResponse = await client.request('/api/selenium/script?scenarioId=research-full-suite', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const seleniumScriptPayload = await seleniumScriptResponse.json();
+
+        expect(seleniumScriptResponse.status).to.equal(200);
+        expect(seleniumScriptPayload.success).to.equal(true);
+        expect(seleniumScriptPayload.data.fileName).to.equal('selenium-research-full-suite.js');
+        expect(seleniumScriptPayload.data.content).to.include('selenium-webdriver');
+        expect(seleniumScriptPayload.data.content).to.include('/security/module');
+        expect(seleniumScriptPayload.data.content).to.include('/ml/module');
+        expect(seleniumScriptPayload.data.content).to.include('/selenium/module');
     });
 });

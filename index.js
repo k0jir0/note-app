@@ -12,6 +12,8 @@ const securityApiRoute = require('./src/routes/securityApiRoutes');
 const securityPageRoute = require('./src/routes/securityPageRoutes');
 const mlApiRoute = require('./src/routes/mlApiRoutes');
 const mlPageRoute = require('./src/routes/mlPageRoutes');
+const seleniumApiRoute = require('./src/routes/seleniumApiRoutes');
+const seleniumPageRoute = require('./src/routes/seleniumPageRoutes');
 const scanApiRoute = require('./src/routes/scanApiRoutes');
 const scanPageRoute = require('./src/routes/scanPageRoutes');
 const devRuntimeRoute = require('./src/routes/devRuntimeRoutes');
@@ -190,6 +192,8 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
     app.use(securityPageRoute);
     app.use(mlApiRoute);
     app.use(mlPageRoute);
+    app.use(seleniumApiRoute);
+    app.use(seleniumPageRoute);
     app.use(scanApiRoute);
     app.use(scanPageRoute);
 
