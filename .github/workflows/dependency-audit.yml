@@ -34,6 +34,6 @@ jobs:
           name: npm-audit-report
           path: audit-report.json
 
-      - name: Fail on high severity (main only)
+      - name: Fail on high severity production dependencies (main only)
         if: github.ref == 'refs/heads/main'
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high

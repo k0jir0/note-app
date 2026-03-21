@@ -339,6 +339,35 @@ class TestClient {
     }
 }
 
+function closeServer(server) {
+    return new Promise((resolve, reject) => {
+        const forceCloseTimer = setTimeout(() => {
+            if (typeof server.closeAllConnections === 'function') {
+                server.closeAllConnections();
+                return;
+            }
+
+            if (typeof server.closeIdleConnections === 'function') {
+                server.closeIdleConnections();
+            }
+        }, 50);
+
+        server.close((error) => {
+            clearTimeout(forceCloseTimer);
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            resolve();
+        });
+
+        if (typeof server.closeIdleConnections === 'function') {
+            server.closeIdleConnections();
+        }
+    });
+}
+
 describe('Application end-to-end flows', function () {
     let sandbox;
     let stores;
@@ -366,16 +395,7 @@ describe('Application end-to-end flows', function () {
         sandbox.restore();
 
         if (server) {
-            await new Promise((resolve, reject) => {
-                server.close((error) => {
-                    if (error) {
-                        reject(error);
-                        return;
-                    }
-
-                    resolve();
-                });
-            });
+            await closeServer(server);
         }
     });
 
