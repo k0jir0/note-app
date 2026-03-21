@@ -137,6 +137,7 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+# Local working notes and papers
 security-module.txt
 replace.txt
 .env.local
@@ -147,4 +148,5 @@ report1.txt
 report2.txt
 report3.txt
 report4.txt
+report5.txt
 artifacts/alert-triage-model.json

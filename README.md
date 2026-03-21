@@ -1,6 +1,6 @@
 # Note App
 
-A full-stack note-taking application with user authentication, built with Node.js, Express, MongoDB, and EJS. Includes an integrated Security Module for log analysis, scan import, correlation dashboards, and optional automated ingestion to help research, triage, and demo security alerts.
+A full-stack note-taking, applied security-research, and ML-assisted triage application built with Node.js, Express, MongoDB, and EJS. Alongside encrypted notes, it includes a Security Module for log and scan analysis and a dedicated ML Module that acts as a compact model-operations workspace for alert-triage training, runtime inspection, explainability, feedback-aware supervision, and audited autonomy experiments.
 
 ## Features
 
@@ -18,7 +18,7 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Scan import and findings dashboard (multi-format parsers: Nmap, Nikto, JSON)
 - Correlation dashboard linking scan findings with observed security alerts
 - Consolidated Research Workspace that unifies log analysis, scan import, correlations, and automation status
-- Dedicated ML Module for alert-triage model training, runtime inspection, and theory-backed dashboard interpretation
+- Dedicated ML Module for alert-triage model training, runtime inspection, explainable score analysis, feedback-aware supervision, and autonomy proof workflows
 - ML-driven autonomous response policy that can notify operators or trigger a block webhook for high-risk ingested alerts
 - Optional scheduled ingestion for logs, scans, and intrusion events (Falco JSON ingestion helper + Trivy runner support)
 - Optional Redis-backed realtime ingest endpoint and live alert stream, with separate server and browser connection status in the Security Module UI
@@ -116,7 +116,7 @@ Current local verification:
 - Login and start creating notes
 - Use `/research` to access the unified Research Workspace
 - Use the Security Module link inside `/research` to run `Inject Automation Sample` and populate Alerts, Scans, and Correlations with demo data for the signed-in account
-- Use `/ml/module` to inspect the alert-triage model, compare runtime score distributions, view learned feature influence, and train either a bootstrap or hybrid model
+- Use `/ml/module` to inspect the active alert-triage model, compare score provenance and score distributions, review learned feature influence, train either a bootstrap or hybrid model, and verify autonomous-response behavior with the built-in demo flow
 - Optional: send a `POST` request to `/seed` after logging in (dev only) for sample data
 
 ### Optional Automation
@@ -187,13 +187,16 @@ The Research Workspace links to a dedicated Security Module page with an `Inject
 
 The Research Workspace links to a dedicated ML Module page at `/ml/module`.
 
-- The page exposes the current runtime model state, training metrics, and dataset sizes used for alert triage.
+- The page acts as a compact model-operations surface for the alert-triage system rather than a single training button.
+- It ties together the full triage loop: label supply, model fitting, runtime model state, explainability, scored-alert inspection, and the downstream autonomy audit trail.
+- It exposes the current runtime model state, training metrics, dataset sizes, score provenance, and recent scored alerts used in the triage loop.
 - `Train Bootstrap Model` fits a synthetic-first logistic-regression model, which is useful for cold-start demos and environments without enough analyst labels yet.
 - `Train Hybrid Model` mixes project-wide analyst-labeled alerts with synthetic examples when coverage is sparse, producing a more realistic decision boundary once feedback begins to accumulate.
-- The dashboard visualizes score-label counts, score-source counts, score buckets, per-alert-type priority breakdowns, and the strongest positive and negative learned feature weights.
+- The dashboard visualizes feedback supply, score-label counts, score-source counts, score buckets, per-alert-type priority breakdowns, and the strongest positive and negative learned feature weights so the model can be inspected rather than simply trusted.
 - Every major panel now includes a short theoretical description so the UI explains what the numbers mean in ML terms instead of acting as a raw control surface.
-- Recent scored alerts in both the ML Module and Security Module now show the autonomous response decision and any recorded notify-block action outcomes.
+- Recent scored alerts in both the ML Module and Security Module now show the autonomous response decision and any recorded notify-block action outcomes, keeping scoring and downstream policy tied together visibly.
 - `Autonomy Demo Inject` seeds a safe dry-run notify-plus-block scenario and should increase the ML Module's `Observed Autonomous Outcomes` counters, making it easy to prove that the policy loop is recording decisions on stored alerts.
+- In practice, the ML Module is the best place to answer three operational questions quickly: what model is active, why is it scoring alerts this way, and has that scoring changed any downstream response behavior.
 
 ### Optional Autonomous Response
 
