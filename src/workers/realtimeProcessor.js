@@ -1,3 +1,7 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env.local'), override: true });
+
 const mongoose = require('mongoose');
 const { redis, publisher } = require('../lib/redisClient');
 const SecurityAlert = require('../models/SecurityAlert');
