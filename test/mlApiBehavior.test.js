@@ -33,9 +33,19 @@ describe('ML API controller behavior', () => {
         };
         const res = makeRes();
         const fakeOverview = {
-            model: { available: false, path: 'C:\\temp\\model.json' },
+            model: {
+                available: false,
+                path: 'C:\\temp\\model.json',
+                topPositiveFeatures: [],
+                topNegativeFeatures: []
+            },
             training: { currentUserTrainableCount: 3, projectTrainableCount: 12 },
-            alerts: { totalCount: 8, recentAlerts: [] }
+            alerts: {
+                totalCount: 8,
+                scoreBuckets: [],
+                typePriorityBreakdown: [],
+                recentAlerts: []
+            }
         };
 
         sandbox.stub(trainingService, 'buildAlertTriageModuleOverview').resolves(fakeOverview);

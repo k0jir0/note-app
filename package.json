@@ -6,10 +6,18 @@
   "scripts": {
     "start": "node index.js",
     "start-dev": "npx nodemon index.js",
+    "local:run": "powershell -ExecutionPolicy Bypass -File .\\run-local.ps1",
+    "local:run:worker": "powershell -ExecutionPolicy Bypass -File .\\run-local.ps1 -WithWorker",
     "check-env": "node scripts/env-check.js",
     "automation:trivy": "node automation/trivy-runner.js",
     "automation:falco": "node automation/falco-runner.js",
     "ml:train": "node scripts/train-alert-triage-model.js",
+    "pm2:start": "pm2 start ecosystem.config.cjs --only note-app-web --update-env",
+    "pm2:start:worker": "pm2 start ecosystem.config.cjs --only note-app-web,note-app-worker --update-env",
+    "pm2:restart": "pm2 restart ecosystem.config.cjs --update-env",
+    "pm2:stop": "pm2 delete note-app-web note-app-worker",
+    "pm2:status": "pm2 status",
+    "pm2:logs": "pm2 logs note-app-web --lines 200",
     "worker": "node src/workers/realtimeProcessor.js",
     "test": "mocha --require ./test/testSetup.js \"test/**/*.js\"",
     "lint": "eslint . --ext .js"

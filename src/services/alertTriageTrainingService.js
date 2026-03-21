@@ -25,6 +25,33 @@ const MODEL_SUMMARY_FIELDS = [
     'metrics',
     'sources'
 ];
+const SCORE_BUCKETS = [
+    { label: '0.00-0.24', min: 0, max: 0.249999 },
+    { label: '0.25-0.49', min: 0.25, max: 0.499999 },
+    { label: '0.50-0.74', min: 0.5, max: 0.749999 },
+    { label: '0.75-1.00', min: 0.75, max: 1 }
+];
+const FEATURE_LABELS = {
+    count_norm: 'Activity Volume',
+    threshold_norm: 'Threshold Distance',
+    ratio_norm: 'Failure / Enumeration Ratio',
+    sample_size_norm: 'Repeated Evidence',
+    tool_count_norm: 'Scanner Tool Count',
+    source_ip_count_norm: 'Source IP Spread',
+    summary_length_norm: 'Alert Context Size',
+    has_ip_indicator: 'Concrete IP Indicator',
+    has_fingerprint: 'Stable Fingerprint',
+    severity_low: 'Severity: Low',
+    severity_medium: 'Severity: Medium',
+    severity_high: 'Severity: High',
+    type_failed_login_burst: 'Type: Failed Login Burst',
+    type_suspicious_path_probe: 'Type: Suspicious Path Probe',
+    type_high_error_rate: 'Type: High Error Rate',
+    type_scanner_tool_detected: 'Type: Scanner Tool Detected',
+    type_injection_attempt: 'Type: Injection Attempt',
+    type_directory_enumeration: 'Type: Directory Enumeration',
+    type_unknown: 'Type: Unknown'
+};
 
 function getRuntimeModel(options = {}) {
     if (Object.prototype.hasOwnProperty.call(options, 'model')) {
@@ -62,11 +89,83 @@ function summarizeCounts(items = [], getKey, preferredOrder = []) {
     }));
 }
 
+function formatFeatureLabel(featureName) {
+    return FEATURE_LABELS[featureName] || String(featureName || 'unknown')
+        .replaceAll('_', ' ')
+        .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function buildFeatureHighlights(model, direction, limit = 6) {
+    if (!model || !Array.isArray(model.featureNames) || !Array.isArray(model.weights)) {
+        return [];
+    }
+
+    const multiplier = direction === 'negative' ? -1 : 1;
+    return model.featureNames
+        .map((name, index) => ({
+            key: name,
+            label: formatFeatureLabel(name),
+            weight: Number(model.weights[index] || 0)
+        }))
+        .filter((feature) => Number.isFinite(feature.weight))
+        .filter((feature) => (direction === 'negative' ? feature.weight < 0 : feature.weight > 0))
+        .sort((left, right) => (right.weight * multiplier) - (left.weight * multiplier))
+        .slice(0, limit)
+        .map((feature) => ({
+            key: feature.key,
+            label: feature.label,
+            weight: Number(feature.weight.toFixed(3)),
+            strength: Number(Math.abs(feature.weight).toFixed(3))
+        }));
+}
+
+function buildScoreBuckets(alerts = []) {
+    const total = alerts.length || 1;
+    return SCORE_BUCKETS.map((bucket) => {
+        const count = alerts.filter((alert) => {
+            const score = Number(alert.mlScore);
+            return Number.isFinite(score) && score >= bucket.min && score <= bucket.max;
+        }).length;
+
+        return {
+            label: bucket.label,
+            count,
+            proportion: Number((count / total).toFixed(3))
+        };
+    });
+}
+
+function buildAlertTypePriorityBreakdown(alerts = []) {
+    const summary = alerts.reduce((result, alert) => {
+        const key = String(alert.type || 'unknown');
+        if (!result[key]) {
+            result[key] = {
+                label: formatFeatureLabel(`type_${key}`),
+                high: 0,
+                medium: 0,
+                low: 0,
+                total: 0
+            };
+        }
+
+        const label = ['high', 'medium', 'low'].includes(alert.mlLabel)
+            ? alert.mlLabel
+            : 'low';
+        result[key][label] += 1;
+        result[key].total += 1;
+        return result;
+    }, {});
+
+    return Object.values(summary).sort((left, right) => right.total - left.total);
+}
+
 function buildModelSummary(model, pathValue) {
     if (!model) {
         return {
             available: false,
-            path: pathValue
+            path: pathValue,
+            topPositiveFeatures: [],
+            topNegativeFeatures: []
         };
     }
 
@@ -78,6 +177,8 @@ function buildModelSummary(model, pathValue) {
     return {
         available: true,
         path: pathValue,
+        topPositiveFeatures: buildFeatureHighlights(model, 'positive'),
+        topNegativeFeatures: buildFeatureHighlights(model, 'negative'),
         ...summary
     };
 }
@@ -177,6 +278,8 @@ async function buildAlertTriageModuleOverview(options = {}) {
                 enrichedAlerts,
                 (alert) => alert.scoreSource || 'unknown'
             ),
+            scoreBuckets: buildScoreBuckets(enrichedAlerts),
+            typePriorityBreakdown: buildAlertTypePriorityBreakdown(enrichedAlerts),
             recentAlerts
         }
     };

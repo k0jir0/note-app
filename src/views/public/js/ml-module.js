@@ -17,11 +17,16 @@ const userFeedbackGrid = document.getElementById('ml-user-feedback-grid');
 const projectFeedbackGrid = document.getElementById('ml-project-feedback-grid');
 const scoreLabelGrid = document.getElementById('ml-score-label-grid');
 const scoreSourceGrid = document.getElementById('ml-score-source-grid');
+const scoreBucketsGrid = document.getElementById('ml-score-buckets-grid');
+const alertTypeBreakdownEl = document.getElementById('ml-alert-type-breakdown');
+const positiveFeaturesEl = document.getElementById('ml-positive-features');
+const negativeFeaturesEl = document.getElementById('ml-negative-features');
 const recentAlertsGrid = document.getElementById('ml-recent-alerts-grid');
 const refreshBtn = document.getElementById('ml-refresh-btn');
 const refreshAlertsBtn = document.getElementById('ml-refresh-alerts-btn');
 const trainHybridBtn = document.getElementById('ml-train-hybrid-btn');
 const trainBootstrapBtn = document.getElementById('ml-train-bootstrap-btn');
+const trainingButtons = [trainHybridBtn, trainBootstrapBtn].filter(Boolean);
 
 function escapeHtml(value = '') {
     return String(value)
@@ -38,6 +43,12 @@ function renderStatus(message, tone = 'secondary') {
     }
 
     statusTarget.innerHTML = `<div class="alert alert-${escapeHtml(tone)} mb-0">${escapeHtml(message)}</div>`;
+}
+
+function setTrainingButtonsDisabled(isDisabled) {
+    trainingButtons.forEach((button) => {
+        button.disabled = isDisabled;
+    });
 }
 
 function formatDate(value) {
@@ -86,6 +97,96 @@ function renderMetricCards(target, items = [], emptyMessage) {
             </div>
         </div>
     `).join('');
+}
+
+function renderDistributionBars(target, items = [], emptyMessage, formatter = (item) => `${item.count}`) {
+    if (!target) {
+        return;
+    }
+
+    if (!items.length) {
+        target.innerHTML = `<div class="alert alert-secondary mb-0">${escapeHtml(emptyMessage)}</div>`;
+        return;
+    }
+
+    target.innerHTML = items.map((item) => {
+        const width = Math.max(4, Math.min(100, Number(item.proportion || 0) * 100));
+        return `
+            <div class="ml-distribution-row">
+                <div class="d-flex justify-content-between gap-3 mb-1">
+                    <span class="fw-semibold">${escapeHtml(item.label)}</span>
+                    <span class="text-muted small">${escapeHtml(formatter(item))}</span>
+                </div>
+                <div class="ml-distribution-track">
+                    <div class="ml-distribution-fill" style="width: ${width.toFixed(1)}%"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderFeatureHighlights(target, features = [], emptyMessage, tone) {
+    if (!target) {
+        return;
+    }
+
+    if (!features.length) {
+        target.innerHTML = `<div class="alert alert-secondary mb-0">${escapeHtml(emptyMessage)}</div>`;
+        return;
+    }
+
+    const maxStrength = Math.max(...features.map((feature) => Number(feature.strength) || 0), 1);
+    target.innerHTML = features.map((feature) => {
+        const width = Math.max(6, ((Number(feature.strength) || 0) / maxStrength) * 100);
+        return `
+            <div class="ml-feature-card">
+                <div class="d-flex justify-content-between gap-3 mb-1">
+                    <span class="fw-semibold">${escapeHtml(feature.label)}</span>
+                    <span class="small text-muted">${escapeHtml(feature.weight.toFixed(3))}</span>
+                </div>
+                <div class="ml-feature-track">
+                    <div class="ml-feature-fill tone-${escapeHtml(tone)}" style="width: ${width.toFixed(1)}%"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderAlertTypeBreakdown(items = []) {
+    if (!alertTypeBreakdownEl) {
+        return;
+    }
+
+    if (!items.length) {
+        alertTypeBreakdownEl.innerHTML = '<div class="alert alert-secondary mb-0">No alert type priority data is available yet.</div>';
+        return;
+    }
+
+    alertTypeBreakdownEl.innerHTML = items.map((item) => {
+        const total = Number(item.total) || 1;
+        const highWidth = (Number(item.high || 0) / total) * 100;
+        const mediumWidth = (Number(item.medium || 0) / total) * 100;
+        const lowWidth = (Number(item.low || 0) / total) * 100;
+
+        return `
+            <div class="ml-type-row">
+                <div class="d-flex justify-content-between gap-3 mb-1">
+                    <span class="fw-semibold">${escapeHtml(item.label)}</span>
+                    <span class="text-muted small">${escapeHtml(item.total)} alert(s)</span>
+                </div>
+                <div class="ml-stacked-track mb-2" role="img" aria-label="${escapeHtml(item.label)} priority distribution">
+                    <div class="ml-stack-segment tone-high" style="width: ${highWidth.toFixed(1)}%"></div>
+                    <div class="ml-stack-segment tone-medium" style="width: ${mediumWidth.toFixed(1)}%"></div>
+                    <div class="ml-stack-segment tone-low" style="width: ${lowWidth.toFixed(1)}%"></div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 small text-muted">
+                    <span>High ${escapeHtml(item.high || 0)}</span>
+                    <span>Medium ${escapeHtml(item.medium || 0)}</span>
+                    <span>Low ${escapeHtml(item.low || 0)}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function renderModelSummary(model = {}) {
@@ -168,7 +269,7 @@ function renderRecentAlerts(alerts = []) {
                         </div>
                         <h3 class="h6 mb-2">${escapeHtml(alert.summary || 'Scored alert')}</h3>
                         <p class="small mb-1"><strong>Score:</strong> ${escapeHtml(formatScore(alert.mlScore))} (${escapeHtml(alert.mlLabel || 'low')})</p>
-                        <p class="small text-muted mb-2"><strong>Feedback:</strong> ${escapeHtml(titleize(alert.feedback && alert.feedback.label ? alert.feedback.label : 'unreviewed'))} · ${escapeHtml(alert.scoreSource || 'heuristic-baseline')}</p>
+                        <p class="small text-muted mb-2"><strong>Feedback:</strong> ${escapeHtml(titleize(alert.feedback && alert.feedback.label ? alert.feedback.label : 'unreviewed'))} &middot; ${escapeHtml(alert.scoreSource || 'heuristic-baseline')}</p>
                         <div class="small text-muted">
                             ${reasons.length ? reasons.map((reason) => `<div>&rsaquo; ${escapeHtml(reason)}</div>`).join('') : 'No model rationale available yet.'}
                         </div>
@@ -179,17 +280,48 @@ function renderRecentAlerts(alerts = []) {
     }).join('');
 }
 
+async function requestJson(url, options = {}, fallbackMessage) {
+    try {
+        const response = await fetch(url, {
+            credentials: 'same-origin',
+            ...options
+        });
+        const contentType = response.headers.get('content-type') || '';
+
+        if (!contentType.includes('application/json')) {
+            const unexpectedBody = await response.text();
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Your session is no longer active. Refresh the page and sign in again.');
+            }
+
+            throw new Error(
+                unexpectedBody && unexpectedBody.trim()
+                    ? 'The server returned an unexpected response. Refresh the page and try again.'
+                    : (fallbackMessage || 'The request could not be completed.')
+            );
+        }
+
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+            throw new Error(payload.message || fallbackMessage || 'The request could not be completed.');
+        }
+
+        return payload;
+    } catch (error) {
+        if (error instanceof TypeError) {
+            throw new Error('Could not reach the server. Refresh the page and confirm the app is still running on localhost:3000.');
+        }
+
+        throw error;
+    }
+}
+
 async function fetchOverview() {
-    const response = await fetch(overviewEndpoint, {
+    const payload = await requestJson(overviewEndpoint, {
         headers: {
             Accept: 'application/json'
         }
-    });
-    const payload = await response.json();
-
-    if (!response.ok || !payload.success) {
-        throw new Error(payload.message || 'Unable to load ML module overview');
-    }
+    }, 'Unable to load the ML module overview.');
 
     return payload.data;
 }
@@ -220,11 +352,32 @@ function renderOverview(data) {
         data.alerts && Array.isArray(data.alerts.scoreSourceCounts) ? data.alerts.scoreSourceCounts : [],
         'No score sources are available yet.'
     );
+    renderDistributionBars(
+        scoreBucketsGrid,
+        data.alerts && Array.isArray(data.alerts.scoreBuckets) ? data.alerts.scoreBuckets : [],
+        'No score bucket distribution is available yet.',
+        (item) => `${item.count} alert(s)`
+    );
+    renderAlertTypeBreakdown(
+        data.alerts && Array.isArray(data.alerts.typePriorityBreakdown) ? data.alerts.typePriorityBreakdown : []
+    );
+    renderFeatureHighlights(
+        positiveFeaturesEl,
+        data.model && Array.isArray(data.model.topPositiveFeatures) ? data.model.topPositiveFeatures : [],
+        'Train a model to see which learned features push scores upward.',
+        'positive'
+    );
+    renderFeatureHighlights(
+        negativeFeaturesEl,
+        data.model && Array.isArray(data.model.topNegativeFeatures) ? data.model.topNegativeFeatures : [],
+        'Train a model to see which learned features suppress scores.',
+        'negative'
+    );
     renderRecentAlerts(data.alerts && Array.isArray(data.alerts.recentAlerts) ? data.alerts.recentAlerts : []);
 }
 
 async function trainModel(mode) {
-    const response = await fetch(trainEndpoint, {
+    const payload = await requestJson(trainEndpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -235,12 +388,7 @@ async function trainModel(mode) {
             mode,
             syntheticCount: mode === 'bootstrap' ? 1000 : 600
         })
-    });
-    const payload = await response.json();
-
-    if (!response.ok || !payload.success) {
-        throw new Error(payload.message || 'Training failed');
-    }
+    }, `Unable to train the ${mode === 'bootstrap' ? 'bootstrap' : 'hybrid'} model.`);
 
     return payload.data;
 }
@@ -256,6 +404,7 @@ async function refreshModule(showMessage = false) {
 async function handleTraining(mode) {
     const label = mode === 'bootstrap' ? 'bootstrap' : 'hybrid';
     renderStatus(`Training the ${label} model. This may take a moment...`, 'info');
+    setTrainingButtonsDisabled(true);
 
     try {
         const result = await trainModel(mode);
@@ -263,6 +412,8 @@ async function handleTraining(mode) {
         renderStatus(`Finished training the ${label} model with ${result.model.trainingSamples} sample(s). Rescored ${result.rescoredAlerts} stored alert(s).`, 'success');
     } catch (error) {
         renderStatus(error.message || `Unable to train the ${label} model right now.`, 'danger');
+    } finally {
+        setTrainingButtonsDisabled(false);
     }
 }
 

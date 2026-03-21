@@ -725,6 +725,9 @@ describe('Application end-to-end flows', function () {
         expect(mlPage.status).to.equal(200);
         expect(mlHtml).to.include('ML Module');
         expect(mlHtml).to.include('/api/ml/overview');
+        expect(mlHtml).to.include('Score Buckets');
+        expect(mlHtml).to.include('Alert Types by Priority');
+        expect(mlHtml).to.include('Learned Feature Influence');
 
         const overviewResponse = await client.request('/api/ml/overview', {
             headers: { 'x-test-auth': '1' }
@@ -735,6 +738,9 @@ describe('Application end-to-end flows', function () {
         expect(overviewPayload.success).to.equal(true);
         expect(overviewPayload.data.training.currentUserTrainableCount).to.equal(1);
         expect(overviewPayload.data.alerts.totalCount).to.equal(1);
+        expect(overviewPayload.data.alerts.scoreBuckets).to.be.an('array').with.length(4);
+        expect(overviewPayload.data.alerts.typePriorityBreakdown[0].label).to.equal('Type: Injection Attempt');
+        expect(overviewPayload.data.model.topPositiveFeatures).to.be.an('array');
         expect(overviewPayload.data.alerts.recentAlerts[0].feedback.label).to.equal('important');
     });
 });

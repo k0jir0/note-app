@@ -313,6 +313,67 @@ ul {
   color: #475569;
 }
 
+.ml-distribution-row,
+.ml-feature-card,
+.ml-type-row {
+  padding: 0.9rem 1rem;
+  border: 1px solid #dbeafe;
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.ml-distribution-track,
+.ml-feature-track,
+.ml-stacked-track {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.ml-distribution-track,
+.ml-feature-track {
+  height: 0.7rem;
+}
+
+.ml-stacked-track {
+  display: flex;
+  height: 0.85rem;
+}
+
+.ml-distribution-fill,
+.ml-feature-fill,
+.ml-stack-segment {
+  height: 100%;
+}
+
+.ml-distribution-fill {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%);
+}
+
+.ml-feature-fill.tone-positive {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0f766e 0%, #34d399 100%);
+}
+
+.ml-feature-fill.tone-negative {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #b45309 0%, #f59e0b 100%);
+}
+
+.ml-stack-segment.tone-high {
+  background: #dc2626;
+}
+
+.ml-stack-segment.tone-medium {
+  background: #f59e0b;
+}
+
+.ml-stack-segment.tone-low {
+  background: #2563eb;
+}
+
 @media (max-width: 767.98px) {
   .automation-metadata {
     grid-template-columns: 1fr;

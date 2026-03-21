@@ -18,6 +18,7 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Scan import and findings dashboard (multi-format parsers: Nmap, Nikto, JSON)
 - Correlation dashboard linking scan findings with observed security alerts
 - Consolidated Research Workspace that unifies log analysis, scan import, correlations, and automation status
+- Dedicated ML Module for alert-triage model training, runtime inspection, and theory-backed dashboard interpretation
 - Optional scheduled ingestion for logs, scans, and intrusion events (Falco JSON ingestion helper + Trivy runner support)
 - Optional Redis-backed realtime ingest endpoint and live alert stream, with separate server and browser connection status in the Security Module UI
 - Built-in automation runners: Falco ingestion, Trivy scanner wrappers, and batch dedupe persistence
@@ -92,12 +93,21 @@ npm run lint       # ESLint
 
 Server: `http://localhost:3000`
 
+For a more stable Windows local launch, prefer the included launcher instead of a transient shell session:
+```powershell
+.\run-local.ps1
+.\run-local.ps1 -WithWorker
+```
+
+That script opens dedicated PowerShell window(s) for the web app and optional realtime worker, which avoids the local-process teardown issues that can cause a browser refresh to briefly show "this site can't be reached."
+
 Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
+- If you want a persistent process manager for local development, see the PM2 workflow in the Development section below.
 
 Current local verification:
-- `npm test` passes with 224 tests
+- `npm test` passes with 248 tests
 - `npm run lint` passes with 0 errors
 
 4. **Create Account & Use**
@@ -105,6 +115,7 @@ Current local verification:
 - Login and start creating notes
 - Use `/research` to access the unified Research Workspace
 - Use the Security Module link inside `/research` to run `Inject Automation Sample` and populate Alerts, Scans, and Correlations with demo data for the signed-in account
+- Use `/ml/module` to inspect the alert-triage model, compare runtime score distributions, view learned feature influence, and train either a bootstrap or hybrid model
 - Optional: send a `POST` request to `/seed` after logging in (dev only) for sample data
 
 ### Optional Automation
@@ -170,6 +181,16 @@ The Research Workspace links to a dedicated Security Module page with an `Inject
 - The sample currently creates visible alert types for failed-login burst, suspicious path probing, scanner-tool detection, injection attempt, and directory enumeration.
 - After completion, the workspace refreshes the Alerts, Scans, and Correlations panels so the saved records appear immediately.
 - If backend sample behavior changes, restart the app and reload the Research page so both server and browser assets are current.
+
+### ML Module Overview
+
+The Research Workspace links to a dedicated ML Module page at `/ml/module`.
+
+- The page exposes the current runtime model state, training metrics, and dataset sizes used for alert triage.
+- `Train Bootstrap Model` fits a synthetic-first logistic-regression model, which is useful for cold-start demos and environments without enough analyst labels yet.
+- `Train Hybrid Model` mixes project-wide analyst-labeled alerts with synthetic examples when coverage is sparse, producing a more realistic decision boundary once feedback begins to accumulate.
+- The dashboard visualizes score-label counts, score-source counts, score buckets, per-alert-type priority breakdowns, and the strongest positive and negative learned feature weights.
+- Every major panel now includes a short theoretical description so the UI explains what the numbers mean in ML terms instead of acting as a raw control surface.
 
 ## API Documentation
 
@@ -286,6 +307,8 @@ PUT /api/notes/:id
 | `GET /notes/:id` | View note | Yes |
 | `GET /notes/:id/edit` | Edit note form | Yes |
 | `GET /research` | Unified Research Workspace | Yes |
+| `GET /ml` | Redirects to the dedicated ML Module page | Yes |
+| `GET /ml/module` | Dedicated ML Module page | Yes |
 | `GET /auth/login` | Login page | - |
 | `GET /auth/signup` | Signup page | - |
 | `GET /auth/logout` | Logout confirmation page | Yes |
@@ -309,6 +332,13 @@ PUT /api/notes/:id
 | `POST /api/security/scan-import` | POST | Import parsed scan results |
 | `POST /api/security/realtime-ingest` | POST | Queue realtime ingestion payloads when realtime is enabled |
 | `GET /api/security/stream` | GET | Subscribe to live security events with Server-Sent Events when realtime is enabled |
+
+### ML API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/ml/overview` | GET | Get the current ML Module overview, including model metadata, alert score distributions, and recent scored alerts |
+| `POST /api/ml/train` | POST | Train a bootstrap or hybrid alert-triage model and rescore stored alerts |
 
 ## Project Structure
 
@@ -389,13 +419,53 @@ notes-app/
 ```bash
 npm start          # Production
 npm run start-dev  # Development (nodemon auto-reload)
+npm run local:run  # Windows launcher in a dedicated shell
+npm run local:run:worker  # Launcher + realtime worker
+npm run pm2:start  # Start the web app under PM2
+npm run pm2:start:worker  # Start the web app and worker under PM2
+npm run pm2:restart # Restart the PM2-managed processes
+npm run pm2:stop   # Stop the PM2-managed processes
+npm run pm2:status # Show PM2 process state
+npm run pm2:logs   # Tail PM2 logs for the web app
 npm test           # Run test suite
 npm run lint       # ESLint code quality check
 ```
 
 **Testing Notes:**
 - `npm test` now loads `test/testSetup.js` before the suite so tests run in `NODE_ENV=test` with Redis-backed realtime disabled by default.
-- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, and the Security Module workflow.
+- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, the Security Module workflow, and the ML Module overview path.
+
+### Stable Local Run Paths
+
+If the app is started from a short-lived shell or editor-integrated task runner, the Node process can be terminated when that parent shell exits. On Windows, that can surface as a browser refresh briefly showing "this site can't be reached" before the app is started again.
+
+Use one of these stable local paths instead:
+
+```powershell
+.\run-local.ps1
+.\run-local.ps1 -WithWorker
+```
+
+The launcher opens dedicated PowerShell windows that keep the processes alive independently of the shell that started them.
+
+### PM2 for Persistent Local Processes
+
+The repository now includes `ecosystem.config.cjs` for PM2-managed local processes:
+
+```bash
+npm install -g pm2
+npm run pm2:start
+npm run pm2:start:worker
+npm run pm2:status
+npm run pm2:logs
+npm run pm2:stop
+```
+
+The PM2 config starts:
+- `note-app-web` from `index.js`
+- `note-app-worker` from `src/workers/realtimeProcessor.js`
+
+Both processes read the same `.env` / `.env.local` startup configuration as the standard app scripts.
 
 **Adding Features:**
 1. Update schemas in `src/models/`
@@ -623,6 +693,7 @@ pm2 save && pm2 startup
 | `csrfToken is not defined` in an EJS page | Ensure the route renders the page with `csrfToken: res.locals.csrfToken` and the request passed through the CSRF middleware |
 | `MongoStore.create is not a function` on startup | Use `const { MongoStore } = require('connect-mongo')` with the installed CommonJS package version |
 | Realtime endpoints return 404 or 503 | Set `REDIS_URL`, enable realtime with `ENABLE_REALTIME=1` (or the dev toggle endpoint), and start `npm run worker` |
+| Browser refresh sometimes shows "This site can't be reached" locally | Launch from `.\run-local.ps1` or PM2 instead of a transient shell session so the Node process stays attached to a persistent parent |
 | Tests fail | Run `npm install`, ensure Node.js v18+ |
 | Port already in use | Set `PORT` env variable or kill process on port 3000 |
 | Database connection fails | Check MongoDB Atlas IP whitelist or local MongoDB status |
