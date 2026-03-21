@@ -40,4 +40,8 @@ const alertSchema = new mongoose.Schema({
     timestamps: true
 });
 
+alertSchema.index({ user: 1, detectedAt: -1, createdAt: -1 });
+alertSchema.index({ user: 1, source: 1, detectedAt: -1 });
+alertSchema.index({ user: 1, source: 1, 'details._fingerprint': 1, detectedAt: -1 });
+
 module.exports = mongoose.model('SecurityAlert', alertSchema);

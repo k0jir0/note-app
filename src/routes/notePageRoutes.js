@@ -7,6 +7,8 @@ const { handlePageError } = require('../utils/errorHandler');
 const { buildAutomationSection } = require('../utils/automationViewModel');
 const { buildCreateNoteData, buildUpdateNoteData } = require('../utils/noteMutations');
 
+const NOTE_LIST_SELECT = 'title content image createdAt updatedAt';
+
 router.get('/notes/new', requireAuth, (req, res) => {
     res.render('pages/note-form.ejs', {
         note: null,
@@ -16,7 +18,9 @@ router.get('/notes/new', requireAuth, (req, res) => {
 
 router.get('/notes', requireAuth, async (req, res) => {
     try {
-        const notes = await Notes.find({ user: req.user._id }).sort({ updatedAt: -1 });
+        const notes = await Notes.find({ user: req.user._id })
+            .select(NOTE_LIST_SELECT)
+            .sort({ updatedAt: -1 });
 
         res.render('pages/home.ejs', {
             title: 'Note App',

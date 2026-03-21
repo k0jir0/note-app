@@ -27,6 +27,7 @@ describe('Note API Controller - getAllNotes', () => {
 
         const findStub = sinon.stub(Notes, 'find');
         findStub.returns({
+            select: sinon.stub().returnsThis(),
             sort: sinon.stub().returnsThis(),
             skip: sinon.stub().returnsThis(),
             limit: sinon.stub().resolves(fakeNotes)

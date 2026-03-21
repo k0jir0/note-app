@@ -65,4 +65,7 @@ const scanResultSchema = new mongoose.Schema({
     timestamps: true
 });
 
+scanResultSchema.index({ user: 1, importedAt: -1, createdAt: -1 });
+scanResultSchema.index({ user: 1, source: 1, fingerprint: 1, importedAt: -1 });
+
 module.exports = mongoose.model('ScanResult', scanResultSchema);

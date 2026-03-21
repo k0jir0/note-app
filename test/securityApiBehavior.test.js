@@ -41,12 +41,24 @@ describe('Security API controller behavior', () => {
             { _id: 'a1', target: '10.0.0.1', details: { ip: '10.0.0.1' }, type: 'scanner_tool_detected', severity: 'low', detectedAt: new Date() }
         ];
 
-        // stub chainable query: find(...).sort(...).limit(...) => resolves to array
+        // stub chainable query: find(...).select(...).sort(...).lean().limit(...) => resolves to array
         sandbox.stub(SecurityAlert, 'find').returns({
-            sort: () => ({ limit: async () => alerts })
+            select: () => ({
+                sort: () => ({
+                    lean: () => ({
+                        limit: async () => alerts
+                    })
+                })
+            })
         });
         sandbox.stub(ScanResult, 'find').returns({
-            sort: () => ({ limit: async () => scans })
+            select: () => ({
+                sort: () => ({
+                    lean: () => ({
+                        limit: async () => scans
+                    })
+                })
+            })
         });
 
         await securityApiController.getCorrelations(req, res);
@@ -85,10 +97,22 @@ describe('Security API controller behavior', () => {
 
         // First call to find returns combined set
         sandbox.stub(ScanResult, 'find').returns({
-            sort: () => ({ limit: async () => [...existingScans, ...fakeInsertedScans] })
+            select: () => ({
+                sort: () => ({
+                    lean: () => ({
+                        limit: async () => [...existingScans, ...fakeInsertedScans]
+                    })
+                })
+            })
         });
         sandbox.stub(SecurityAlert, 'find').returns({
-            sort: () => ({ limit: async () => [...existingAlerts, ...fakeInsertedAlerts] })
+            select: () => ({
+                sort: () => ({
+                    lean: () => ({
+                        limit: async () => [...existingAlerts, ...fakeInsertedAlerts]
+                    })
+                })
+            })
         });
 
         await securityApiController.getSampleCorrelations(req, res);

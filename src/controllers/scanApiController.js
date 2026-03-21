@@ -2,6 +2,8 @@ const ScanResult = require('../models/ScanResult');
 const { parseScanInput, MAX_SCAN_INPUT_LENGTH } = require('../utils/scanParser');
 const { handleApiError } = require('../utils/errorHandler');
 
+const SCAN_LIST_SELECT = 'target tool findings summary importedAt';
+
 const parseLimit = (value, fallback = 20, max = 100) => {
     const parsed = Number.parseInt(value, 10);
     if (Number.isNaN(parsed) || parsed <= 0) {
@@ -60,7 +62,9 @@ exports.getScans = async (req, res) => {
 
         const [scans, totalCount] = await Promise.all([
             ScanResult.find({ user: req.user._id })
+                .select(SCAN_LIST_SELECT)
                 .sort({ importedAt: -1, createdAt: -1 })
+                .lean()
                 .limit(limit),
             ScanResult.countDocuments({ user: req.user._id })
         ]);

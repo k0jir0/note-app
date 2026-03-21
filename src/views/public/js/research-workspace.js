@@ -299,6 +299,19 @@ const renderCorrelations = (correlations = []) => {
     }).join('');
 };
 
+const renderAlertsPayload = (payload = {}) => {
+    renderAlerts(payload.data || [], payload.totalCount || payload.count || 0);
+};
+
+const renderScansPayload = (payload = {}) => {
+    renderScans(payload.data || [], payload.totalCount || payload.count || 0);
+};
+
+const renderCorrelationsPayload = (payload = {}) => {
+    renderCorrelationOverview(payload.overview || {});
+    renderCorrelations(payload.data || []);
+};
+
 const fetchAlerts = async () => {
     const response = await fetch('/api/security/alerts?limit=6', {
         headers: { 'Content-Type': 'application/json' }
@@ -335,17 +348,52 @@ const fetchCorrelations = async () => {
     return response.json();
 };
 
-const refreshWorkspace = async () => {
-    const [alertsPayload, scansPayload, correlationsPayload] = await Promise.all([
-        fetchAlerts(),
-        fetchScans(),
-        fetchCorrelations()
-    ]);
+const refreshAlertsPanel = async () => {
+    const payload = await fetchAlerts();
+    renderAlertsPayload(payload);
+    return payload;
+};
 
-    renderAlerts(alertsPayload.data || [], alertsPayload.totalCount || alertsPayload.count || 0);
-    renderScans(scansPayload.data || [], scansPayload.totalCount || scansPayload.count || 0);
-    renderCorrelationOverview(correlationsPayload.overview || {});
-    renderCorrelations(correlationsPayload.data || []);
+const refreshScansPanel = async () => {
+    const payload = await fetchScans();
+    renderScansPayload(payload);
+    return payload;
+};
+
+const refreshCorrelationPanels = async () => {
+    const payload = await fetchCorrelations();
+    renderCorrelationsPayload(payload);
+    return payload;
+};
+
+const createRefreshTasks = ({ alerts = true, scans = true, correlations = true } = {}) => {
+    const tasks = [];
+
+    if (alerts) {
+        tasks.push(refreshAlertsPanel());
+    }
+
+    if (scans) {
+        tasks.push(refreshScansPanel());
+    }
+
+    if (correlations) {
+        tasks.push(refreshCorrelationPanels());
+    }
+
+    return tasks;
+};
+
+const refreshWorkspace = async (options = {}) => {
+    await Promise.all(createRefreshTasks(options));
+};
+
+const refreshWorkspaceSettled = async (options = {}) => {
+    return Promise.allSettled(createRefreshTasks(options));
+};
+
+const hasRefreshFailures = (results = []) => {
+    return results.some((result) => result.status === 'rejected');
 };
 
 document.getElementById('workspace-refresh-all')?.addEventListener('click', async () => {
@@ -360,8 +408,8 @@ document.getElementById('workspace-refresh-all')?.addEventListener('click', asyn
 
 document.getElementById('workspace-refresh-alerts')?.addEventListener('click', async () => {
     try {
-        const payload = await fetchAlerts();
-        renderAlerts(payload.data || [], payload.totalCount || payload.count || 0);
+        await refreshAlertsPanel();
+        renderWorkspaceStatus('Alerts refreshed.', 'success');
     } catch (_error) {
         renderWorkspaceStatus('Unable to refresh alerts right now.', 'danger');
     }
@@ -369,8 +417,8 @@ document.getElementById('workspace-refresh-alerts')?.addEventListener('click', a
 
 document.getElementById('workspace-refresh-scans')?.addEventListener('click', async () => {
     try {
-        const payload = await fetchScans();
-        renderScans(payload.data || [], payload.totalCount || payload.count || 0);
+        await refreshScansPanel();
+        renderWorkspaceStatus('Scans refreshed.', 'success');
     } catch (_error) {
         renderWorkspaceStatus('Unable to refresh scans right now.', 'danger');
     }
@@ -378,9 +426,7 @@ document.getElementById('workspace-refresh-scans')?.addEventListener('click', as
 
 document.getElementById('workspace-refresh-correlations')?.addEventListener('click', async () => {
     try {
-        const payload = await fetchCorrelations();
-        renderCorrelationOverview(payload.overview || {});
-        renderCorrelations(payload.data || []);
+        await refreshCorrelationPanels();
         renderMessage('workspace-correlation-result', 'Correlations refreshed.', 'success');
     } catch (_error) {
         renderMessage('workspace-correlation-result', 'Unable to refresh correlations right now.', 'danger');
@@ -409,13 +455,23 @@ document.getElementById('workspace-inject-correlation-demo')?.addEventListener('
             return;
         }
 
-        await refreshWorkspace();
-        renderCorrelationOverview(payload.overview || {});
-        renderCorrelations(payload.data || []);
+        const refreshResults = await Promise.allSettled([
+            refreshAlertsPanel(),
+            refreshScansPanel()
+        ]);
+        renderCorrelationsPayload(payload);
+
         const targetCount = payload.overview ? payload.overview.targets : 0;
         const createdScans = payload.meta ? payload.meta.createdScans : 0;
         const createdAlerts = payload.meta ? payload.meta.createdAlerts : 0;
-        renderMessage('workspace-correlation-result', `Injected ${createdScans} demo scans and ${createdAlerts} demo alerts across ${targetCount} distinct targets. Correlation View has been refreshed with the saved results.`, 'success');
+        const successMessage = `Injected ${createdScans} demo scans and ${createdAlerts} demo alerts across ${targetCount} distinct targets. Correlation View has been refreshed with the saved results.`;
+
+        if (hasRefreshFailures(refreshResults)) {
+            renderMessage('workspace-correlation-result', `${successMessage} Alerts or scans may need a manual refresh.`, 'warning');
+            return;
+        }
+
+        renderMessage('workspace-correlation-result', successMessage, 'success');
     } catch (_error) {
         renderMessage('workspace-correlation-result', 'Unexpected error while injecting the correlation demo.', 'danger');
     }
@@ -455,8 +511,13 @@ document.getElementById('automation-inject-sample')?.addEventListener('click', a
             return;
         }
 
-        await refreshWorkspace();
-        renderWorkspaceStatus('Automation sample completed and the module was refreshed.', 'success');
+        const refreshResults = await refreshWorkspaceSettled();
+        if (hasRefreshFailures(refreshResults)) {
+            renderWorkspaceStatus('Automation sample completed, but some panels need a manual refresh.', 'warning');
+        } else {
+            renderWorkspaceStatus('Automation sample completed and the module was refreshed.', 'success');
+        }
+
         renderAutomationResult(formatAutomationSampleResult(payload.data || {}), 'success');
     } catch (_error) {
         renderWorkspaceStatus('Unexpected error while injecting automation sample.', 'danger');
@@ -488,8 +549,19 @@ logForm?.addEventListener('submit', async (event) => {
             return;
         }
 
-        await refreshWorkspace();
-        renderMessage('workspace-log-result', `${payload.data.createdAlerts} alert(s) created from ${payload.data.linesAnalyzed} lines.`, 'success');
+        const refreshResults = await refreshWorkspaceSettled({
+            alerts: true,
+            scans: false,
+            correlations: true
+        });
+        const resultMessage = `${payload.data.createdAlerts} alert(s) created from ${payload.data.linesAnalyzed} lines.`;
+
+        if (hasRefreshFailures(refreshResults)) {
+            renderMessage('workspace-log-result', `${resultMessage} Correlation panels may need a manual refresh.`, 'warning');
+            return;
+        }
+
+        renderMessage('workspace-log-result', resultMessage, 'success');
     } catch (_error) {
         renderMessage('workspace-log-result', 'Unexpected error while analyzing logs.', 'danger');
     }
@@ -519,8 +591,19 @@ scanForm?.addEventListener('submit', async (event) => {
             return;
         }
 
-        await refreshWorkspace();
-        renderMessage('workspace-scan-result', `Scan imported with ${payload.data.findingsCount} finding(s).`, 'success');
+        const refreshResults = await refreshWorkspaceSettled({
+            alerts: false,
+            scans: true,
+            correlations: true
+        });
+        const resultMessage = `Scan imported with ${payload.data.findingsCount} finding(s).`;
+
+        if (hasRefreshFailures(refreshResults)) {
+            renderMessage('workspace-scan-result', `${resultMessage} Correlation panels may need a manual refresh.`, 'warning');
+            return;
+        }
+
+        renderMessage('workspace-scan-result', resultMessage, 'success');
     } catch (_error) {
         renderMessage('workspace-scan-result', 'Unexpected error while importing the scan.', 'danger');
     }
@@ -534,127 +617,11 @@ refreshWorkspace()
         renderWorkspaceStatus('Workspace loaded with partial data. Use the refresh controls to retry.', 'warning');
     });
 
-// Realtime: SSE connection and demo simulation
-(() => {
-    const connectBtn = document.getElementById('realtime-connect-btn');
-    const simulateBtn = document.getElementById('realtime-simulate-btn');
-    const realtimeLog = document.getElementById('workspace-realtime-log');
-    let es = null;
-
-    const logRealtime = (msg, tone = 'secondary') => {
-        if (!realtimeLog) return;
-        const el = document.createElement('div');
-        el.className = `small text-${tone} mb-1`;
-        el.textContent = msg;
-        realtimeLog.prepend(el);
-        // keep limited history
-        while (realtimeLog.childNodes.length > 10) realtimeLog.removeChild(realtimeLog.lastChild);
-    };
-
-    const setConnectedState = (connected) => {
-        if (connectBtn) connectBtn.textContent = connected ? 'Disconnect Realtime' : 'Connect Realtime';
-        if (connectBtn) connectBtn.className = connected ? 'btn btn-outline-danger' : 'btn btn-outline-dark';
-    };
-
-    const handleMessage = (evt) => {
-        try {
-            const payload = JSON.parse(evt.data);
-            if (payload && payload.type === 'alerts') {
-                logRealtime(`Realtime: ${payload.created} new alert(s)`,'muted');
-                // refresh the alerts panel to show saved alerts
-                refreshWorkspace().catch(() => void 0);
-            } else {
-                logRealtime(`Realtime event: ${payload && payload.type ? payload.type : 'unknown'}`,'muted');
-            }
-        } catch (e) {
-            logRealtime('Realtime: malformed event', 'danger');
-        }
-    };
-
-    const connectRealtime = () => {
-        if (es) {
-            logRealtime('Already connected to realtime', 'secondary');
-            return;
-        }
-
-        // Probe realtime availability without opening a throwaway SSE connection.
-        const probe = new XMLHttpRequest();
-        probe.open('GET', '/api/security/stream?probe=1', true);
-        probe.withCredentials = true;
-        probe.timeout = 3000;
-        let probed = false;
-        probe.onreadystatechange = () => {
-            if (probe.readyState >= 2 && !probed) {
-                probed = true;
-                const status = probe.status;
-                if (status === 200) {
-                    // OK to open EventSource
-                    try {
-                        es = new EventSource('/api/security/stream');
-                        es.onopen = () => { setConnectedState(true); logRealtime('Realtime connected', 'success'); };
-                        es.onerror = () => { setConnectedState(false); logRealtime('Realtime connection error', 'danger'); try { es.close(); } catch (e) { void e; } es = null; };
-                        es.onmessage = handleMessage;
-                    } catch (e) {
-                        logRealtime('Unable to open realtime connection', 'danger');
-                        if (es) { try { es.close(); } catch (e2) { void e2; } es = null; }
-                    }
-                } else if (status === 401 || status === 403) {
-                    logRealtime('Realtime connection denied (authentication required). Please log in and try again.', 'danger');
-                } else if (status === 404) {
-                    logRealtime('Realtime endpoint not available on server (disabled).', 'danger');
-                } else if (status === 0) {
-                    logRealtime('Realtime probe timed out or network error. Ensure the server is reachable.', 'danger');
-                } else {
-                    logRealtime(`Realtime unavailable: HTTP ${status}`, 'danger');
-                }
-                try { probe.abort(); } catch (e) { void e; }
-            }
-        };
-        probe.ontimeout = () => {
-            logRealtime('Realtime probe timed out. Server may be unreachable.', 'danger');
-        };
-        probe.onerror = () => {
-            logRealtime('Realtime probe failed (network error).', 'danger');
-        };
-        try { probe.send(); } catch (e) { logRealtime('Realtime probe failed to send', 'danger'); }
-    };
-
-    const disconnectRealtime = () => {
-        if (!es) return;
-        try { es.close(); } catch (e) { void e; }
-        es = null;
-        setConnectedState(false);
-        logRealtime('Realtime disconnected', 'secondary');
-    };
-
-    connectBtn?.addEventListener('click', () => {
-        if (!es) connectRealtime(); else disconnectRealtime();
-    });
-
-    if (connectBtn && !connectBtn.disabled) {
-        setConnectedState(false);
-    }
-
-    // Simulate realtime by invoking the existing automation sample action
-    simulateBtn?.addEventListener('click', async () => {
-        try {
-            logRealtime('Injecting automation sample...', 'info');
-            const response = await fetch('/api/security/automation/sample', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
-                body: '{}'
-            });
-            const payload = await response.json();
-            if (!response.ok) {
-                logRealtime('Simulation failed', 'danger');
-                return;
-            }
-            logRealtime(`Simulation injected: ${payload.data && payload.data.createdAlerts ? payload.data.createdAlerts : 0} alert(s)`, 'success');
-            // If realtime is connected, the worker will publish events and the UI will refresh via the message handler
-            // As a fallback, refresh the workspace after a short delay
-            setTimeout(() => refreshWorkspace().catch(() => void 0), 1200);
-        } catch (e) {
-            logRealtime('Simulation error', 'danger');
-        }
-    });
-})();
+window.securityWorkspace = {
+    csrfToken,
+    refreshWorkspace,
+    refreshAlertsPanel,
+    refreshScansPanel,
+    refreshCorrelationPanels,
+    renderWorkspaceStatus
+};

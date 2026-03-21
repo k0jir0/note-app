@@ -12,34 +12,17 @@ const securityApiRoute = require('./src/routes/securityApiRoutes');
 const securityPageRoute = require('./src/routes/securityPageRoutes');
 const scanApiRoute = require('./src/routes/scanApiRoutes');
 const scanPageRoute = require('./src/routes/scanPageRoutes');
+const devRuntimeRoute = require('./src/routes/devRuntimeRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const metricsRoute = require('./src/routes/metrics');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
-const { requireAuth, requireAuthAPI } = require('./src/middleware/auth');
+const { requireAuth } = require('./src/middleware/auth');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { startAutomation } = require('./src/services/automationService');
 
 require('dotenv').config();
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
-
-function parseEnabledFlag(value) {
-    if (typeof value === 'boolean') {
-        return value;
-    }
-
-    if (typeof value === 'string') {
-        const normalized = value.trim().toLowerCase();
-        if (normalized === 'true') {
-            return true;
-        }
-        if (normalized === 'false') {
-            return false;
-        }
-    }
-
-    return null;
-}
 
 (async function main() {
     const keyLoad = await tryLoadKeytarGoogleSecrets().catch((e) => ({ loaded: false, error: e }));
@@ -206,69 +189,8 @@ function parseEnabledFlag(value) {
     app.use(scanApiRoute);
     app.use(scanPageRoute);
 
-    // Development-only runtime config debug route
     if (process.env.NODE_ENV !== 'production') {
-        app.get('/__runtime-config', (req, res) => {
-            try {
-                return res.status(200).json({ runtimeConfig: app.locals.runtimeConfig || null });
-            } catch (e) {
-                return res.status(500).json({ error: 'unable to read runtime config' });
-            }
-        });
-
-        app.get('/__realtime-status', (req, res) => {
-            try {
-                const enabledEnv = String(process.env.ENABLE_REALTIME || '');
-                // inspect the securityApiRoute router for the SSE path
-                let sseMounted = false;
-                try {
-                    if (securityApiRoute && Array.isArray(securityApiRoute.stack)) {
-                        securityApiRoute.stack.forEach((layer) => {
-                            if (layer && layer.route && layer.route.path && layer.route.path === '/api/security/stream') {
-                                sseMounted = true;
-                            }
-                        });
-                    }
-                } catch (e) { void e; }
-
-                return res.status(200).json({
-                    enableEnv: enabledEnv,
-                    realtimeAvailable: app.locals.realtimeAvailable,
-                    realtimeEnabled: app.locals.realtimeEnabled,
-                    sseMounted
-                });
-            } catch (e) {
-                return res.status(500).json({ error: 'unable to determine realtime status' });
-            }
-        });
-
-        // Runtime toggle endpoint for realtime feature (authenticated)
-        app.post('/api/runtime/realtime', requireAuthAPI, (req, res) => {
-            try {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(403).json({ success: false, message: 'Runtime toggles are disabled in production' });
-                }
-
-                if (!app.locals.realtimeAvailable) {
-                    return res.status(503).json({ success: false, message: 'Realtime requires REDIS_URL to be configured' });
-                }
-
-                const bodyEnabled = typeof req.body?.enabled !== 'undefined'
-                    ? parseEnabledFlag(req.body.enabled)
-                    : null;
-                if (bodyEnabled === null) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'enabled must be a boolean or the string true/false'
-                    });
-                }
-
-                app.locals.realtimeEnabled = bodyEnabled;
-                return res.status(200).json({ success: true, realtimeEnabled: app.locals.realtimeEnabled });
-            } catch (e) {
-                return res.status(500).json({ success: false, message: 'Unable to toggle realtime' });
-            }
-        });
+        app.use(devRuntimeRoute);
     }
 
     const PORT = process.env.PORT || 3000;

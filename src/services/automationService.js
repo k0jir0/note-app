@@ -26,6 +26,28 @@ function normalizeInsertedDocs(documents) {
     return Array.isArray(documents) ? documents : [];
 }
 
+async function emitInsertedAlertSideEffects(inserted, { notifySummary = false } = {}) {
+    try {
+        for (const doc of inserted) {
+            const sev = doc.severity || 'low';
+            metrics.intrusionIngestCounter.inc({ severity: sev }, 1);
+        }
+
+        const highAlerts = inserted.filter((doc) => doc.severity === 'high');
+        if (highAlerts.length > 0) {
+            void blockingService.sendBlockRequestsForAlerts(highAlerts).catch((e) => {
+                console.warn('[automation] blocking service failed', e && e.message ? e.message : e);
+            });
+
+            if (notifySummary) {
+                void notificationService.notifyAlertsSummary(highAlerts).catch(() => {});
+            }
+        }
+    } catch (e) {
+        console.warn('[automation] metrics/blocking hook failed', e && e.message ? e.message : e);
+    }
+}
+
 async function readFileSlice(filePath, startPosition, length) {
     const fileHandle = await fs.open(filePath, 'r');
 
@@ -80,23 +102,7 @@ async function persistAutomatedAlerts(config, logText) {
         inserted = normalizeInsertedDocs(await SecurityAlert.insertMany(alertsToCreate));
     }
 
-    // Emit metrics and optionally trigger blocking for high severity
-    try {
-        for (const doc of inserted) {
-            const sev = doc.severity || 'low';
-            metrics.intrusionIngestCounter.inc({ severity: sev }, 1);
-        }
-
-        const highAlerts = inserted.filter((d) => d.severity === 'high');
-        if (highAlerts.length > 0) {
-            // Attempt to send block requests for high severity alerts (best-effort)
-            void blockingService.sendBlockRequestsForAlerts(highAlerts).catch((e) => {
-                console.warn('[automation] blocking service failed', e && e.message ? e.message : e);
-            });
-        }
-    } catch (e) {
-        console.warn('[automation] metrics/blocking hook failed', e && e.message ? e.message : e);
-    }
+    await emitInsertedAlertSideEffects(inserted);
 
     return {
         linesAnalyzed: analysis.linesAnalyzed,
@@ -218,23 +224,7 @@ async function persistAutomatedIntrusions(config, rawInput) {
         inserted = normalizeInsertedDocs(await SecurityAlert.insertMany(alertsToCreate));
     }
 
-    // Emit metrics and optionally trigger blocking for high severity
-    try {
-        for (const doc of inserted) {
-            const sev = doc.severity || 'low';
-            metrics.intrusionIngestCounter.inc({ severity: sev }, 1);
-        }
-
-        const highAlerts = inserted.filter((d) => d.severity === 'high');
-        if (highAlerts.length > 0) {
-            void blockingService.sendBlockRequestsForAlerts(highAlerts).catch((e) => {
-                console.warn('[automation] blocking service failed', e && e.message ? e.message : e);
-            });
-            void notificationService.notifyAlertsSummary(highAlerts).catch(() => {});
-        }
-    } catch (e) {
-        console.warn('[automation] metrics/blocking hook failed', e && e.message ? e.message : e);
-    }
+    await emitInsertedAlertSideEffects(inserted, { notifySummary: true });
 
     return {
         created: true,
@@ -294,6 +284,22 @@ function createLogBatchRunner(config) {
 }
 
 function createScanBatchRunner(config) {
+    return createFingerprintBatchRunner({
+        config,
+        persistFn: persistAutomatedScan,
+        getSuccessMessage: (result) => `[automation] scan batch imported ${result.findingsCount} finding(s) from ${config.filePath}`
+    });
+}
+
+function createIntrusionBatchRunner(config) {
+    return createFingerprintBatchRunner({
+        config,
+        persistFn: persistAutomatedIntrusions,
+        getSuccessMessage: (result) => `[automation] intrusion batch created ${result.createdCount} alert(s) from ${config.filePath}`
+    });
+}
+
+function createFingerprintBatchRunner({ config, persistFn, getSuccessMessage }) {
     const state = {
         lastFingerprint: null,
         lastMtimeMs: 0,
@@ -322,90 +328,41 @@ function createScanBatchRunner(config) {
                 return;
             }
 
-            const result = await persistAutomatedScan(config, rawInput);
+            const result = await persistFn(config, rawInput);
             state.lastFingerprint = fingerprint;
 
             if (result.created) {
-                console.log(`[automation] scan batch imported ${result.findingsCount} finding(s) from ${config.filePath}`);
+                console.log(getSuccessMessage(result));
             }
         } catch (error) {
-            console.error(`[automation] scan batch failed for ${config.filePath}: ${error.message}`);
+            console.error(`[automation] batch failed for ${config.filePath}: ${error.message}`);
         } finally {
             state.running = false;
         }
     };
 }
 
-function createIntrusionBatchRunner(config) {
-    const state = {
-        lastFingerprint: null,
-        lastMtimeMs: 0,
-        running: false
-    };
+function registerAutomationTask(config, createRunner, stopCallbacks) {
+    if (!config || !config.enabled) {
+        return;
+    }
 
-    return async () => {
-        if (state.running) return;
-        state.running = true;
+    const runTask = createRunner(config);
+    const timer = setInterval(() => {
+        void runTask();
+    }, config.intervalMs);
 
-        try {
-            const stats = await fs.stat(config.filePath);
-            if (stats.mtimeMs === state.lastMtimeMs && state.lastFingerprint) {
-                return;
-            }
-
-            const rawInput = await fs.readFile(config.filePath, 'utf8');
-            const fingerprint = createContentFingerprint(rawInput.trim());
-
-            state.lastMtimeMs = stats.mtimeMs;
-
-            if (fingerprint === state.lastFingerprint) return;
-
-            const result = await persistAutomatedIntrusions(config, rawInput);
-            state.lastFingerprint = fingerprint;
-
-            if (result.created) {
-                console.log(`[automation] intrusion batch created ${result.createdCount} alert(s) from ${config.filePath}`);
-            }
-        } catch (error) {
-            console.error(`[automation] intrusion batch failed for ${config.filePath}: ${error.message}`);
-        } finally {
-            state.running = false;
-        }
-    };
+    timer.unref();
+    void runTask();
+    stopCallbacks.push(() => clearInterval(timer));
 }
 
 function startAutomation(automationConfig = {}) {
     const stopCallbacks = [];
 
-    if (automationConfig.logBatch && automationConfig.logBatch.enabled) {
-        const runLogBatch = createLogBatchRunner(automationConfig.logBatch);
-        const logTimer = setInterval(() => {
-            void runLogBatch();
-        }, automationConfig.logBatch.intervalMs);
-        logTimer.unref();
-        void runLogBatch();
-        stopCallbacks.push(() => clearInterval(logTimer));
-    }
-
-    if (automationConfig.scanBatch && automationConfig.scanBatch.enabled) {
-        const runScanBatch = createScanBatchRunner(automationConfig.scanBatch);
-        const scanTimer = setInterval(() => {
-            void runScanBatch();
-        }, automationConfig.scanBatch.intervalMs);
-        scanTimer.unref();
-        void runScanBatch();
-        stopCallbacks.push(() => clearInterval(scanTimer));
-    }
-
-    if (automationConfig.intrusionBatch && automationConfig.intrusionBatch.enabled) {
-        const runIntrusionBatch = createIntrusionBatchRunner(automationConfig.intrusionBatch);
-        const intrusionTimer = setInterval(() => {
-            void runIntrusionBatch();
-        }, automationConfig.intrusionBatch.intervalMs);
-        intrusionTimer.unref();
-        void runIntrusionBatch();
-        stopCallbacks.push(() => clearInterval(intrusionTimer));
-    }
+    registerAutomationTask(automationConfig.logBatch, createLogBatchRunner, stopCallbacks);
+    registerAutomationTask(automationConfig.scanBatch, createScanBatchRunner, stopCallbacks);
+    registerAutomationTask(automationConfig.intrusionBatch, createIntrusionBatchRunner, stopCallbacks);
 
     return {
         stop() {

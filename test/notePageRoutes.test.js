@@ -86,6 +86,7 @@ describe('Note Page Routes', () => {
         ];
 
         sinon.stub(Notes, 'find').returns({
+            select: sinon.stub().returnsThis(),
             sort: sinon.stub().resolves(fakeNotes)
         });
 

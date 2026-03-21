@@ -4,6 +4,8 @@ const { handleApiError } = require('../utils/errorHandler');
 const { parsePaginationParams, createPaginationMeta } = require('../utils/pagination');
 const { buildCreateNoteData, buildUpdateNoteData } = require('../utils/noteMutations');
 
+const NOTE_LIST_SELECT = 'title content image createdAt updatedAt';
+
 // Helper function to validate MongoDB ObjectId
 const isValidObjectId = (id) => {
     return mongoose.Types.ObjectId.isValid(id);
@@ -42,6 +44,7 @@ exports.getAllNotes = async (req, res) => {
         const [totalCount, notes] = await Promise.all([
             Notes.countDocuments({ user: req.user._id }),
             Notes.find({ user: req.user._id })
+                .select(NOTE_LIST_SELECT)
                 .sort({ updatedAt: -1 })
                 .skip(skip)
                 .limit(limit)

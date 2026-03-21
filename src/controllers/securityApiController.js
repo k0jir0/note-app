@@ -8,6 +8,9 @@ const { persistAutomatedAlerts, persistAutomatedScan } = require('../services/au
 const { redis, subscriber } = require('../lib/redisClient');
 const { ingestCounter } = require('../routes/metrics');
 
+const ALERT_LIST_SELECT = 'type severity summary details detectedAt';
+const SCAN_LIST_SELECT = 'target tool findings summary importedAt';
+
 const parseLimit = (value, fallback = 20, max = 100) => {
     const parsed = Number.parseInt(value, 10);
     if (Number.isNaN(parsed) || parsed <= 0) {
@@ -65,7 +68,9 @@ exports.getAlerts = async (req, res) => {
 
         const [alerts, totalCount] = await Promise.all([
             SecurityAlert.find({ user: req.user._id })
+                .select(ALERT_LIST_SELECT)
                 .sort({ detectedAt: -1, createdAt: -1 })
+                .lean()
                 .limit(limit),
             SecurityAlert.countDocuments({ user: req.user._id })
         ]);
@@ -87,10 +92,14 @@ exports.getCorrelations = async (req, res) => {
 
         const [alerts, scans] = await Promise.all([
             SecurityAlert.find({ user: req.user._id })
+                .select(ALERT_LIST_SELECT)
                 .sort({ detectedAt: -1, createdAt: -1 })
+                .lean()
                 .limit(50),
             ScanResult.find({ user: req.user._id })
+                .select(SCAN_LIST_SELECT)
                 .sort({ importedAt: -1, createdAt: -1 })
+                .lean()
                 .limit(50)
         ]);
 
@@ -115,25 +124,30 @@ exports.getSampleCorrelations = async (req, res) => {
         const scanSource = 'correlation-demo';
 
         // Append demo records instead of removing existing ones
-        const savedScans = await ScanResult.insertMany(sampleInput.scans.map((scan) => ({
-            ...scan,
-            user: req.user._id,
-            source: scanSource
-        })));
-
-        const savedAlerts = await SecurityAlert.insertMany(sampleInput.alerts.map((alert) => ({
-            ...alert,
-            user: req.user._id,
-            source: alertSource
-        })));
+        const [savedScans, savedAlerts] = await Promise.all([
+            ScanResult.insertMany(sampleInput.scans.map((scan) => ({
+                ...scan,
+                user: req.user._id,
+                source: scanSource
+            }))),
+            SecurityAlert.insertMany(sampleInput.alerts.map((alert) => ({
+                ...alert,
+                user: req.user._id,
+                source: alertSource
+            })))
+        ]);
 
         // After inserting, include existing user alerts/scans when building correlations
         const [alerts, scans] = await Promise.all([
             SecurityAlert.find({ user: req.user._id })
+                .select(ALERT_LIST_SELECT)
                 .sort({ detectedAt: -1, createdAt: -1 })
+                .lean()
                 .limit(50),
             ScanResult.find({ user: req.user._id })
+                .select(SCAN_LIST_SELECT)
                 .sort({ importedAt: -1, createdAt: -1 })
+                .lean()
                 .limit(50)
         ]);
 

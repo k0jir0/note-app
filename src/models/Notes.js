@@ -33,6 +33,8 @@ const noteSchema = new mongoose.Schema({
     timestamps: true  // Automatically adds createdAt & updatedAt
 });
 
+noteSchema.index({ user: 1, updatedAt: -1 });
+
 noteSchema.pre('save', function encryptNoteFields(next) {
     try {
         ENCRYPTED_NOTE_FIELDS.forEach((fieldName) => {
