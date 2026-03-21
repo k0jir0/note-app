@@ -21,7 +21,6 @@ const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { startAutomation } = require('./src/services/automationService');
 
 require('dotenv').config();
-require('dotenv').config({ path: path.join(__dirname, '.env.local'), override: true });
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 
 function parseEnabledFlag(value) {
@@ -47,6 +46,9 @@ function parseEnabledFlag(value) {
     if (!keyLoad.loaded && keyLoad.error) {
         console.warn('Keyring secrets not loaded (keytar missing or failed):', keyLoad.error && keyLoad.error.message ? keyLoad.error.message : keyLoad.error);
     }
+    // Apply local-only overrides last so localhost auth uses `.env.local`
+    // even when shared env files or the system keyring are also configured.
+    require('dotenv').config({ path: path.join(__dirname, '.env.local'), override: true });
 
     const runtimeConfig = validateRuntimeConfig();
     require('./src/config/passport')(passport);

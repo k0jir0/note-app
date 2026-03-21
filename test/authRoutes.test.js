@@ -99,6 +99,92 @@ describe('Auth Routes', () => {
                 }
             }
         });
+
+        it('renders a helpful login error when Google token exchange is unauthorized', () => {
+            const handler = getHandler('get', '/oauth2/redirect/google');
+            const originalClientId = process.env.GOOGLE_CLIENT_ID;
+            const originalClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+            try {
+                process.env.GOOGLE_CLIENT_ID = 'client-id';
+                process.env.GOOGLE_CLIENT_SECRET = 'client-secret';
+
+                sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
+                    expect(strategy).to.equal('google');
+                    return () => callback({ name: 'TokenError', message: 'Unauthorized' });
+                });
+
+                const req = {};
+                const res = buildRes();
+                const next = sinon.stub();
+
+                handler(req, res, next);
+
+                expect(res.status.calledWith(502)).to.equal(true);
+                expect(res.render.calledWith('pages/login', {
+                    title: 'Login',
+                    error: 'Google sign-in could not be completed. Verify the configured Google OAuth client secret and redirect URI for this environment.',
+                    csrfToken: 'test-csrf-token'
+                })).to.equal(true);
+                expect(next.called).to.equal(false);
+            } finally {
+                if (originalClientId === undefined) {
+                    delete process.env.GOOGLE_CLIENT_ID;
+                } else {
+                    process.env.GOOGLE_CLIENT_ID = originalClientId;
+                }
+
+                if (originalClientSecret === undefined) {
+                    delete process.env.GOOGLE_CLIENT_SECRET;
+                } else {
+                    process.env.GOOGLE_CLIENT_SECRET = originalClientSecret;
+                }
+            }
+        });
+
+        it('regenerates the session and redirects home after a successful Google callback', () => {
+            const handler = getHandler('get', '/oauth2/redirect/google');
+            const originalClientId = process.env.GOOGLE_CLIENT_ID;
+            const originalClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+            try {
+                process.env.GOOGLE_CLIENT_ID = 'client-id';
+                process.env.GOOGLE_CLIENT_SECRET = 'client-secret';
+
+                sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
+                    expect(strategy).to.equal('google');
+                    return () => callback(null, { id: 'google-user' }, null);
+                });
+
+                const req = {
+                    session: {
+                        regenerate: sinon.stub().callsFake((callback) => callback(null))
+                    },
+                    logIn: sinon.stub().callsFake((user, callback) => callback(null))
+                };
+                const res = buildRes();
+                const next = sinon.stub();
+
+                handler(req, res, next);
+
+                expect(req.session.regenerate.calledOnce).to.equal(true);
+                expect(req.logIn.calledOnce).to.equal(true);
+                expect(res.redirect.calledWith('/')).to.equal(true);
+                expect(next.called).to.equal(false);
+            } finally {
+                if (originalClientId === undefined) {
+                    delete process.env.GOOGLE_CLIENT_ID;
+                } else {
+                    process.env.GOOGLE_CLIENT_ID = originalClientId;
+                }
+
+                if (originalClientSecret === undefined) {
+                    delete process.env.GOOGLE_CLIENT_SECRET;
+                } else {
+                    process.env.GOOGLE_CLIENT_SECRET = originalClientSecret;
+                }
+            }
+        });
     });
 
     describe('POST /login', () => {

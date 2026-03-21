@@ -24,6 +24,26 @@ function renderLogoutPage(res) {
     });
 }
 
+function completeAuthenticatedLogin(req, res, next, user) {
+    if (!req.session || typeof req.session.regenerate !== 'function') {
+        return next(new Error('Session regeneration is unavailable'));
+    }
+
+    return req.session.regenerate((regenerateError) => {
+        if (regenerateError) {
+            return next(regenerateError);
+        }
+
+        return req.logIn(user, (loginError) => {
+            if (loginError) {
+                return next(loginError);
+            }
+
+            return res.redirect('/');
+        });
+    });
+}
+
 function maybeRedirectToConfiguredAppBaseUrl(req, res) {
     const appBaseUrl = getConfiguredAppBaseUrl();
     if (!appBaseUrl || !req || typeof req.get !== 'function') {
@@ -141,19 +161,7 @@ router.post('/login', authRateLimiter, (req, res, next) => {
             return next(new Error('Session regeneration is unavailable'));
         }
 
-        return req.session.regenerate((regenerateError) => {
-            if (regenerateError) {
-                return next(regenerateError);
-            }
-
-            return req.logIn(user, (loginError) => {
-                if (loginError) {
-                    return next(loginError);
-                }
-
-                return res.redirect('/');
-            });
-        });
+        return completeAuthenticatedLogin(req, res, next, user);
     })(req, res, next);
 });
 
@@ -284,9 +292,25 @@ router.get('/oauth2/redirect/google', (req, res, next) => {
         return undefined;
     }
 
-    return passport.authenticate('google', {
-        successRedirect: '/',
-        failureRedirect: '/auth/login'
+    return passport.authenticate('google', (err, user, _info) => {
+        if (err) {
+            if (err.name === 'TokenError') {
+                console.warn('[auth] Google token exchange failed. Verify GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APP_BASE_URL, and the Google Cloud redirect URI for this environment.');
+                return res.status(502).render('pages/login', {
+                    title: 'Login',
+                    error: 'Google sign-in could not be completed. Verify the configured Google OAuth client secret and redirect URI for this environment.',
+                    csrfToken: res.locals.csrfToken
+                });
+            }
+
+            return next(err);
+        }
+
+        if (!user) {
+            return res.redirect('/auth/login');
+        }
+
+        return completeAuthenticatedLogin(req, res, next, user);
     })(req, res, next);
 });
 
