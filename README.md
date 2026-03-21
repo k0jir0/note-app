@@ -19,7 +19,7 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Correlation dashboard linking scan findings with observed security alerts
 - Consolidated Research Workspace that unifies log analysis, scan import, correlations, and automation status
 - Optional scheduled ingestion for logs, scans, and intrusion events (Falco JSON ingestion helper + Trivy runner support)
-- Optional Redis-backed realtime ingest endpoint and live alert stream
+- Optional Redis-backed realtime ingest endpoint and live alert stream, with separate server and browser connection status in the Security Module UI
 - Built-in automation runners: Falco ingestion, Trivy scanner wrappers, and batch dedupe persistence
 - Metrics endpoint exposed (`/metrics`) with `prom-client` counters/gauges for automation and scan ingestion
 - Notification service (Slack integration + optional SMTP via lazy `nodemailer`) for alerting
@@ -27,7 +27,7 @@ A full-stack note-taking application with user authentication, built with Node.j
 - Trivy report artifacts in CI (report-only mode) to enable triage without blocking merges
 - RESTful API with JSON responses
 - Responsive UI with Bootstrap 5
-- Test coverage with Mocha, Chai, and Sinon
+- Test coverage with Mocha, Chai, and Sinon, including end-to-end coverage for note, auth, and Security Module flows
 
 ## Tech Stack
 
@@ -97,7 +97,7 @@ Notes:
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
 
 Current local verification:
-- `npm test` passes with 216 tests
+- `npm test` passes with 224 tests
 - `npm run lint` passes with 0 errors
 
 4. **Create Account & Use**
@@ -157,8 +157,10 @@ npm run worker
 
 Notes:
 - The web app uses `MONGODB_URI` and the worker now does the same, with `MONGO_URI` accepted only as a compatibility fallback.
+- The worker loads both `.env` and `.env.local`, so local Redis and OAuth-related overrides are available there too.
 - In development, `POST /api/runtime/realtime` can toggle realtime on or off at runtime, but Redis still needs to be configured first.
-- The Security Module page will show realtime as disabled until both Redis is available and realtime is enabled.
+- The Security Module page now shows two realtime states: a server badge for feature availability and a browser badge for the current tab's live stream state.
+- `Disconnect Realtime` only closes the current browser tab's SSE stream; it does not disable realtime globally on the server.
 
 ### Security Module Demo Sample
 
@@ -390,6 +392,10 @@ npm run start-dev  # Development (nodemon auto-reload)
 npm test           # Run test suite
 npm run lint       # ESLint code quality check
 ```
+
+**Testing Notes:**
+- `npm test` now loads `test/testSetup.js` before the suite so tests run in `NODE_ENV=test` with Redis-backed realtime disabled by default.
+- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, and the Security Module workflow.
 
 **Adding Features:**
 1. Update schemas in `src/models/`

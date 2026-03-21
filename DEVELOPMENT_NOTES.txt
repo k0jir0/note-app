@@ -5,9 +5,9 @@ Note-Taking Application Development Process
 
 PROJECT OVERVIEW
 
-This full-stack note-taking application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, and 216 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, deployment readiness, and the interaction between secure defaults and developer ergonomics.
+This full-stack note-taking application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, and 224 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, deployment readiness, and the interaction between secure defaults and developer ergonomics.
 
-Current verified state (March 20, 2026): 216 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, a dedicated Security Module with optional realtime streaming, and stable local Google OAuth support via APP_BASE_URL plus gitignored `.env.local` overrides.
+Current verified state (March 21, 2026): 224 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, a dedicated Security Module with optional realtime streaming, clearer server-versus-browser realtime status in the UI, and stable local Google OAuth support via APP_BASE_URL plus gitignored `.env.local` overrides.
 
 Recent updates (March 5, 2026) hardened validation and authentication flows:
 - Added strict auth payload sanitization (`sanitizeAuthPayload`) and login password validation (`validateLoginPassword`).
@@ -56,6 +56,13 @@ Recent updates (March 20, 2026) focused on local developer experience and Securi
 - Introduced `APP_BASE_URL` as a canonical app origin so Google OAuth callback handling no longer depends on whether the browser entered through `localhost` or `127.0.0.1`.
 - Added regression tests for the canonical Google auth redirect behavior and for runtime config validation of `APP_BASE_URL`.
 
+Recent updates (March 21, 2026) focused on testing depth and clearer realtime UX:
+- Added end-to-end application coverage for authenticated note API CRUD, the server-rendered note create-edit flow, and the Security Module workflow for log analysis, scan import, correlations, and realtime probing.
+- Introduced `test/testSetup.js` so `npm test` boots in `NODE_ENV=test`, disables Redis-backed realtime side effects by default, and runs the expanded integration suite deterministically.
+- Clarified the Security Module realtime UI so the page now distinguishes server capability from the current browser tab's live stream state.
+- Updated the realtime connect-disconnect controls so disconnecting shows an explicit browser-side disconnected state instead of implying the whole backend realtime feature has been turned off.
+- Revalidated the branch after these changes with 224 passing tests and a clean ESLint run before merging the work back into `main`.
+
 RECENT ADDITIONS — Security Automation & CI (small essay)
 
 Over the last development cycle the project gained a focused security automation surface that ties together live ingestion, scanner imports, and observability. Rather than treating scans and logs as separate artifacts, I added lightweight runners and parsers that normalize Falco JSON events and Trivy outputs into the application's existing `ScanResult` and `SecurityAlert` models. This design keeps the ingestion code intentionally small and testable: runners write to a watched file or emit parsed objects, the `intrusionParser` normalizes source-specific fields to a compact alert schema, and `automationService` performs dedupe and persistence while emitting `prom-client` metrics so ingestion health is visible at `/metrics`.
@@ -71,7 +78,7 @@ Authentication and authorization proved most challenging. Securing user sessions
 
 Input validation and sanitization balanced security with user experience. The challenge was preventing XSS attacks while validating diverse field types without exposing system internals. This was addressed by creating centralized validation utilities in `src/utils/validation.js`, implementing multi-layer validation across client, server, and database, and using an `isUpdate` flag to differentiate create from update operations. Inputs were sanitized using regex to remove dangerous script tags while preserving legitimate content.
 
-Comprehensive test coverage without a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Sinon for stubs, spies, and mocks alongside consistent test patterns solved this. Proper cleanup in `afterEach` blocks prevented state leakage, eventually reaching 216 tests covering models, controllers, routes, middleware, utilities, and edge cases around OAuth and realtime behavior.
+Comprehensive test coverage without a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Sinon for stubs, spies, and mocks alongside consistent test patterns solved this. Proper cleanup in `afterEach` blocks prevented state leakage, eventually reaching 224 tests covering models, controllers, routes, middleware, utilities, integration flows, and edge cases around OAuth and realtime behavior.
 
 Production deployment preparation revealed technical debt: hardcoded values, insecure cookie settings, and mixed indentation. Resolution involved environment variables with fallbacks, secure cookies for production (`secure: process.env.NODE_ENV === 'production'`), proper npm scripts, protected seed routes, and ESLint `--fix` for standardized formatting.
 
@@ -156,13 +163,13 @@ Centralizing validation early by creating utilities before building features pre
 
 FINAL REFLECTION
 
-This project now achieves 216 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, encrypted notes at rest, CSRF protection, Mongo-backed sessions, RESTful API design with proper status codes, a consolidated Research Workspace, a dedicated Security Module with improved realtime behavior, stable local Google OAuth ergonomics, production-ready configuration, a concise README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and stronger security defaults.
+This project now achieves 224 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, encrypted notes at rest, CSRF protection, Mongo-backed sessions, RESTful API design with proper status codes, a consolidated Research Workspace, a dedicated Security Module with improved realtime behavior, stable local Google OAuth ergonomics, production-ready configuration, a concise README, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and stronger security defaults.
 
-Recent verification (March 20, 2026): focused tests and live checks confirm the grouped correlation totals, appended demo injection behavior, Security Module realtime connect flow, and canonical local Google OAuth redirects. The local suite now passes with 216 tests, ESLint is clean, `localhost:3000` serves the app, and Google auth is normalized onto the configured local origin before the OAuth handshake begins.
+Recent verification (March 21, 2026): focused tests and live checks confirm the grouped correlation totals, appended demo injection behavior, Security Module realtime connect flow, the clarified server-versus-browser realtime status UI, and canonical local Google OAuth redirects. The local suite now passes with 224 tests, ESLint is clean, `localhost:3000` serves the app, and Google auth is normalized onto the configured local origin before the OAuth handshake begins.
 
 Building software is inherently iterative. The first version may work, but achieving security, maintainability, and production readiness requires conscious effort and continuous improvement. The most valuable lesson is that honesty about technical debt surpasses claiming perfection. Real projects involve trade-offs, and understanding them makes for better development decisions.
 
 ================================================================================
-Project: Note App | Developer: Ryan V | Date: March 20, 2026
+Project: Note App | Developer: Ryan V | Date: March 21, 2026
 Repository: https://github.com/k0jir0/note-app
 ================================================================================
