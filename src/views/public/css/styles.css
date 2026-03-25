@@ -249,6 +249,15 @@ ul {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
 }
 
+.playwright-runtime-label {
+  font-size: clamp(1.35rem, 1.05rem + 1vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
 .research-panel {
   height: 100%;
   padding: 1.1rem;

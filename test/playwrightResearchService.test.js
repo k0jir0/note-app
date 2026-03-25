@@ -32,7 +32,7 @@ describe('Playwright research service', () => {
         expect(script.routeTargets).to.be.an('array').that.is.not.empty;
         expect(script.assertionDetails).to.be.an('array').that.is.not.empty;
         expect(script.usageNotes).to.have.length(3);
-        expect(script.functionDescription).to.be.a('string').and.include('functions as a focused smoke layer');
+        expect(script.functionDescription).to.be.a('string').and.include('is a smoke path across');
         expect(script.content).to.include('require(\'@playwright/test\')');
         expect(script.content).to.include('http://localhost:3000');
         expect(script.content).to.include('/security/module');

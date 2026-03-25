@@ -1,13 +1,13 @@
 const DEFAULT_BASE_URL = 'http://localhost:3000';
 const DEFAULT_SCENARIO_ID = 'research-full-suite';
-const DEFAULT_ROUTE_DESCRIPTION = 'Navigates directly to this stable route so the generated smoke suite can verify page-level behavior without depending on fragile click chains.';
-const DEFAULT_ASSERTION_DESCRIPTION = 'Confirms that the page exposes the user-visible text or control expected by this scenario before deeper automation is added.';
+const DEFAULT_ROUTE_DESCRIPTION = 'Visits this route directly so the smoke spec can verify the page without relying on brittle click paths.';
+const DEFAULT_ASSERTION_DESCRIPTION = 'Checks for stable UI text or controls before deeper automation is added.';
 
 const SCENARIO_DEFINITIONS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Authenticate, open the Research Workspace, and verify that the Security, ML, Selenium, and Playwright entry points render for a signed-in user.',
+        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, and Playwright entry points are visible.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Login form is reachable',
@@ -24,7 +24,7 @@ const SCENARIO_DEFINITIONS = [
     {
         id: 'security-module-smoke',
         title: 'Security Module Smoke',
-        purpose: 'Exercise the dedicated Security Module page and verify the browser-visible controls that support log analysis, scans, correlations, and realtime status.',
+        purpose: 'Open the Security Module and confirm that its primary analysis, scan, and realtime controls are visible.',
         routes: ['/security/module'],
         assertions: [
             'Security Module heading is visible',
@@ -35,12 +35,12 @@ const SCENARIO_DEFINITIONS = [
         ],
         tags: ['security', 'workspace', 'browser'],
         requiresLogin: true,
-        optionalDependencies: ['Redis-backed realtime is only needed if you want live stream checks beyond static UI presence.']
+        optionalDependencies: ['Redis-backed realtime is only needed if you extend the suite with live-stream checks.']
     },
     {
         id: 'ml-module-smoke',
         title: 'ML Module Smoke',
-        purpose: 'Validate that the ML Module loads its browser controls and exposes the scoring, training, and autonomy panels expected by the research workflow.',
+        purpose: 'Open the ML Module and confirm that its training, scoring, and review panels are visible.',
         routes: ['/ml/module'],
         assertions: [
             'ML Module heading is visible',
@@ -51,12 +51,12 @@ const SCENARIO_DEFINITIONS = [
         ],
         tags: ['ml', 'triage', 'browser'],
         requiresLogin: true,
-        optionalDependencies: ['A trained model artifact is optional; the page should still render in heuristic mode.']
+        optionalDependencies: ['A trained model artifact is optional. The page should still render in heuristic mode.']
     },
     {
         id: 'selenium-module-smoke',
         title: 'Selenium Module Smoke',
-        purpose: 'Verify that the Selenium Module renders scenario metadata and a generated Selenium WebDriver script preview tailored to this application.',
+        purpose: 'Open the Selenium Module and confirm that its scenario metadata and script preview are visible.',
         routes: ['/selenium/module'],
         assertions: [
             'Selenium Module heading is visible',
@@ -67,12 +67,12 @@ const SCENARIO_DEFINITIONS = [
         ],
         tags: ['selenium', 'export', 'browser'],
         requiresLogin: true,
-        optionalDependencies: ['No local Selenium driver is required to inspect the generated scripts inside the app.']
+        optionalDependencies: ['No local Selenium driver is needed to inspect the generated script inside the app.']
     },
     {
         id: 'playwright-module-smoke',
         title: 'Playwright Module Smoke',
-        purpose: 'Verify that the Playwright Module renders scenario metadata and a generated Playwright test preview tailored to this application.',
+        purpose: 'Open the Playwright Module and confirm that its scenario metadata and spec preview are visible.',
         routes: ['/playwright/module'],
         assertions: [
             'Playwright Module heading is visible',
@@ -83,12 +83,12 @@ const SCENARIO_DEFINITIONS = [
         ],
         tags: ['playwright', 'export', 'browser'],
         requiresLogin: true,
-        optionalDependencies: ['No local Playwright browser install is required to inspect the generated scripts inside the app.']
+        optionalDependencies: ['No local Playwright browser install is needed to inspect the generated spec inside the app.']
     },
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated Playwright smoke suite that moves through Research, Security, ML, Selenium, and Playwright module pages to validate the product-level research workflow end to end.',
+        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, and Playwright to validate the end-to-end workspace flow.',
         routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',
@@ -101,8 +101,8 @@ const SCENARIO_DEFINITIONS = [
         tags: ['full-suite', 'research', 'smoke'],
         requiresLogin: true,
         optionalDependencies: [
-            'Redis-backed worker is optional unless you extend the suite to validate realtime connect flow.',
-            'A seeded or disposable account is recommended for stable smoke-test expectations.'
+            'A Redis-backed worker is only needed if you extend the suite to validate realtime connect flow.',
+            'Use a seeded or disposable account for stable smoke expectations.'
         ]
     }
 ];
@@ -111,85 +111,85 @@ const CONTROL_DEFINITIONS = [
     {
         id: 'playwright-scenario-select',
         label: 'Scenario selector',
-        description: 'Chooses which registered Playwright browser flow the page should describe and export. Changing the selection updates the scenario summary and the generated spec preview.',
-        interaction: 'Select a scenario to switch the module from one smoke path to another, such as Research navigation, Security, ML, Selenium, Playwright, or the full cross-module suite.'
+        description: 'Chooses the scenario shown in the summary and export preview.',
+        interaction: 'Use it to switch between single-module checks and the full workspace suite.'
     },
     {
         id: 'playwright-refresh-btn',
         label: 'Refresh Module',
-        description: 'Reloads the module metadata from the backend so the page re-renders the current scenario catalog, prerequisite notes, and default export details.',
-        interaction: 'Use this after restarting the server or changing module definitions so the browser view matches the latest backend configuration.'
+        description: 'Reloads the module overview from the server.',
+        interaction: 'Use it after restarting the app or changing scenario definitions.'
     },
     {
         id: 'playwright-load-script-btn',
         label: 'Load Spec',
-        description: 'Fetches a generated Playwright spec template for the currently selected scenario and replaces the preview panel with that script.',
-        interaction: 'Use this when you want to inspect one scenario in detail before copying it into a dedicated Playwright project or CI suite.'
+        description: 'Loads the Playwright starter spec for the selected scenario.',
+        interaction: 'Use it to inspect one scenario before exporting it.'
     },
     {
         id: 'playwright-copy-script-btn',
         label: 'Copy Spec',
-        description: 'Copies the currently loaded Playwright template to the clipboard so it can be pasted into a real browser-automation workspace.',
-        interaction: 'This is the final export step after choosing a scenario and confirming that the generated preview matches the route flow you want to automate.'
+        description: 'Copies the current spec preview to the clipboard.',
+        interaction: 'Use it after the preview matches the flow you want to automate.'
     }
 ];
 
 const ROUTE_DESCRIPTIONS = {
-    '/auth/login': 'Starts the browser flow at the login form so the generated suite can establish an authenticated session before it attempts protected routes.',
-    '/research': 'Opens the Research Workspace, which acts as the top-level hub that links out to the Security, ML, Selenium, and Playwright modules.',
-    '/security/module': 'Loads the dedicated Security Module page so the spec can verify that log-analysis, scan-import, correlation, and realtime-status controls are still visible.',
-    '/ml/module': 'Loads the ML Module so the generated suite can confirm that training, scoring, feature-influence, and autonomy-audit panels still render.',
-    '/selenium/module': 'Loads the Selenium Module so the smoke suite can validate the browser-automation export surface that complements the Playwright module.',
-    '/playwright/module': 'Loads the Playwright Module itself so the browser suite can confirm that scenario metadata and generated spec preview features remain available.'
+    '/auth/login': 'Starts at the login form so the suite can create an authenticated session before protected routes.',
+    '/research': 'Opens the Research Workspace, the hub for the Security, ML, Selenium, and Playwright modules.',
+    '/security/module': 'Opens the Security Module so the spec can verify analysis, scan, correlation, and realtime controls.',
+    '/ml/module': 'Opens the ML Module so the spec can verify training, scoring, explainability, and autonomy panels.',
+    '/selenium/module': 'Opens the Selenium Module so the suite can verify the Selenium export surface.',
+    '/playwright/module': 'Opens the Playwright Module so the suite can verify the Playwright export surface.'
 };
 
 const ASSERTION_DESCRIPTIONS = {
-    'Login form is reachable': 'Proves the auth entry point loads and that the suite can begin from a known state instead of failing before protected navigation starts.',
-    'Research Workspace heading is visible': 'Confirms that the top-level workspace rendered successfully after authentication.',
-    'Security Module card is present': 'Verifies that the Research page still exposes the Security module entry point users rely on.',
-    'ML Module card is present': 'Verifies that the Research page still exposes the ML module entry point.',
-    'Selenium Module card is present': 'Verifies that the Research page still exposes the Selenium module entry point.',
-    'Playwright Module card is present': 'Verifies that the Research page still exposes the Playwright module entry point.',
-    'Security Module heading is visible': 'Confirms that navigation reached the dedicated Security module instead of a redirect, error page, or stale route.',
-    'Refresh Module button is present': 'Checks that the main page control for reloading Security-module data is still rendered.',
-    'Realtime server badge is visible': 'Confirms that the page still surfaces server-visible realtime capability status to the browser.',
-    'Log Analysis section is visible': 'Checks that the page still renders the browser-facing controls for manual log analysis.',
-    'Scan Importer section is visible': 'Checks that the page still renders the browser-facing scan import tools.',
-    'ML Module heading is visible': 'Confirms that navigation reached the ML module and that its page shell still renders.',
-    'Train Hybrid Model button is present': 'Checks that the main browser action for training the hybrid ML model is still exposed.',
-    'Observed Autonomous Outcomes panel is visible': 'Confirms that the ML page still surfaces stored autonomous-response audit results.',
-    'Learned Feature Influence panel is visible': 'Checks that the explainability panel for learned weights still renders.',
-    'Recent Scored Alerts panel is visible': 'Verifies that the recent-alert scoring table still appears in the ML module.',
-    'Selenium Module heading is visible': 'Confirms that navigation reached the Selenium export surface.',
-    'Scenario Catalog panel is visible': 'Checks that the module still renders a browsable list of supported automation scenarios.',
-    'Generated Script Preview panel is visible': 'Confirms that the Selenium export preview is still rendered for browser inspection.',
-    'Scenario selector is present': 'Checks that the user can switch between exported automation scenarios from within the module UI.',
-    'Browser prerequisites render': 'Verifies that the module still documents the environment expectations required to execute generated browser suites.',
-    'Playwright Module heading is visible': 'Confirms that navigation reached the Playwright export surface.',
-    'Generated Spec Preview panel is visible': 'Confirms that the page still renders the Playwright template preview that users export into real suites.',
-    'Playwright prerequisites render': 'Verifies that the page still explains what must exist before the generated Playwright template will run reliably.',
-    'Authentication succeeds with a disposable test user': 'Confirms that the generated suite can establish a known authenticated state instead of assuming one.',
-    'Research Workspace renders all module entry points': 'Checks that the app-level navigation hub still exposes the expected research modules.',
-    'Security Module renders its main controls': 'Checks that the Security page still renders the primary user-visible controls expected by smoke coverage.',
-    'ML Module renders training and autonomy panels': 'Checks that the ML page still renders the user-visible panels that represent the training and autonomy workflow.',
-    'Selenium Module renders a script preview': 'Confirms that the Selenium export surface still produces a previewable template.',
-    'Playwright Module renders a spec preview': 'Confirms that the Playwright export surface still produces a previewable template.'
+    'Login form is reachable': 'Checks that the auth entry point loads so the suite can start from a known state.',
+    'Research Workspace heading is visible': 'Confirms that the workspace rendered after sign-in.',
+    'Security Module card is present': 'Checks that the Research page still links to the Security module.',
+    'ML Module card is present': 'Checks that the Research page still links to the ML module.',
+    'Selenium Module card is present': 'Checks that the Research page still links to the Selenium module.',
+    'Playwright Module card is present': 'Checks that the Research page still links to the Playwright module.',
+    'Security Module heading is visible': 'Confirms that navigation reached the Security module.',
+    'Refresh Module button is present': 'Checks that the main refresh control is visible.',
+    'Realtime server badge is visible': 'Checks that realtime availability is still surfaced in the UI.',
+    'Log Analysis section is visible': 'Checks that the log analysis tools are visible.',
+    'Scan Importer section is visible': 'Checks that the scan import tools are visible.',
+    'ML Module heading is visible': 'Confirms that navigation reached the ML module.',
+    'Train Hybrid Model button is present': 'Checks that the primary training action is visible.',
+    'Observed Autonomous Outcomes panel is visible': 'Checks that the autonomy outcomes panel is visible.',
+    'Learned Feature Influence panel is visible': 'Checks that the feature influence panel is visible.',
+    'Recent Scored Alerts panel is visible': 'Checks that the recent scored alerts panel is visible.',
+    'Selenium Module heading is visible': 'Confirms that navigation reached the Selenium module.',
+    'Scenario Catalog panel is visible': 'Checks that the module still lists the available automation scenarios.',
+    'Generated Script Preview panel is visible': 'Confirms that the Selenium preview panel is visible.',
+    'Scenario selector is present': 'Checks that the user can switch scenarios in the module UI.',
+    'Browser prerequisites render': 'Confirms that the module still lists the setup needed to run the exported suite.',
+    'Playwright Module heading is visible': 'Confirms that navigation reached the Playwright module.',
+    'Generated Spec Preview panel is visible': 'Confirms that the Playwright preview panel is visible.',
+    'Playwright prerequisites render': 'Confirms that the page still lists the setup needed to run the exported spec.',
+    'Authentication succeeds with a disposable test user': 'Checks that the suite can establish an authenticated session before route checks begin.',
+    'Research Workspace renders all module entry points': 'Checks that the workspace still exposes the expected module entry points.',
+    'Security Module renders its main controls': 'Checks that the Security page still renders its primary controls.',
+    'ML Module renders training and autonomy panels': 'Checks that the ML page still renders its training and autonomy panels.',
+    'Selenium Module renders a script preview': 'Confirms that the Selenium export surface still shows a script preview.',
+    'Playwright Module renders a spec preview': 'Confirms that the Playwright export surface still shows a spec preview.'
 };
 
 const TAG_DESCRIPTIONS = {
-    smoke: 'A fast confidence check meant to catch route-level or UI-shell regressions before deeper automation is added.',
-    auth: 'Touches authentication setup or protected-route behavior before browser assertions continue.',
-    navigation: 'Focuses on moving through the product safely and proving the expected pages can still be reached.',
-    security: 'Covers the Security module and related research surfaces.',
-    workspace: 'Targets the cross-module workspace experience rather than one isolated backend endpoint.',
-    browser: 'Designed for browser-visible assertions such as headings, panels, and controls.',
-    ml: 'Targets the ML-assisted triage and model-operations surfaces.',
-    triage: 'Focuses on alert scoring, review, and autonomy-related UI concepts.',
-    selenium: 'Covers the Selenium export surface for browser automation.',
-    export: 'Emphasizes generated automation artifacts that are meant to be copied into a real test project.',
-    playwright: 'Covers the Playwright export surface itself.',
-    'full-suite': 'Represents the broadest smoke path that crosses multiple modules in one authenticated run.',
-    research: 'Anchored in the product’s research workflow and navigation model.'
+    smoke: 'Fast regression check for route and page-shell stability.',
+    auth: 'Includes sign-in or other protected-route setup.',
+    navigation: 'Focuses on reaching the right pages through stable paths.',
+    security: 'Covers the Security module and related workspace surfaces.',
+    workspace: 'Targets the cross-module research workflow.',
+    browser: 'Uses browser-visible checks such as headings, panels, and controls.',
+    ml: 'Targets the ML-assisted triage surfaces.',
+    triage: 'Focuses on scoring, review, and autonomy-related UI.',
+    selenium: 'Covers the Selenium export surface.',
+    export: 'Focuses on generated automation artifacts.',
+    playwright: 'Covers the Playwright export surface.',
+    'full-suite': 'Covers the broadest path across multiple modules.',
+    research: 'Anchored in the product\'s research workflow.'
 };
 
 function normalizeBaseUrl(baseUrl) {
@@ -209,7 +209,7 @@ function describeAssertion(assertion) {
 }
 
 function describeTag(tag) {
-    return TAG_DESCRIPTIONS[tag] || 'Highlights the type of browser-automation concern this scenario is intended to cover.';
+    return TAG_DESCRIPTIONS[tag] || 'Highlights the kind of browser check this scenario covers.';
 }
 
 function buildControlGuide() {
@@ -222,7 +222,8 @@ function buildControlGuide() {
 }
 
 function buildScenarioFunctionDescription(scenario) {
-    return `${scenario.title} functions as a focused smoke layer for ${scenario.routes.length} route target(s), emphasizing stable browser-visible evidence instead of deep behavioral scripting.`;
+    const routeLabel = scenario.routes.length === 1 ? 'route' : 'routes';
+    return `${scenario.title} is a smoke path across ${scenario.routes.length} ${routeLabel} with stable, visible checks.`;
 }
 
 function getScenarioIds() {
@@ -272,27 +273,27 @@ function buildPrerequisites(baseUrl) {
         {
             label: 'Authenticated test account',
             required: true,
-            description: 'Playwright smoke suites target protected routes such as /research, /security/module, /ml/module, /selenium/module, and /playwright/module.'
+            description: 'Required for scenarios that visit protected routes such as /research and the module pages.'
         },
         {
             label: 'Stable local app origin',
             required: true,
-            description: `The generated specs default to ${normalizeBaseUrl(baseUrl)} and expect the web app to stay reachable during the browser session.`
+            description: `Exported specs default to ${normalizeBaseUrl(baseUrl)} and expect the app to stay reachable during the browser session.`
         },
         {
             label: '@playwright/test runtime',
             required: false,
-            description: 'To execute the exported spec outside this module, install @playwright/test and run npx playwright install on the machine that owns the browser suite.'
+            description: 'Needed only when you run the exported spec outside this module. Install @playwright/test and run npx playwright install in that project.'
         },
         {
             label: 'Optional realtime worker',
             required: false,
-            description: 'Only needed if you extend the browser smoke suite to validate live realtime connect-disconnect behavior.'
+            description: 'Needed only if you extend the suite to validate live realtime behavior.'
         },
         {
             label: 'Optional trained ML model artifact',
             required: false,
-            description: 'The page and generated specs still work if the app is operating in heuristic fallback mode.'
+            description: 'Optional for smoke coverage. The page and exported specs still work in heuristic mode.'
         }
     ];
 }
@@ -301,23 +302,23 @@ function buildWorkflow() {
     return [
         {
             label: 'Authenticate',
-            description: 'Open the login form, sign in with a disposable test user, and wait until protected routes become reachable.'
+            description: 'Sign in with a disposable test user before protected routes load.'
         },
         {
             label: 'Navigate',
-            description: 'Move across the Research Workspace and module pages with stable route targets instead of fragile click chains.'
+            description: 'Move through the workspace with stable route targets instead of brittle click paths.'
         },
         {
             label: 'Assert',
-            description: 'Use Playwright text and locator assertions to confirm the headings, controls, and panels that each module promises to expose.'
+            description: 'Check the headings, controls, and panels each page promises to expose.'
         },
         {
             label: 'Trace',
-            description: 'Extend the generated spec with screenshots, traces, or video capture when you want richer browser evidence for failures.'
+            description: 'Add screenshots, traces, or video when you need richer failure evidence.'
         },
         {
             label: 'Integrate',
-            description: 'Use the generated spec as a starting point for a real Playwright suite in CI or in a separate browser-automation project.'
+            description: 'Use the generated spec as a starting point for local runs or CI.'
         }
     ];
 }
@@ -342,7 +343,7 @@ function buildPlaywrightModuleOverview({ baseUrl } = {}) {
             name: 'Playwright Module',
             runtime: 'JavaScript + @playwright/test',
             targetBrowser: 'Chromium, Firefox, and WebKit',
-            exportStyle: 'Generated Playwright spec template',
+            exportStyle: 'Generated starter spec',
             baseUrl: normalizedBaseUrl
         },
         coverage: buildCoverageSummary(scenarios),
@@ -465,15 +466,15 @@ function buildScriptUsageNotes(fileName) {
     return [
         {
             label: 'Base URL override',
-            description: 'Set PLAYWRIGHT_BASE_URL if the exported spec should point at a different host than the module default.'
+            description: 'Set PLAYWRIGHT_BASE_URL to target a different host.'
         },
         {
             label: 'Test credentials',
-            description: 'Set PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD so the generated sign-in helper can authenticate before protected routes are visited.'
+            description: 'Set PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD so the sign-in helper can reach protected routes.'
         },
         {
             label: 'Execution',
-            description: `Place the exported file into a Playwright project and run it with a command such as npx playwright test ${fileName}.`
+            description: `Place the exported file in a Playwright project and run npx playwright test ${fileName}.`
         }
     ];
 }

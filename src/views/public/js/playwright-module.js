@@ -78,7 +78,7 @@ function renderWorkflow(items = []) {
     }
 
     if (!items.length) {
-        workflowGrid.innerHTML = '<div class="alert alert-secondary mb-0">No Playwright workflow steps are available right now.</div>';
+        workflowGrid.innerHTML = '<div class="alert alert-secondary mb-0">No workflow steps are available right now.</div>';
         return;
     }
 
@@ -96,7 +96,7 @@ function renderControls(items = []) {
     }
 
     if (!items.length) {
-        controlsGuideEl.innerHTML = '<div class="col-12"><div class="alert alert-secondary mb-0">No Playwright control descriptions are available right now.</div></div>';
+        controlsGuideEl.innerHTML = '<div class="col-12"><div class="alert alert-secondary mb-0">No control descriptions are available right now.</div></div>';
         return;
     }
 
@@ -120,7 +120,7 @@ function renderPrerequisites(items = []) {
     }
 
     if (!items.length) {
-        prerequisitesGrid.innerHTML = '<div class="col-12"><div class="alert alert-secondary mb-0">No Playwright prerequisites are available right now.</div></div>';
+        prerequisitesGrid.innerHTML = '<div class="col-12"><div class="alert alert-secondary mb-0">No prerequisites are available right now.</div></div>';
         return;
     }
 
@@ -143,7 +143,7 @@ function renderScenarioCards(items = []) {
     }
 
     if (!items.length) {
-        scenariosGrid.innerHTML = '<div class="col-12"><div class="alert alert-secondary mb-0">No Playwright scenarios are available right now.</div></div>';
+        scenariosGrid.innerHTML = '<div class="col-12"><div class="alert alert-secondary mb-0">No scenarios are available right now.</div></div>';
         return;
     }
 
@@ -159,7 +159,7 @@ function renderScenarioCards(items = []) {
                 </div>
                 <p class="text-muted mb-3">${escapeHtml(scenario.purpose)}</p>
                 <p class="small mb-3">${escapeHtml(scenario.functionDescription || '')}</p>
-                <p class="fw-semibold mb-2">Coverage labels</p>
+                <p class="fw-semibold mb-2">Tags</p>
                 <div class="mb-3">
                     ${scenario.tagDetails.map((tag) => `
                         <div class="mb-2">
@@ -186,11 +186,11 @@ function renderScenarioCards(items = []) {
                         </li>
                     `).join('')}
                 </ul>
-                <p class="fw-semibold mb-2">Optional dependencies</p>
+                <p class="fw-semibold mb-2">Optional setup</p>
                 <ul class="mb-0">
                     ${(scenario.optionalDependencies && scenario.optionalDependencies.length
         ? scenario.optionalDependencies
-        : ['No optional dependencies are required beyond the standard Playwright setup.']).map((dependency) => `
+        : ['No optional setup is required beyond the standard Playwright project.']).map((dependency) => `
                         <li class="text-muted small">${escapeHtml(dependency)}</li>
                     `).join('')}
                 </ul>
@@ -219,7 +219,7 @@ function renderScenarioSummary(script) {
     }
 
     if (!script) {
-        scriptSummaryEl.innerHTML = '<div class="alert alert-secondary mb-0">No Playwright scenario has been selected yet.</div>';
+        scriptSummaryEl.innerHTML = '<div class="alert alert-secondary mb-0">Select a scenario to see its spec summary.</div>';
         return;
     }
 
@@ -231,32 +231,32 @@ function renderScenarioSummary(script) {
             <div>
                 <p class="fw-semibold mb-1">Scenario</p>
                 <p class="mb-1">${escapeHtml(script.title)}</p>
-                <p class="text-muted small mb-0">The named browser flow this generated Playwright spec is designed to exercise.</p>
+                <p class="text-muted small mb-0">The smoke path represented by this exported spec.</p>
             </div>
             <div>
                 <p class="fw-semibold mb-1">File name</p>
                 <p class="mb-1">${escapeHtml(script.fileName)}</p>
-                <p class="text-muted small mb-0">The suggested file name when exporting the generated template into a real Playwright test project.</p>
+                <p class="text-muted small mb-0">Suggested file name for a Playwright project.</p>
             </div>
             <div>
                 <p class="fw-semibold mb-1">Language and runtime</p>
                 <p class="mb-1">${escapeHtml(script.language)} / ${escapeHtml(script.runtime)}</p>
-                <p class="text-muted small mb-0">The module generates a JavaScript smoke spec built for the @playwright/test runner.</p>
+                <p class="text-muted small mb-0">Format used by the exported template.</p>
             </div>
             <div>
                 <p class="fw-semibold mb-1">Base URL</p>
                 <p class="mb-1">${escapeHtml(script.baseUrl || '')}</p>
-                <p class="text-muted small mb-0">The default app origin embedded into the exported script unless PLAYWRIGHT_BASE_URL is overridden.</p>
+                <p class="text-muted small mb-0">Default target unless PLAYWRIGHT_BASE_URL overrides it.</p>
             </div>
             <div>
                 <p class="fw-semibold mb-1">Authentication requirement</p>
                 <p class="mb-1">${script.requiresLogin ? 'Required before protected routes are visited.' : 'No authenticated session is required for this scenario.'}</p>
-                <p class="text-muted small mb-0">This explains whether the generated spec will use the built-in sign-in helper before browser assertions begin.</p>
+                <p class="text-muted small mb-0">Whether the sign-in helper runs before route checks begin.</p>
             </div>
             <div>
                 <p class="fw-semibold mb-1">Purpose</p>
                 <p class="mb-1">${escapeHtml(script.purpose)}</p>
-                <p class="text-muted small mb-0">The product-level intent behind this smoke scenario.</p>
+                <p class="text-muted small mb-0">What this scenario is meant to validate.</p>
             </div>
             <div>
                 <p class="fw-semibold mb-2">Route targets</p>
@@ -335,7 +335,7 @@ async function refreshModule(showMessage = false) {
 
 async function copyCurrentScript() {
     if (!latestScript || !latestScript.content) {
-        renderStatus('Load a Playwright spec first before copying it.', 'warning');
+        renderStatus('Load a spec before copying it.', 'warning');
         return;
     }
 
@@ -351,7 +351,7 @@ async function copyCurrentScript() {
 async function initializePlaywrightModule() {
     try {
         await refreshModule(false);
-        renderStatus('Playwright module ready. Pick a scenario to preview a Playwright smoke template for this app.', 'secondary');
+        renderStatus('Playwright module ready. Select a scenario to preview a starter spec.', 'secondary');
     } catch (error) {
         renderStatus(error.message || 'Unable to load the Playwright module.', 'danger');
     }
@@ -368,7 +368,7 @@ if (refreshBtn) {
 if (loadScriptBtn) {
     loadScriptBtn.addEventListener('click', () => {
         loadScript().then(() => {
-            renderStatus('Loaded the selected Playwright spec template.', 'success');
+            renderStatus('Loaded the selected spec.', 'success');
         }).catch((error) => {
             renderStatus(error.message || 'Unable to load the selected Playwright spec.', 'danger');
         });
@@ -386,7 +386,7 @@ if (copyScriptBtn) {
 if (scenarioSelect) {
     scenarioSelect.addEventListener('change', () => {
         loadScript().then(() => {
-            renderStatus('Updated the Playwright spec preview for the selected scenario.', 'secondary');
+            renderStatus('Updated the spec preview for the selected scenario.', 'secondary');
         }).catch((error) => {
             renderStatus(error.message || 'Unable to refresh the selected Playwright scenario.', 'danger');
         });
