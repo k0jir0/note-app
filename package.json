@@ -20,6 +20,7 @@
     "pm2:logs": "pm2 logs note-app-web --lines 200",
     "worker": "node src/workers/realtimeProcessor.js",
     "test": "mocha --require ./test/testSetup.js \"test/**/*.js\"",
+    "test:selenium": "mocha --timeout 120000 \"selenium-tests/**/*.test.js\"",
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:all": "playwright test",
     "test:e2e:headed": "playwright test --project=chromium --headed",
@@ -57,6 +58,7 @@
     "mocha": "^11.7.5",
     "nodemailer": "^8.0.2",
     "nodemon": "^3.1.11",
+    "selenium-webdriver": "^4.41.0",
     "sinon": "^21.0.1"
   },
   "dependencies": {

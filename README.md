@@ -90,6 +90,7 @@ node -e "const crypto=require('crypto'); console.log('SESSION_SECRET=' + crypto.
 npm run start-dev  # Development (auto-reload)
 npm start          # Production
 npm test           # Run tests
+npm run test:selenium # Run Selenium browser tests against a live local app
 npm run test:e2e   # Run Playwright smoke tests in Chromium
 npm run lint       # ESLint
 ```
@@ -112,6 +113,7 @@ npm run test:e2e:all
 Notes:
 - Playwright tests assume the app is already running on `http://localhost:3000` unless `PLAYWRIGHT_BASE_URL` is set.
 - `npm run test:e2e` runs the starter smoke suite in Chromium; `npm run test:e2e:all` runs it across Chromium, Firefox, and WebKit.
+- `npm run test:selenium` assumes the app is reachable on `http://localhost:3000` unless `SELENIUM_BASE_URL` is set, and defaults to a headless Edge session (`SELENIUM_BROWSER=chrome` is also supported).
 
 Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
@@ -517,6 +519,7 @@ npm run lint       # ESLint code quality check
 **Testing Notes:**
 - `npm test` now loads `test/testSetup.js` before the suite so tests run in `NODE_ENV=test` with Redis-backed realtime disabled by default.
 - The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, the Security Module workflow, the ML Module overview path, and the Selenium Module overview/script flow.
+- The dedicated Selenium browser suite lives under `selenium-tests/` and exercises the live app through `selenium-webdriver`, including the dedicated `/selenium/module` page and its generated script controls.
 
 ### Stable Local Run Paths
 

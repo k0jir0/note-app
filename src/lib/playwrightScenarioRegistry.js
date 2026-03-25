@@ -2,6 +2,72 @@ const DEFAULT_PLAYWRIGHT_SCENARIO_ID = 'research-full-suite';
 
 const PLAYWRIGHT_SCENARIOS = [
     {
+        id: 'auth-login-form',
+        title: 'Login Form Smoke',
+        purpose: 'Open the login page and verify the core authentication form controls remain available.',
+        routes: ['/auth/login'],
+        assertions: [
+            'Login page heading is visible',
+            'Login form is visible',
+            'Email and password inputs render',
+            'Login page links to sign up'
+        ],
+        tags: ['smoke', 'auth', 'browser'],
+        requiresLogin: false,
+        optionalDependencies: [],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/auth-login.spec.js'
+    },
+    {
+        id: 'auth-signup-form',
+        title: 'Signup Form Smoke',
+        purpose: 'Open the signup page and verify password guidance and account-creation controls remain available.',
+        routes: ['/auth/signup'],
+        assertions: [
+            'Signup page heading is visible',
+            'Signup form is visible',
+            'Password requirements guidance is visible',
+            'Signup page links back to login'
+        ],
+        tags: ['smoke', 'auth', 'browser'],
+        requiresLogin: false,
+        optionalDependencies: [],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/auth-login.spec.js'
+    },
+    {
+        id: 'auth-signup-login-flow',
+        title: 'Signup And Login Flow',
+        purpose: 'Create a disposable user, sign in, and confirm the authenticated Notes home is usable.',
+        routes: ['/auth/signup', '/auth/login', '/notes'],
+        assertions: [
+            'Disposable signup succeeds',
+            'Login redirects to the notes home',
+            'Authenticated notes navigation is visible'
+        ],
+        tags: ['auth', 'navigation', 'browser'],
+        requiresLogin: false,
+        optionalDependencies: [],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/auth-login.spec.js'
+    },
+    {
+        id: 'research-playwright-entry-flow',
+        title: 'Research To Playwright Entry Flow',
+        purpose: 'Sign in, reach the Research Workspace, and open the Playwright Module through the product navigation.',
+        routes: ['/auth/login', '/research', '/playwright/module'],
+        assertions: [
+            'Research workspace heading is visible',
+            'Playwright module card is present',
+            'Playwright module loads from the workspace entry point'
+        ],
+        tags: ['auth', 'navigation', 'playwright'],
+        requiresLogin: false,
+        optionalDependencies: [],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/auth-login.spec.js'
+    },
+    {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
         purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, and Playwright entry points are visible.',
@@ -91,6 +157,58 @@ const PLAYWRIGHT_SCENARIOS = [
         optionalDependencies: ['No local Playwright browser install is needed to inspect the generated spec inside the app.'],
         implementedInSuite: true,
         suiteFile: 'playwright-tests/research-scenarios.spec.js'
+    },
+    {
+        id: 'notes-crud-workflow',
+        title: 'Notes CRUD Workflow',
+        purpose: 'Create, view, edit, and delete a note through the server-rendered HTML flow.',
+        routes: ['/auth/login', '/notes/new', '/notes'],
+        assertions: [
+            'Create Note form is visible',
+            'Note creation redirects to the notes home',
+            'Saved note can be viewed and edited',
+            'Delete action removes the note from the list'
+        ],
+        tags: ['auth', 'browser', 'navigation'],
+        requiresLogin: false,
+        optionalDependencies: [],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/notes-crud.spec.js'
+    },
+    {
+        id: 'security-module-workflow',
+        title: 'Security Module Interactive Workflow',
+        purpose: 'Use the Security Module helpers to load sample data, analyze logs, import a scan, and refresh persisted correlations.',
+        routes: ['/security/module'],
+        assertions: [
+            'Sample log helper loads log input',
+            'Log analysis creates persisted alerts',
+            'Sample scan helper loads scan input',
+            'Scan importer creates persisted findings',
+            'Correlation demo refreshes the correlation view'
+        ],
+        tags: ['security', 'workspace', 'browser'],
+        requiresLogin: true,
+        optionalDependencies: ['Redis is optional because this workflow only verifies the saved browser-visible security flow.'],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/module-interactions.spec.js'
+    },
+    {
+        id: 'playwright-module-interactions',
+        title: 'Playwright Module Interaction Flow',
+        purpose: 'Switch scenarios inside the Playwright Module, refresh the overview, and confirm cross-module navigation remains wired.',
+        routes: ['/playwright/module', '/security/module'],
+        assertions: [
+            'Scenario selector updates the generated spec',
+            'Load Spec button refreshes the preview',
+            'Refresh Module button reloads the overview',
+            'Cross-module navigation buttons remain available'
+        ],
+        tags: ['playwright', 'browser', 'export'],
+        requiresLogin: true,
+        optionalDependencies: ['A stored Playwright JSON report is optional. The module interactions still work without one.'],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/module-interactions.spec.js'
     },
     {
         id: 'research-full-suite',

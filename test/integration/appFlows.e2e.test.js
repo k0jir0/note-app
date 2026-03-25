@@ -16,6 +16,7 @@ const playwrightApiRoutes = require('../../src/routes/playwrightApiRoutes');
 const playwrightPageRoutes = require('../../src/routes/playwrightPageRoutes');
 const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
 const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
+const playwrightResearchService = require('../../src/services/playwrightResearchService');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
 const Notes = require('../../src/models/Notes');
 const SecurityAlert = require('../../src/models/SecurityAlert');
@@ -879,7 +880,7 @@ describe('Application end-to-end flows', function () {
         expect(playwrightOverviewResponse.status).to.equal(200);
         expect(playwrightOverviewPayload.success).to.equal(true);
         expect(playwrightOverviewPayload.data.module.name).to.equal('Playwright Module');
-        expect(playwrightOverviewPayload.data.coverage.scenarioCount).to.equal(6);
+        expect(playwrightOverviewPayload.data.coverage.scenarioCount).to.equal(playwrightResearchService.getScenarioIds().length);
         expect(playwrightOverviewPayload.data.defaultScenarioId).to.equal('research-full-suite');
 
         const playwrightScriptResponse = await client.request('/api/playwright/script?scenarioId=research-full-suite', {

@@ -1,12 +1,23 @@
 const { test, expect } = require('@playwright/test');
 const {
+    getPlaywrightScenario,
+    listPlaywrightScenarios
+} = require('../src/lib/playwrightScenarioRegistry');
+const {
     buildCredentials,
     logIn,
     signUp
 } = require('./helpers/auth');
 
+const scenarioCount = listPlaywrightScenarios().length;
+
+function annotateScenario(testInfo, scenario) {
+    testInfo.annotations.push({ type: 'playwright-scenario', description: scenario.id });
+}
+
 test.describe('Authentication smoke coverage', () => {
-    test('renders the login form', async ({ page }) => {
+    test(getPlaywrightScenario('auth-login-form').title, async ({ page }, testInfo) => {
+        annotateScenario(testInfo, getPlaywrightScenario('auth-login-form'));
         await page.goto('/auth/login');
 
         await expect(page).toHaveURL(/\/auth\/login$/);
@@ -18,7 +29,8 @@ test.describe('Authentication smoke coverage', () => {
         await expect(page.getByRole('link', { name: 'Sign up' })).toBeVisible();
     });
 
-    test('renders the signup form and password guidance', async ({ page }) => {
+    test(getPlaywrightScenario('auth-signup-form').title, async ({ page }, testInfo) => {
+        annotateScenario(testInfo, getPlaywrightScenario('auth-signup-form'));
         await page.goto('/auth/signup');
 
         await expect(page).toHaveURL(/\/auth\/signup$/);
@@ -31,7 +43,8 @@ test.describe('Authentication smoke coverage', () => {
         await expect(page.getByRole('link', { name: 'Login' })).toBeVisible();
     });
 
-    test('allows a new user to sign up and land on the notes home after login', async ({ page }, testInfo) => {
+    test(getPlaywrightScenario('auth-signup-login-flow').title, async ({ page }, testInfo) => {
+        annotateScenario(testInfo, getPlaywrightScenario('auth-signup-login-flow'));
         const credentials = buildCredentials(testInfo);
 
         await signUp(page, credentials);
@@ -44,7 +57,8 @@ test.describe('Authentication smoke coverage', () => {
         await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
     });
 
-    test('lets an authenticated user reach the Research workspace and Playwright module', async ({ page }, testInfo) => {
+    test(getPlaywrightScenario('research-playwright-entry-flow').title, async ({ page }, testInfo) => {
+        annotateScenario(testInfo, getPlaywrightScenario('research-playwright-entry-flow'));
         const credentials = buildCredentials(testInfo);
 
         await signUp(page, credentials);
@@ -58,8 +72,8 @@ test.describe('Authentication smoke coverage', () => {
         await page.getByRole('link', { name: 'Open Playwright Module' }).click();
         await expect(page).toHaveURL(/\/playwright\/module$/);
         await expect(page.getByRole('heading', { name: 'Playwright Module', exact: true })).toBeVisible();
-        await expect(page.locator('#playwright-scenario-count')).toHaveText('6');
-        await expect(page.locator('#playwright-scenario-select option')).toHaveCount(6);
+        await expect(page.locator('#playwright-scenario-count')).toHaveText(String(scenarioCount));
+        await expect(page.locator('#playwright-scenario-select option')).toHaveCount(scenarioCount);
         await expect(page.locator('#playwright-script-file-badge')).toContainText('.spec.js');
         await expect(page.locator('#playwright-script-code')).toContainText('@playwright/test');
         await expect(page.locator('#playwright-status')).toContainText('Playwright module ready.');

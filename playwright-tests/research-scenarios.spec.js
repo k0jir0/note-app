@@ -1,8 +1,11 @@
 const { test, expect } = require('@playwright/test');
 const {
-    getPlaywrightScenario
+    getPlaywrightScenario,
+    listPlaywrightScenarios
 } = require('../src/lib/playwrightScenarioRegistry');
 const { createAuthenticatedSession } = require('./helpers/auth');
+
+const scenarioCount = listPlaywrightScenarios().length;
 
 function annotateScenario(testInfo, scenario) {
     testInfo.annotations.push({ type: 'playwright-scenario', description: scenario.id });
@@ -97,7 +100,7 @@ test.describe('Research workspace scenario coverage', () => {
         await createAuthenticatedSession(page, testInfo);
         await page.goto('/playwright/module');
         await expectPlaywrightModule(page);
-        await expect(page.locator('#playwright-scenario-count')).toHaveText('6');
+        await expect(page.locator('#playwright-scenario-count')).toHaveText(String(scenarioCount));
         await expect(page.locator('#playwright-script-code')).toContainText('@playwright/test');
     });
 

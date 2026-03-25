@@ -41,6 +41,9 @@ const CONTROL_DEFINITIONS = [
 
 const ROUTE_DESCRIPTIONS = {
     '/auth/login': 'Starts at the login form so the suite can create an authenticated session before protected routes.',
+    '/auth/signup': 'Opens the signup form so the suite can verify account-creation guidance or create a disposable user.',
+    '/notes': 'Loads the authenticated notes home so the suite can verify the primary post-login workspace.',
+    '/notes/new': 'Opens the server-rendered note creation form for CRUD smoke coverage.',
     '/research': 'Opens the Research Workspace, the hub for the Security, ML, Selenium, and Playwright modules.',
     '/security/module': 'Opens the Security Module so the spec can verify analysis, scan, correlation, and realtime controls.',
     '/ml/module': 'Opens the ML Module so the spec can verify training, scoring, explainability, and autonomy panels.',
@@ -49,12 +52,28 @@ const ROUTE_DESCRIPTIONS = {
 };
 
 const ASSERTION_DESCRIPTIONS = {
+    'Login page heading is visible': 'Checks that the login screen still renders its main heading.',
+    'Login form is visible': 'Checks that the login form is present and ready for input.',
+    'Email and password inputs render': 'Checks that the login form exposes the expected credential fields.',
+    'Login page links to sign up': 'Checks that a new user can still navigate to account creation from the login page.',
+    'Signup page heading is visible': 'Checks that the signup screen still renders its main heading.',
+    'Signup form is visible': 'Checks that the signup form is present and ready for input.',
+    'Password requirements guidance is visible': 'Checks that signup still explains the password rules to the user.',
+    'Signup page links back to login': 'Checks that a returning user can still navigate back to login.',
+    'Disposable signup succeeds': 'Checks that a newly generated user can register successfully.',
+    'Login redirects to the notes home': 'Checks that authentication lands on the main notes page.',
+    'Authenticated notes navigation is visible': 'Checks that the signed-in notes screen exposes the main authenticated navigation.',
     'Login form is reachable': 'Checks that the auth entry point loads so the suite can start from a known state.',
     'Research Workspace heading is visible': 'Confirms that the workspace rendered after sign-in.',
     'Security Module card is present': 'Checks that the Research page still links to the Security module.',
     'ML Module card is present': 'Checks that the Research page still links to the ML module.',
     'Selenium Module card is present': 'Checks that the Research page still links to the Selenium module.',
     'Playwright Module card is present': 'Checks that the Research page still links to the Playwright module.',
+    'Playwright module loads from the workspace entry point': 'Checks that the workspace link still opens the Playwright module successfully.',
+    'Create Note form is visible': 'Checks that the note creation form loads with its expected controls.',
+    'Note creation redirects to the notes home': 'Checks that creating a note returns the browser to the notes list.',
+    'Saved note can be viewed and edited': 'Checks that a created note can be opened and updated through the HTML flow.',
+    'Delete action removes the note from the list': 'Checks that the browser delete action removes the note from the notes home.',
     'Security Module heading is visible': 'Confirms that navigation reached the Security module.',
     'Refresh Module button is present': 'Checks that the main refresh control is visible.',
     'Realtime server badge is visible': 'Checks that realtime availability is still surfaced in the UI.',
@@ -73,6 +92,15 @@ const ASSERTION_DESCRIPTIONS = {
     'Playwright Module heading is visible': 'Confirms that navigation reached the Playwright module.',
     'Generated Spec Preview panel is visible': 'Confirms that the Playwright preview panel is visible.',
     'Playwright prerequisites render': 'Confirms that the page still lists the setup needed to run the exported spec.',
+    'Sample log helper loads log input': 'Checks that the sample log helper populates the Security Module input.',
+    'Log analysis creates persisted alerts': 'Checks that log analysis creates saved alerts and refreshes the findings view.',
+    'Sample scan helper loads scan input': 'Checks that the sample scan helper populates the importer input.',
+    'Scan importer creates persisted findings': 'Checks that scan import creates saved findings and refreshes the scans view.',
+    'Correlation demo refreshes the correlation view': 'Checks that the correlation demo creates saved matches and updates the correlation panel.',
+    'Scenario selector updates the generated spec': 'Checks that changing the selected scenario refreshes the generated Playwright preview.',
+    'Load Spec button refreshes the preview': 'Checks that the explicit Load Spec control reloads the selected template.',
+    'Refresh Module button reloads the overview': 'Checks that the module refresh action reloads metadata and leaves the page ready to use.',
+    'Cross-module navigation buttons remain available': 'Checks that the module still links back into the rest of the Research workflow.',
     'Authentication succeeds with a disposable test user': 'Checks that the suite can establish an authenticated session before route checks begin.',
     'Research Workspace renders all module entry points': 'Checks that the workspace still exposes the expected module entry points.',
     'Security Module renders its main controls': 'Checks that the Security page still renders its primary controls.',
@@ -481,6 +509,39 @@ function buildPlaywrightModuleOverview({ baseUrl } = {}) {
 }
 
 const SCRIPT_STEP_MAP = {
+    'auth-login-form': [
+        'await page.goto(`${baseUrl}/auth/login`, { waitUntil: \'domcontentloaded\' });',
+        'await expectBodyText(page, \'Login\');',
+        'await expect(page.locator(\'form[action="/auth/login"]\')).toBeVisible();',
+        'await expect(page.locator(\'#email\')).toHaveAttribute(\'type\', \'email\');',
+        'await expect(page.locator(\'#password\')).toHaveAttribute(\'type\', \'password\');'
+    ].join('\n    '),
+    'auth-signup-form': [
+        'await page.goto(`${baseUrl}/auth/signup`, { waitUntil: \'domcontentloaded\' });',
+        'await expectBodyText(page, \'Sign Up\');',
+        'await expect(page.locator(\'form[action="/auth/signup"]\')).toBeVisible();',
+        'await expect(page.locator(\'#password\')).toHaveAttribute(\'minlength\', \'8\');',
+        'await expectBodyText(page, \'Password requirements:\');'
+    ].join('\n    '),
+    'auth-signup-login-flow': [
+        'await page.goto(`${baseUrl}/auth/signup`, { waitUntil: \'domcontentloaded\' });',
+        'await page.locator(\'#email\').fill(email);',
+        'await page.locator(\'#password\').fill(password);',
+        'await Promise.all([',
+        '    page.waitForURL(/\\/auth\\/login$/),',
+        '    page.getByRole(\'button\', { name: \'Sign Up\' }).click()',
+        ']);',
+        'await signIn(page);',
+        'await expectBodyText(page, \'Notes\');'
+    ].join('\n    '),
+    'research-playwright-entry-flow': [
+        'await signIn(page);',
+        'await page.goto(`${baseUrl}/research`, { waitUntil: \'domcontentloaded\' });',
+        'await expectBodyText(page, \'Research Workspace\');',
+        'await expectBodyText(page, \'Playwright Module\');',
+        'await page.locator(\'a[href="/playwright/module"]\').click();',
+        'await expect(page).toHaveURL(`${baseUrl}/playwright/module`);'
+    ].join('\n    '),
     'workspace-navigation': [
         'await signIn(page);',
         'await page.goto(`${baseUrl}/research`, { waitUntil: \'domcontentloaded\' });',
@@ -525,6 +586,46 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(page, \'Scenario Catalog\');',
         'await expectBodyText(page, \'Generated Spec Preview\');',
         'await expectBodyText(page, \'Playwright Prerequisites\');'
+    ].join('\n    '),
+    'notes-crud-workflow': [
+        'await signIn(page);',
+        'await page.goto(`${baseUrl}/notes/new`, { waitUntil: \'domcontentloaded\' });',
+        'await expectBodyText(page, \'Create Note\');',
+        'await page.locator(\'#title\').fill(\'Playwright CRUD note\');',
+        'await page.locator(\'#content\').fill(\'Created through the server-rendered notes flow.\');',
+        'await Promise.all([',
+        '    page.waitForURL(/\\/notes$/),',
+        '    page.getByRole(\'button\', { name: \'Create Note\' }).click()',
+        ']);',
+        'await expectBodyText(page, \'Playwright CRUD note\');'
+    ].join('\n    '),
+    'security-module-workflow': [
+        'await signIn(page);',
+        'await page.goto(`${baseUrl}/security/module`, { waitUntil: \'domcontentloaded\' });',
+        'await expect(page.locator(\'#workspace-refresh-all\')).toBeVisible();',
+        'await page.locator(\'#workspace-load-sample-log\').click();',
+        'await expect(page.locator(\'#workspace-log-text\')).toHaveValue(/POST \\/auth\\/login 401/);',
+        'await page.locator(\'#workspace-log-form button[type="submit"]\').click();',
+        'await expectBodyText(page, \'alert(s) created\');',
+        'await page.locator(\'#workspace-load-sample-scan\').click();',
+        'await expect(page.locator(\'#workspace-scan-text\')).toHaveValue(/Nikto v2\\.1\\.6/);',
+        'await page.locator(\'#workspace-scan-form button[type="submit"]\').click();',
+        'await expectBodyText(page, \'Scan imported with\');',
+        'await page.locator(\'#workspace-inject-correlation-demo\').click();',
+        'await expectBodyText(page, \'Injected\');'
+    ].join('\n    '),
+    'playwright-module-interactions': [
+        'await signIn(page);',
+        'await page.goto(`${baseUrl}/playwright/module`, { waitUntil: \'domcontentloaded\' });',
+        'await expect(page.locator(\'#playwright-scenario-select\')).toBeVisible();',
+        'await page.locator(\'#playwright-scenario-select\').selectOption(\'security-module-workflow\');',
+        'await expect(page.locator(\'#playwright-script-file-badge\')).toContainText(\'playwright-security-module-workflow.spec.js\');',
+        'await page.locator(\'#playwright-load-script-btn\').click();',
+        'await expectBodyText(page, \'Loaded the selected spec.\');',
+        'await page.locator(\'#playwright-refresh-btn\').click();',
+        'await expectBodyText(page, \'Playwright module refreshed.\');',
+        'await page.locator(\'a[href="/security/module"]\').click();',
+        'await expect(page).toHaveURL(`${baseUrl}/security/module`);'
     ].join('\n    '),
     'research-full-suite': [
         'await signIn(page);',

@@ -7,17 +7,23 @@ const playwrightResearchService = require('../src/services/playwrightResearchSer
 
 describe('Playwright research service', () => {
     it('builds module overview data with scenario coverage and prerequisites', () => {
+        const scenarioCount = playwrightResearchService.getScenarioIds().length;
+        const authenticatedScenarioCount = playwrightResearchService
+            .buildPlaywrightModuleOverview({ baseUrl: 'http://127.0.0.1:3000/' })
+            .scenarios
+            .filter((scenario) => scenario.requiresLogin)
+            .length;
         const overview = playwrightResearchService.buildPlaywrightModuleOverview({
             baseUrl: 'http://127.0.0.1:3000/'
         });
 
         expect(overview.module.name).to.equal('Playwright Module');
         expect(overview.module.baseUrl).to.equal('http://127.0.0.1:3000');
-        expect(overview.coverage.scenarioCount).to.equal(6);
-        expect(overview.coverage.authenticatedScenarioCount).to.equal(6);
+        expect(overview.coverage.scenarioCount).to.equal(scenarioCount);
+        expect(overview.coverage.authenticatedScenarioCount).to.equal(authenticatedScenarioCount);
         expect(overview.controls).to.have.length(4);
         expect(overview.prerequisites).to.have.length(5);
-        expect(overview.suite.implementedScenarioCount).to.equal(6);
+        expect(overview.suite.implementedScenarioCount).to.equal(scenarioCount);
         expect(overview.suite.latestRun).to.have.property('available');
         expect(overview.scenarios[0].routes[0]).to.match(/^http:\/\/127\.0\.0\.1:3000\//);
         expect(overview.scenarios[0].routeTargets[0].description).to.be.a('string').and.not.equal('');
