@@ -87,7 +87,7 @@ function hasEnabledAutomation(automationConfig = {}) {
 }
 
 function isRealtimeConfigured(env = process.env) {
-    return Boolean(env.REDIS_URL) && env.DISABLE_REDIS !== '1';
+    return Boolean(env.REDIS_URL) && env.ENABLE_REALTIME === '1' && env.DISABLE_REDIS !== '1';
 }
 
 async function createConsumerGroup({
@@ -405,7 +405,7 @@ async function startBackgroundServices(options = {}) {
         }, metricIntervalMs);
         interval.unref?.();
     } else {
-        logInfo(logger, '[realtime-worker] realtime loop disabled; REDIS_URL is not configured');
+        logInfo(logger, '[realtime-worker] realtime loop disabled; Redis is unavailable or ENABLE_REALTIME is not set to 1');
     }
 
     return {

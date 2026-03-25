@@ -7,6 +7,7 @@ const {
     GROUP,
     claimStaleMessages,
     handleMessage,
+    isRealtimeConfigured,
     startBackgroundServices,
     updatePendingGaugeOnce
 } = require('../src/workers/realtimeProcessor');
@@ -75,6 +76,24 @@ describe('Realtime Processor', () => {
 
         expect(pendingCount).to.equal(7);
         expect(gauge.set.calledOnceWith(7)).to.equal(true);
+    });
+
+    it('treats realtime as disabled until both Redis and ENABLE_REALTIME are configured', () => {
+        expect(isRealtimeConfigured({
+            REDIS_URL: 'redis://127.0.0.1:6379',
+            ENABLE_REALTIME: '0'
+        })).to.equal(false);
+
+        expect(isRealtimeConfigured({
+            REDIS_URL: 'redis://127.0.0.1:6379',
+            ENABLE_REALTIME: '1'
+        })).to.equal(true);
+
+        expect(isRealtimeConfigured({
+            REDIS_URL: 'redis://127.0.0.1:6379',
+            ENABLE_REALTIME: '1',
+            DISABLE_REDIS: '1'
+        })).to.equal(false);
     });
 
     it('routes saved realtime alerts through the incident response service before publishing', async () => {

@@ -16,6 +16,11 @@ const workflowGrid = document.getElementById('playwright-workflow-grid');
 const prerequisitesGrid = document.getElementById('playwright-prerequisites-grid');
 const scenariosGrid = document.getElementById('playwright-scenarios-grid');
 const scenarioSelect = document.getElementById('playwright-scenario-select');
+const suiteImplementedCountEl = document.getElementById('playwright-suite-implemented-count');
+const latestRunStatusEl = document.getElementById('playwright-latest-run-status');
+const latestRunGeneratedAtEl = document.getElementById('playwright-latest-run-generated-at');
+const latestRunSummaryEl = document.getElementById('playwright-latest-run-summary');
+const suiteFilesEl = document.getElementById('playwright-suite-files');
 const scriptSummaryEl = document.getElementById('playwright-script-summary');
 const scriptFileBadgeEl = document.getElementById('playwright-script-file-badge');
 const scriptCodeEl = document.getElementById('playwright-script-code');
@@ -41,6 +46,34 @@ function renderStatus(message, tone = 'secondary') {
     }
 
     statusTarget.innerHTML = `<div class="alert alert-${escapeHtml(tone)} mb-0">${escapeHtml(message)}</div>`;
+}
+
+function formatDateTime(value) {
+    if (!value) {
+        return '';
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return String(value);
+    }
+
+    return parsed.toLocaleString();
+}
+
+function getRunTone(status) {
+    switch (status) {
+        case 'passed':
+            return 'success';
+        case 'failed':
+            return 'danger';
+        case 'flaky':
+            return 'warning';
+        case 'skipped':
+            return 'secondary';
+        default:
+            return 'light';
+    }
 }
 
 async function requestJson(url, fallbackMessage) {
@@ -155,10 +188,14 @@ function renderScenarioCards(items = []) {
                         <p class="research-kicker mb-1">${escapeHtml(scenario.id)}</p>
                         <h3 class="h5 mb-1">${escapeHtml(scenario.title)}</h3>
                     </div>
-                    <span class="badge text-bg-${scenario.requiresLogin ? 'info' : 'secondary'}">${scenario.requiresLogin ? 'Auth required' : 'Public flow'}</span>
+                    <div class="d-flex gap-2 flex-wrap justify-content-end">
+                        <span class="badge text-bg-${scenario.requiresLogin ? 'info' : 'secondary'}">${scenario.requiresLogin ? 'Auth required' : 'Public flow'}</span>
+                        <span class="badge text-bg-${getRunTone(scenario.latestRunStatus)}">${escapeHtml(scenario.latestRunStatus === 'unknown' ? 'Run status unavailable' : `Latest run: ${scenario.latestRunStatus}`)}</span>
+                    </div>
                 </div>
                 <p class="text-muted mb-3">${escapeHtml(scenario.purpose)}</p>
                 <p class="small mb-3">${escapeHtml(scenario.functionDescription || '')}</p>
+                <p class="text-muted small mb-3">${escapeHtml(scenario.latestRunProjects && scenario.latestRunProjects.length ? `Reported by: ${scenario.latestRunProjects.join(', ')}` : 'No scenario-level run data is available yet.')}</p>
                 <p class="fw-semibold mb-2">Tags</p>
                 <div class="mb-3">
                     ${scenario.tagDetails.map((tag) => `
@@ -295,6 +332,60 @@ function renderScenarioSummary(script) {
     `;
 }
 
+function renderLatestRunSummary(suite = {}) {
+    const latestRun = suite && suite.latestRun ? suite.latestRun : null;
+
+    if (suiteImplementedCountEl) {
+        suiteImplementedCountEl.textContent = String(suite && suite.implementedScenarioCount ? suite.implementedScenarioCount : 0);
+    }
+
+    if (suiteFilesEl) {
+        const suiteFiles = Array.isArray(suite && suite.suiteFiles) ? suite.suiteFiles : [];
+        suiteFilesEl.textContent = suiteFiles.length
+            ? `Suite files: ${suiteFiles.join(', ')}`
+            : 'Suite files: no shared Playwright suite files are registered yet.';
+    }
+
+    if (!latestRunStatusEl || !latestRunGeneratedAtEl || !latestRunSummaryEl) {
+        return;
+    }
+
+    if (!latestRun || !latestRun.available) {
+        latestRunStatusEl.textContent = 'Unavailable';
+        latestRunGeneratedAtEl.textContent = latestRun && latestRun.error
+            ? `Latest reporter read failed: ${latestRun.error}`
+            : 'No Playwright reporter output is available yet.';
+        latestRunSummaryEl.innerHTML = '<div class="col-12"><div class="alert alert-secondary mb-0">Run `npm run test:e2e` or let CI publish a Playwright JSON report to populate this panel.</div></div>';
+        return;
+    }
+
+    latestRunStatusEl.textContent = latestRun.status ? latestRun.status.toUpperCase() : 'UNKNOWN';
+    latestRunGeneratedAtEl.textContent = `Generated ${formatDateTime(latestRun.generatedAt)} from ${latestRun.sourcePath || 'the Playwright JSON report'}.`;
+
+    const projectRows = Array.isArray(latestRun.projects) ? latestRun.projects.map((project) => `
+        <div class="col-md-4">
+            <div class="playwright-prereq-card h-100">
+                <div class="d-flex justify-content-between gap-3 mb-2">
+                    <p class="fw-semibold mb-0">${escapeHtml(project.name)}</p>
+                    <span class="badge text-bg-${getRunTone(project.status)}">${escapeHtml(project.status)}</span>
+                </div>
+                <p class="text-muted small mb-0">${escapeHtml(`${project.passed} passed, ${project.failed} failed, ${project.flaky} flaky, ${project.skipped} skipped out of ${project.total}.`)}</p>
+            </div>
+        </div>
+    `).join('') : '';
+
+    latestRunSummaryEl.innerHTML = `
+        <div class="col-md-4">
+            <div class="playwright-prereq-card h-100">
+                <p class="fw-semibold mb-1">Overall</p>
+                <p class="mb-1">${escapeHtml(`${latestRun.total} test result(s)`)}</p>
+                <p class="text-muted small mb-0">${escapeHtml(`${latestRun.passed} passed, ${latestRun.failed} failed, ${latestRun.flaky} flaky, ${latestRun.skipped} skipped in ${latestRun.durationMs} ms.`)}</p>
+            </div>
+        </div>
+        ${projectRows}
+    `;
+}
+
 function renderOverview(overview) {
     latestOverview = overview;
     runtimeLabelEl.textContent = overview.module.runtime;
@@ -302,6 +393,7 @@ function renderOverview(overview) {
     authCountEl.textContent = String(overview.coverage.authenticatedScenarioCount || 0);
     baseUrlEl.textContent = overview.module.baseUrl;
 
+    renderLatestRunSummary(overview.suite || {});
     renderControls(Array.isArray(overview.controls) ? overview.controls : []);
     renderWorkflow(Array.isArray(overview.workflow) ? overview.workflow : []);
     renderPrerequisites(Array.isArray(overview.prerequisites) ? overview.prerequisites : []);

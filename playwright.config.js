@@ -1,6 +1,7 @@
 const { defineConfig, devices } = require('@playwright/test');
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
+const shouldManageWebServer = !process.env.PLAYWRIGHT_BASE_URL;
 
 module.exports = defineConfig({
     testDir: './playwright-tests',
@@ -10,7 +11,8 @@ module.exports = defineConfig({
     workers: process.env.CI ? 1 : undefined,
     reporter: [
         ['list'],
-        ['html', { open: 'never' }]
+        ['html', { open: 'never' }],
+        ['json', { outputFile: 'artifacts/playwright-results.json' }]
     ],
     use: {
         baseURL,
@@ -19,6 +21,17 @@ module.exports = defineConfig({
         screenshot: 'only-on-failure',
         video: 'retain-on-failure'
     },
+    webServer: shouldManageWebServer ? {
+        command: 'npm run start',
+        url: `${baseURL}/auth/login`,
+        timeout: 120000,
+        reuseExistingServer: !process.env.CI,
+        env: {
+            ...process.env,
+            DISABLE_REDIS: '1',
+            PORT: '3000'
+        }
+    } : undefined,
     projects: [
         {
             name: 'chromium',

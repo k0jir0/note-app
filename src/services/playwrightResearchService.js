@@ -1,111 +1,16 @@
+const fs = require('fs');
+const path = require('path');
+const {
+    DEFAULT_PLAYWRIGHT_SCENARIO_ID,
+    getPlaywrightScenario,
+    listPlaywrightScenarios
+} = require('../lib/playwrightScenarioRegistry');
+
 const DEFAULT_BASE_URL = 'http://localhost:3000';
-const DEFAULT_SCENARIO_ID = 'research-full-suite';
+const DEFAULT_SCENARIO_ID = DEFAULT_PLAYWRIGHT_SCENARIO_ID;
+const PLAYWRIGHT_RESULTS_PATH = path.join(process.cwd(), 'artifacts', 'playwright-results.json');
 const DEFAULT_ROUTE_DESCRIPTION = 'Visits this route directly so the smoke spec can verify the page without relying on brittle click paths.';
 const DEFAULT_ASSERTION_DESCRIPTION = 'Checks for stable UI text or controls before deeper automation is added.';
-
-const SCENARIO_DEFINITIONS = [
-    {
-        id: 'workspace-navigation',
-        title: 'Research Workspace Navigation',
-        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, and Playwright entry points are visible.',
-        routes: ['/auth/login', '/research'],
-        assertions: [
-            'Login form is reachable',
-            'Research Workspace heading is visible',
-            'Security Module card is present',
-            'ML Module card is present',
-            'Selenium Module card is present',
-            'Playwright Module card is present'
-        ],
-        tags: ['smoke', 'auth', 'navigation'],
-        requiresLogin: true,
-        optionalDependencies: []
-    },
-    {
-        id: 'security-module-smoke',
-        title: 'Security Module Smoke',
-        purpose: 'Open the Security Module and confirm that its primary analysis, scan, and realtime controls are visible.',
-        routes: ['/security/module'],
-        assertions: [
-            'Security Module heading is visible',
-            'Refresh Module button is present',
-            'Realtime server badge is visible',
-            'Log Analysis section is visible',
-            'Scan Importer section is visible'
-        ],
-        tags: ['security', 'workspace', 'browser'],
-        requiresLogin: true,
-        optionalDependencies: ['Redis-backed realtime is only needed if you extend the suite with live-stream checks.']
-    },
-    {
-        id: 'ml-module-smoke',
-        title: 'ML Module Smoke',
-        purpose: 'Open the ML Module and confirm that its training, scoring, and review panels are visible.',
-        routes: ['/ml/module'],
-        assertions: [
-            'ML Module heading is visible',
-            'Train Hybrid Model button is present',
-            'Observed Autonomous Outcomes panel is visible',
-            'Learned Feature Influence panel is visible',
-            'Recent Scored Alerts panel is visible'
-        ],
-        tags: ['ml', 'triage', 'browser'],
-        requiresLogin: true,
-        optionalDependencies: ['A trained model artifact is optional. The page should still render in heuristic mode.']
-    },
-    {
-        id: 'selenium-module-smoke',
-        title: 'Selenium Module Smoke',
-        purpose: 'Open the Selenium Module and confirm that its scenario metadata and script preview are visible.',
-        routes: ['/selenium/module'],
-        assertions: [
-            'Selenium Module heading is visible',
-            'Scenario Catalog panel is visible',
-            'Generated Script Preview panel is visible',
-            'Scenario selector is present',
-            'Browser prerequisites render'
-        ],
-        tags: ['selenium', 'export', 'browser'],
-        requiresLogin: true,
-        optionalDependencies: ['No local Selenium driver is needed to inspect the generated script inside the app.']
-    },
-    {
-        id: 'playwright-module-smoke',
-        title: 'Playwright Module Smoke',
-        purpose: 'Open the Playwright Module and confirm that its scenario metadata and spec preview are visible.',
-        routes: ['/playwright/module'],
-        assertions: [
-            'Playwright Module heading is visible',
-            'Scenario Catalog panel is visible',
-            'Generated Spec Preview panel is visible',
-            'Scenario selector is present',
-            'Playwright prerequisites render'
-        ],
-        tags: ['playwright', 'export', 'browser'],
-        requiresLogin: true,
-        optionalDependencies: ['No local Playwright browser install is needed to inspect the generated spec inside the app.']
-    },
-    {
-        id: 'research-full-suite',
-        title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, and Playwright to validate the end-to-end workspace flow.',
-        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module'],
-        assertions: [
-            'Authentication succeeds with a disposable test user',
-            'Research Workspace renders all module entry points',
-            'Security Module renders its main controls',
-            'ML Module renders training and autonomy panels',
-            'Selenium Module renders a script preview',
-            'Playwright Module renders a spec preview'
-        ],
-        tags: ['full-suite', 'research', 'smoke'],
-        requiresLogin: true,
-        optionalDependencies: [
-            'A Redis-backed worker is only needed if you extend the suite to validate realtime connect flow.',
-            'Use a seeded or disposable account for stable smoke expectations.'
-        ]
-    }
-];
 
 const CONTROL_DEFINITIONS = [
     {
@@ -227,7 +132,7 @@ function buildScenarioFunctionDescription(scenario) {
 }
 
 function getScenarioIds() {
-    return SCENARIO_DEFINITIONS.map((scenario) => scenario.id);
+    return listPlaywrightScenarios().map((scenario) => scenario.id);
 }
 
 function getScenarioDefinition(scenarioId = DEFAULT_SCENARIO_ID) {
@@ -235,13 +140,13 @@ function getScenarioDefinition(scenarioId = DEFAULT_SCENARIO_ID) {
         ? scenarioId.trim()
         : DEFAULT_SCENARIO_ID;
 
-    return SCENARIO_DEFINITIONS.find((scenario) => scenario.id === normalizedId) || null;
+    return getPlaywrightScenario(normalizedId);
 }
 
 function buildScenarioCatalog(baseUrl) {
     const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
-    return SCENARIO_DEFINITIONS.map((scenario) => ({
+    return listPlaywrightScenarios().map((scenario) => ({
         id: scenario.id,
         title: scenario.title,
         purpose: scenario.purpose,
@@ -259,6 +164,8 @@ function buildScenarioCatalog(baseUrl) {
         })),
         requiresLogin: scenario.requiresLogin,
         optionalDependencies: [...scenario.optionalDependencies],
+        implementedInSuite: Boolean(scenario.implementedInSuite),
+        suiteFile: scenario.suiteFile || '',
         routeTargets: scenario.routes.map((routePath) => ({
             path: routePath,
             url: `${normalizedBaseUrl}${routePath}`,
@@ -334,9 +241,221 @@ function buildCoverageSummary(scenarios) {
     };
 }
 
+function normalizeRunStatus(status) {
+    switch (status) {
+        case 'passed':
+            return 'passed';
+        case 'failed':
+        case 'timedOut':
+        case 'interrupted':
+            return 'failed';
+        case 'flaky':
+            return 'flaky';
+        case 'skipped':
+            return 'skipped';
+        default:
+            return 'unknown';
+    }
+}
+
+function summarizeAggregateStatus(currentStatus, nextStatus) {
+    const severity = {
+        failed: 4,
+        flaky: 3,
+        passed: 2,
+        skipped: 1,
+        unknown: 0
+    };
+
+    return severity[nextStatus] > severity[currentStatus] ? nextStatus : currentStatus;
+}
+
+function walkSuiteTree(entries, visitSpec) {
+    if (!Array.isArray(entries)) {
+        return;
+    }
+
+    entries.forEach((entry) => {
+        if (Array.isArray(entry.specs)) {
+            entry.specs.forEach((spec) => visitSpec(spec, entry));
+        }
+
+        if (Array.isArray(entry.suites)) {
+            walkSuiteTree(entry.suites, visitSpec);
+        }
+    });
+}
+
+function buildLatestRunSummary(reportPath = PLAYWRIGHT_RESULTS_PATH) {
+    if (!fs.existsSync(reportPath)) {
+        return {
+            available: false,
+            status: 'unavailable',
+            total: 0,
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            flaky: 0,
+            durationMs: 0,
+            generatedAt: '',
+            sourcePath: 'artifacts/playwright-results.json',
+            projects: [],
+            scenarioResults: []
+        };
+    }
+
+    try {
+        const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+        const stats = report && report.stats ? report.stats : {};
+        const fileStats = fs.statSync(reportPath);
+        const projects = new Map();
+        const scenarioResults = [];
+        const summary = {
+            available: true,
+            status: 'unknown',
+            total: 0,
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            flaky: 0,
+            durationMs: typeof stats.duration === 'number' ? stats.duration : 0,
+            generatedAt: stats.startTime || fileStats.mtime.toISOString(),
+            sourcePath: 'artifacts/playwright-results.json'
+        };
+
+        walkSuiteTree(report.suites, (spec) => {
+            const tests = Array.isArray(spec.tests) ? spec.tests : [];
+
+            tests.forEach((testEntry) => {
+                const results = Array.isArray(testEntry.results) ? testEntry.results : [];
+                const latestResult = results.length ? results[results.length - 1] : null;
+                const normalizedStatus = normalizeRunStatus(latestResult && latestResult.status);
+                const projectName = testEntry.projectName || 'unknown';
+                const annotations = Array.isArray(testEntry.annotations) ? testEntry.annotations : [];
+                const scenarioAnnotation = annotations.find((annotation) => annotation.type === 'playwright-scenario');
+
+                summary.total += 1;
+                summary.status = summarizeAggregateStatus(summary.status, normalizedStatus);
+
+                if (normalizedStatus === 'passed') {
+                    summary.passed += 1;
+                } else if (normalizedStatus === 'failed') {
+                    summary.failed += 1;
+                } else if (normalizedStatus === 'flaky') {
+                    summary.flaky += 1;
+                } else if (normalizedStatus === 'skipped') {
+                    summary.skipped += 1;
+                }
+
+                const projectSummary = projects.get(projectName) || {
+                    name: projectName,
+                    total: 0,
+                    passed: 0,
+                    failed: 0,
+                    skipped: 0,
+                    flaky: 0,
+                    status: 'unknown'
+                };
+
+                projectSummary.total += 1;
+                projectSummary.status = summarizeAggregateStatus(projectSummary.status, normalizedStatus);
+
+                if (normalizedStatus === 'passed') {
+                    projectSummary.passed += 1;
+                } else if (normalizedStatus === 'failed') {
+                    projectSummary.failed += 1;
+                } else if (normalizedStatus === 'flaky') {
+                    projectSummary.flaky += 1;
+                } else if (normalizedStatus === 'skipped') {
+                    projectSummary.skipped += 1;
+                }
+
+                projects.set(projectName, projectSummary);
+
+                scenarioResults.push({
+                    scenarioId: scenarioAnnotation && typeof scenarioAnnotation.description === 'string'
+                        ? scenarioAnnotation.description
+                        : '',
+                    title: spec.title || '',
+                    file: spec.file || '',
+                    projectName,
+                    status: normalizedStatus,
+                    durationMs: latestResult && typeof latestResult.duration === 'number' ? latestResult.duration : 0
+                });
+            });
+        });
+
+        return {
+            ...summary,
+            projects: Array.from(projects.values()),
+            scenarioResults
+        };
+    } catch (error) {
+        return {
+            available: false,
+            status: 'unavailable',
+            total: 0,
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            flaky: 0,
+            durationMs: 0,
+            generatedAt: '',
+            sourcePath: 'artifacts/playwright-results.json',
+            error: error.message,
+            projects: [],
+            scenarioResults: []
+        };
+    }
+}
+
+function buildScenarioRunIndex(latestRun) {
+    const index = new Map();
+
+    if (!latestRun || !latestRun.available || !Array.isArray(latestRun.scenarioResults)) {
+        return index;
+    }
+
+    latestRun.scenarioResults.forEach((result) => {
+        if (!result.scenarioId) {
+            return;
+        }
+
+        const current = index.get(result.scenarioId) || {
+            status: 'unknown',
+            projectNames: [],
+            generatedAt: latestRun.generatedAt || ''
+        };
+
+        current.status = summarizeAggregateStatus(current.status, result.status || 'unknown');
+        if (result.projectName && !current.projectNames.includes(result.projectName)) {
+            current.projectNames.push(result.projectName);
+        }
+
+        index.set(result.scenarioId, current);
+    });
+
+    return index;
+}
+
 function buildPlaywrightModuleOverview({ baseUrl } = {}) {
     const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
-    const scenarios = buildScenarioCatalog(normalizedBaseUrl);
+    const latestRun = buildLatestRunSummary();
+    const scenarioRunIndex = buildScenarioRunIndex(latestRun);
+    const scenarios = buildScenarioCatalog(normalizedBaseUrl).map((scenario) => {
+        const latestScenarioRun = scenarioRunIndex.get(scenario.id);
+
+        return {
+            ...scenario,
+            latestRunStatus: latestScenarioRun ? latestScenarioRun.status : 'unknown',
+            latestRunProjects: latestScenarioRun ? [...latestScenarioRun.projectNames] : []
+        };
+    });
+    const suiteFiles = Array.from(new Set(
+        listPlaywrightScenarios()
+            .map((scenario) => scenario.suiteFile)
+            .filter((suiteFile) => typeof suiteFile === 'string' && suiteFile.trim())
+    ));
 
     return {
         module: {
@@ -347,6 +466,11 @@ function buildPlaywrightModuleOverview({ baseUrl } = {}) {
             baseUrl: normalizedBaseUrl
         },
         coverage: buildCoverageSummary(scenarios),
+        suite: {
+            implementedScenarioCount: scenarios.filter((scenario) => scenario.implementedInSuite).length,
+            suiteFiles,
+            latestRun
+        },
         controls: buildControlGuide(),
         workflow: buildWorkflow(),
         prerequisites: buildPrerequisites(normalizedBaseUrl),
@@ -519,6 +643,7 @@ function buildPlaywrightScript({ baseUrl, scenarioId = DEFAULT_SCENARIO_ID } = {
 module.exports = {
     DEFAULT_SCENARIO_ID,
     buildPlaywrightModuleOverview,
+    buildLatestRunSummary,
     buildPlaywrightScript,
     getScenarioIds
 };

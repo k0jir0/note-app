@@ -43,7 +43,7 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
     require('./src/config/passport')(passport);
     const app = express();
     const isProduction = process.env.NODE_ENV === 'production';
-    const realtimeAvailable = Boolean(process.env.REDIS_URL);
+    const realtimeAvailable = Boolean(process.env.REDIS_URL) && process.env.DISABLE_REDIS !== '1';
 
     app.locals.runtimeConfig = runtimeConfig;
     app.locals.appBaseUrl = runtimeConfig.appBaseUrl;
