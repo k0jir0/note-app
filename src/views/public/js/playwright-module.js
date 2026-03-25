@@ -11,6 +11,7 @@ const runtimeLabelEl = document.getElementById('playwright-runtime-label');
 const scenarioCountEl = document.getElementById('playwright-scenario-count');
 const authCountEl = document.getElementById('playwright-auth-count');
 const baseUrlEl = document.getElementById('playwright-base-url');
+const controlsGuideEl = document.getElementById('playwright-controls-guide');
 const workflowGrid = document.getElementById('playwright-workflow-grid');
 const prerequisitesGrid = document.getElementById('playwright-prerequisites-grid');
 const scenariosGrid = document.getElementById('playwright-scenarios-grid');
@@ -89,6 +90,30 @@ function renderWorkflow(items = []) {
     `).join('');
 }
 
+function renderControls(items = []) {
+    if (!controlsGuideEl) {
+        return;
+    }
+
+    if (!items.length) {
+        controlsGuideEl.innerHTML = '<div class="col-12"><div class="alert alert-secondary mb-0">No Playwright control descriptions are available right now.</div></div>';
+        return;
+    }
+
+    controlsGuideEl.innerHTML = items.map((item) => `
+        <div class="col-md-6">
+            <div class="playwright-prereq-card h-100">
+                <div class="d-flex justify-content-between gap-3 mb-2">
+                    <p class="fw-semibold mb-0">${escapeHtml(item.label)}</p>
+                    <span class="badge text-bg-light">${escapeHtml(item.id)}</span>
+                </div>
+                <p class="text-muted mb-2">${escapeHtml(item.description)}</p>
+                <p class="small mb-0">${escapeHtml(item.interaction)}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
 function renderPrerequisites(items = []) {
     if (!prerequisitesGrid) {
         return;
@@ -133,16 +158,41 @@ function renderScenarioCards(items = []) {
                     <span class="badge text-bg-${scenario.requiresLogin ? 'info' : 'secondary'}">${scenario.requiresLogin ? 'Auth required' : 'Public flow'}</span>
                 </div>
                 <p class="text-muted mb-3">${escapeHtml(scenario.purpose)}</p>
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    ${scenario.tags.map((tag) => `<span class="playwright-tag">${escapeHtml(tag)}</span>`).join('')}
+                <p class="small mb-3">${escapeHtml(scenario.functionDescription || '')}</p>
+                <p class="fw-semibold mb-2">Coverage labels</p>
+                <div class="mb-3">
+                    ${scenario.tagDetails.map((tag) => `
+                        <div class="mb-2">
+                            <span class="playwright-tag">${escapeHtml(tag.label)}</span>
+                            <p class="text-muted small mb-0 mt-1">${escapeHtml(tag.description)}</p>
+                        </div>
+                    `).join('')}
                 </div>
                 <p class="fw-semibold mb-2">Route targets</p>
                 <ul class="mb-3">
-                    ${scenario.routePaths.map((routePath) => `<li class="text-muted small">${escapeHtml(routePath)}</li>`).join('')}
+                    ${scenario.routeTargets.map((routeTarget) => `
+                        <li class="text-muted small mb-2">
+                            <span class="fw-semibold">${escapeHtml(routeTarget.path)}</span>
+                            <div>${escapeHtml(routeTarget.description)}</div>
+                        </li>
+                    `).join('')}
                 </ul>
                 <p class="fw-semibold mb-2">Assertions</p>
+                <ul class="mb-3">
+                    ${scenario.assertionDetails.map((assertion) => `
+                        <li class="text-muted small mb-2">
+                            <span class="fw-semibold">${escapeHtml(assertion.label)}</span>
+                            <div>${escapeHtml(assertion.description)}</div>
+                        </li>
+                    `).join('')}
+                </ul>
+                <p class="fw-semibold mb-2">Optional dependencies</p>
                 <ul class="mb-0">
-                    ${scenario.assertions.map((assertion) => `<li class="text-muted small">${escapeHtml(assertion)}</li>`).join('')}
+                    ${(scenario.optionalDependencies && scenario.optionalDependencies.length
+        ? scenario.optionalDependencies
+        : ['No optional dependencies are required beyond the standard Playwright setup.']).map((dependency) => `
+                        <li class="text-muted small">${escapeHtml(dependency)}</li>
+                    `).join('')}
                 </ul>
             </div>
         </div>
@@ -174,13 +224,74 @@ function renderScenarioSummary(script) {
     }
 
     scriptSummaryEl.innerHTML = `
-        <dl class="automation-metadata mb-0">
-            <div><dt>Scenario</dt><dd>${escapeHtml(script.title)}</dd></div>
-            <div><dt>File name</dt><dd>${escapeHtml(script.fileName)}</dd></div>
-            <div><dt>Language</dt><dd>${escapeHtml(script.language)}</dd></div>
-            <div><dt>Runtime</dt><dd>${escapeHtml(script.runtime)}</dd></div>
-            <div class="automation-path-row"><dt>Purpose</dt><dd>${escapeHtml(script.purpose)}</dd></div>
-        </dl>
+        <div class="mb-3">
+            <p class="text-muted mb-0">${escapeHtml(script.functionDescription || script.purpose || '')}</p>
+        </div>
+        <div class="d-flex flex-column gap-3">
+            <div>
+                <p class="fw-semibold mb-1">Scenario</p>
+                <p class="mb-1">${escapeHtml(script.title)}</p>
+                <p class="text-muted small mb-0">The named browser flow this generated Playwright spec is designed to exercise.</p>
+            </div>
+            <div>
+                <p class="fw-semibold mb-1">File name</p>
+                <p class="mb-1">${escapeHtml(script.fileName)}</p>
+                <p class="text-muted small mb-0">The suggested file name when exporting the generated template into a real Playwright test project.</p>
+            </div>
+            <div>
+                <p class="fw-semibold mb-1">Language and runtime</p>
+                <p class="mb-1">${escapeHtml(script.language)} / ${escapeHtml(script.runtime)}</p>
+                <p class="text-muted small mb-0">The module generates a JavaScript smoke spec built for the @playwright/test runner.</p>
+            </div>
+            <div>
+                <p class="fw-semibold mb-1">Base URL</p>
+                <p class="mb-1">${escapeHtml(script.baseUrl || '')}</p>
+                <p class="text-muted small mb-0">The default app origin embedded into the exported script unless PLAYWRIGHT_BASE_URL is overridden.</p>
+            </div>
+            <div>
+                <p class="fw-semibold mb-1">Authentication requirement</p>
+                <p class="mb-1">${script.requiresLogin ? 'Required before protected routes are visited.' : 'No authenticated session is required for this scenario.'}</p>
+                <p class="text-muted small mb-0">This explains whether the generated spec will use the built-in sign-in helper before browser assertions begin.</p>
+            </div>
+            <div>
+                <p class="fw-semibold mb-1">Purpose</p>
+                <p class="mb-1">${escapeHtml(script.purpose)}</p>
+                <p class="text-muted small mb-0">The product-level intent behind this smoke scenario.</p>
+            </div>
+            <div>
+                <p class="fw-semibold mb-2">Route targets</p>
+                <ul class="mb-0">
+                    ${(script.routeTargets || []).map((routeTarget) => `
+                        <li class="text-muted small mb-2">
+                            <span class="fw-semibold">${escapeHtml(routeTarget.path)}</span>
+                            <div>${escapeHtml(routeTarget.description)}</div>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+            <div>
+                <p class="fw-semibold mb-2">Assertions</p>
+                <ul class="mb-0">
+                    ${(script.assertionDetails || []).map((assertion) => `
+                        <li class="text-muted small mb-2">
+                            <span class="fw-semibold">${escapeHtml(assertion.label)}</span>
+                            <div>${escapeHtml(assertion.description)}</div>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+            <div>
+                <p class="fw-semibold mb-2">Usage notes</p>
+                <ul class="mb-0">
+                    ${(script.usageNotes || []).map((note) => `
+                        <li class="text-muted small mb-2">
+                            <span class="fw-semibold">${escapeHtml(note.label)}</span>
+                            <div>${escapeHtml(note.description)}</div>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        </div>
     `;
 }
 
@@ -191,6 +302,7 @@ function renderOverview(overview) {
     authCountEl.textContent = String(overview.coverage.authenticatedScenarioCount || 0);
     baseUrlEl.textContent = overview.module.baseUrl;
 
+    renderControls(Array.isArray(overview.controls) ? overview.controls : []);
     renderWorkflow(Array.isArray(overview.workflow) ? overview.workflow : []);
     renderPrerequisites(Array.isArray(overview.prerequisites) ? overview.prerequisites : []);
     renderScenarioCards(Array.isArray(overview.scenarios) ? overview.scenarios : []);

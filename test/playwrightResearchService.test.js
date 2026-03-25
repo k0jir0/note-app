@@ -12,8 +12,12 @@ describe('Playwright research service', () => {
         expect(overview.module.baseUrl).to.equal('http://127.0.0.1:3000');
         expect(overview.coverage.scenarioCount).to.equal(6);
         expect(overview.coverage.authenticatedScenarioCount).to.equal(6);
+        expect(overview.controls).to.have.length(4);
         expect(overview.prerequisites).to.have.length(5);
         expect(overview.scenarios[0].routes[0]).to.match(/^http:\/\/127\.0\.0\.1:3000\//);
+        expect(overview.scenarios[0].routeTargets[0].description).to.be.a('string').and.not.equal('');
+        expect(overview.scenarios[0].assertionDetails[0].description).to.be.a('string').and.not.equal('');
+        expect(overview.scenarios[0].tagDetails[0].description).to.be.a('string').and.not.equal('');
         expect(overview.defaultScenarioId).to.equal('research-full-suite');
     });
 
@@ -25,6 +29,10 @@ describe('Playwright research service', () => {
 
         expect(script.fileName).to.equal('playwright-research-full-suite.spec.js');
         expect(script.runtime).to.equal('@playwright/test');
+        expect(script.routeTargets).to.be.an('array').that.is.not.empty;
+        expect(script.assertionDetails).to.be.an('array').that.is.not.empty;
+        expect(script.usageNotes).to.have.length(3);
+        expect(script.functionDescription).to.be.a('string').and.include('functions as a focused smoke layer');
         expect(script.content).to.include('require(\'@playwright/test\')');
         expect(script.content).to.include('http://localhost:3000');
         expect(script.content).to.include('/security/module');

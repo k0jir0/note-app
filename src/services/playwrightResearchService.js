@@ -1,5 +1,7 @@
 const DEFAULT_BASE_URL = 'http://localhost:3000';
 const DEFAULT_SCENARIO_ID = 'research-full-suite';
+const DEFAULT_ROUTE_DESCRIPTION = 'Navigates directly to this stable route so the generated smoke suite can verify page-level behavior without depending on fragile click chains.';
+const DEFAULT_ASSERTION_DESCRIPTION = 'Confirms that the page exposes the user-visible text or control expected by this scenario before deeper automation is added.';
 
 const SCENARIO_DEFINITIONS = [
     {
@@ -105,12 +107,122 @@ const SCENARIO_DEFINITIONS = [
     }
 ];
 
+const CONTROL_DEFINITIONS = [
+    {
+        id: 'playwright-scenario-select',
+        label: 'Scenario selector',
+        description: 'Chooses which registered Playwright browser flow the page should describe and export. Changing the selection updates the scenario summary and the generated spec preview.',
+        interaction: 'Select a scenario to switch the module from one smoke path to another, such as Research navigation, Security, ML, Selenium, Playwright, or the full cross-module suite.'
+    },
+    {
+        id: 'playwright-refresh-btn',
+        label: 'Refresh Module',
+        description: 'Reloads the module metadata from the backend so the page re-renders the current scenario catalog, prerequisite notes, and default export details.',
+        interaction: 'Use this after restarting the server or changing module definitions so the browser view matches the latest backend configuration.'
+    },
+    {
+        id: 'playwright-load-script-btn',
+        label: 'Load Spec',
+        description: 'Fetches a generated Playwright spec template for the currently selected scenario and replaces the preview panel with that script.',
+        interaction: 'Use this when you want to inspect one scenario in detail before copying it into a dedicated Playwright project or CI suite.'
+    },
+    {
+        id: 'playwright-copy-script-btn',
+        label: 'Copy Spec',
+        description: 'Copies the currently loaded Playwright template to the clipboard so it can be pasted into a real browser-automation workspace.',
+        interaction: 'This is the final export step after choosing a scenario and confirming that the generated preview matches the route flow you want to automate.'
+    }
+];
+
+const ROUTE_DESCRIPTIONS = {
+    '/auth/login': 'Starts the browser flow at the login form so the generated suite can establish an authenticated session before it attempts protected routes.',
+    '/research': 'Opens the Research Workspace, which acts as the top-level hub that links out to the Security, ML, Selenium, and Playwright modules.',
+    '/security/module': 'Loads the dedicated Security Module page so the spec can verify that log-analysis, scan-import, correlation, and realtime-status controls are still visible.',
+    '/ml/module': 'Loads the ML Module so the generated suite can confirm that training, scoring, feature-influence, and autonomy-audit panels still render.',
+    '/selenium/module': 'Loads the Selenium Module so the smoke suite can validate the browser-automation export surface that complements the Playwright module.',
+    '/playwright/module': 'Loads the Playwright Module itself so the browser suite can confirm that scenario metadata and generated spec preview features remain available.'
+};
+
+const ASSERTION_DESCRIPTIONS = {
+    'Login form is reachable': 'Proves the auth entry point loads and that the suite can begin from a known state instead of failing before protected navigation starts.',
+    'Research Workspace heading is visible': 'Confirms that the top-level workspace rendered successfully after authentication.',
+    'Security Module card is present': 'Verifies that the Research page still exposes the Security module entry point users rely on.',
+    'ML Module card is present': 'Verifies that the Research page still exposes the ML module entry point.',
+    'Selenium Module card is present': 'Verifies that the Research page still exposes the Selenium module entry point.',
+    'Playwright Module card is present': 'Verifies that the Research page still exposes the Playwright module entry point.',
+    'Security Module heading is visible': 'Confirms that navigation reached the dedicated Security module instead of a redirect, error page, or stale route.',
+    'Refresh Module button is present': 'Checks that the main page control for reloading Security-module data is still rendered.',
+    'Realtime server badge is visible': 'Confirms that the page still surfaces server-visible realtime capability status to the browser.',
+    'Log Analysis section is visible': 'Checks that the page still renders the browser-facing controls for manual log analysis.',
+    'Scan Importer section is visible': 'Checks that the page still renders the browser-facing scan import tools.',
+    'ML Module heading is visible': 'Confirms that navigation reached the ML module and that its page shell still renders.',
+    'Train Hybrid Model button is present': 'Checks that the main browser action for training the hybrid ML model is still exposed.',
+    'Observed Autonomous Outcomes panel is visible': 'Confirms that the ML page still surfaces stored autonomous-response audit results.',
+    'Learned Feature Influence panel is visible': 'Checks that the explainability panel for learned weights still renders.',
+    'Recent Scored Alerts panel is visible': 'Verifies that the recent-alert scoring table still appears in the ML module.',
+    'Selenium Module heading is visible': 'Confirms that navigation reached the Selenium export surface.',
+    'Scenario Catalog panel is visible': 'Checks that the module still renders a browsable list of supported automation scenarios.',
+    'Generated Script Preview panel is visible': 'Confirms that the Selenium export preview is still rendered for browser inspection.',
+    'Scenario selector is present': 'Checks that the user can switch between exported automation scenarios from within the module UI.',
+    'Browser prerequisites render': 'Verifies that the module still documents the environment expectations required to execute generated browser suites.',
+    'Playwright Module heading is visible': 'Confirms that navigation reached the Playwright export surface.',
+    'Generated Spec Preview panel is visible': 'Confirms that the page still renders the Playwright template preview that users export into real suites.',
+    'Playwright prerequisites render': 'Verifies that the page still explains what must exist before the generated Playwright template will run reliably.',
+    'Authentication succeeds with a disposable test user': 'Confirms that the generated suite can establish a known authenticated state instead of assuming one.',
+    'Research Workspace renders all module entry points': 'Checks that the app-level navigation hub still exposes the expected research modules.',
+    'Security Module renders its main controls': 'Checks that the Security page still renders the primary user-visible controls expected by smoke coverage.',
+    'ML Module renders training and autonomy panels': 'Checks that the ML page still renders the user-visible panels that represent the training and autonomy workflow.',
+    'Selenium Module renders a script preview': 'Confirms that the Selenium export surface still produces a previewable template.',
+    'Playwright Module renders a spec preview': 'Confirms that the Playwright export surface still produces a previewable template.'
+};
+
+const TAG_DESCRIPTIONS = {
+    smoke: 'A fast confidence check meant to catch route-level or UI-shell regressions before deeper automation is added.',
+    auth: 'Touches authentication setup or protected-route behavior before browser assertions continue.',
+    navigation: 'Focuses on moving through the product safely and proving the expected pages can still be reached.',
+    security: 'Covers the Security module and related research surfaces.',
+    workspace: 'Targets the cross-module workspace experience rather than one isolated backend endpoint.',
+    browser: 'Designed for browser-visible assertions such as headings, panels, and controls.',
+    ml: 'Targets the ML-assisted triage and model-operations surfaces.',
+    triage: 'Focuses on alert scoring, review, and autonomy-related UI concepts.',
+    selenium: 'Covers the Selenium export surface for browser automation.',
+    export: 'Emphasizes generated automation artifacts that are meant to be copied into a real test project.',
+    playwright: 'Covers the Playwright export surface itself.',
+    'full-suite': 'Represents the broadest smoke path that crosses multiple modules in one authenticated run.',
+    research: 'Anchored in the product’s research workflow and navigation model.'
+};
+
 function normalizeBaseUrl(baseUrl) {
     const normalized = typeof baseUrl === 'string' && baseUrl.trim()
         ? baseUrl.trim()
         : DEFAULT_BASE_URL;
 
     return normalized.replace(/\/+$/, '');
+}
+
+function describeRoutePath(routePath) {
+    return ROUTE_DESCRIPTIONS[routePath] || DEFAULT_ROUTE_DESCRIPTION;
+}
+
+function describeAssertion(assertion) {
+    return ASSERTION_DESCRIPTIONS[assertion] || DEFAULT_ASSERTION_DESCRIPTION;
+}
+
+function describeTag(tag) {
+    return TAG_DESCRIPTIONS[tag] || 'Highlights the type of browser-automation concern this scenario is intended to cover.';
+}
+
+function buildControlGuide() {
+    return CONTROL_DEFINITIONS.map((control) => ({
+        id: control.id,
+        label: control.label,
+        description: control.description,
+        interaction: control.interaction
+    }));
+}
+
+function buildScenarioFunctionDescription(scenario) {
+    return `${scenario.title} functions as a focused smoke layer for ${scenario.routes.length} route target(s), emphasizing stable browser-visible evidence instead of deep behavioral scripting.`;
 }
 
 function getScenarioIds() {
@@ -135,9 +247,23 @@ function buildScenarioCatalog(baseUrl) {
         routePaths: [...scenario.routes],
         routes: scenario.routes.map((routePath) => `${normalizedBaseUrl}${routePath}`),
         assertions: [...scenario.assertions],
+        assertionDetails: scenario.assertions.map((assertion) => ({
+            label: assertion,
+            description: describeAssertion(assertion)
+        })),
         tags: [...scenario.tags],
+        tagDetails: scenario.tags.map((tag) => ({
+            label: tag,
+            description: describeTag(tag)
+        })),
         requiresLogin: scenario.requiresLogin,
-        optionalDependencies: [...scenario.optionalDependencies]
+        optionalDependencies: [...scenario.optionalDependencies],
+        routeTargets: scenario.routes.map((routePath) => ({
+            path: routePath,
+            url: `${normalizedBaseUrl}${routePath}`,
+            description: describeRoutePath(routePath)
+        })),
+        functionDescription: buildScenarioFunctionDescription(scenario)
     }));
 }
 
@@ -220,6 +346,7 @@ function buildPlaywrightModuleOverview({ baseUrl } = {}) {
             baseUrl: normalizedBaseUrl
         },
         coverage: buildCoverageSummary(scenarios),
+        controls: buildControlGuide(),
         workflow: buildWorkflow(),
         prerequisites: buildPrerequisites(normalizedBaseUrl),
         scenarios,
@@ -334,6 +461,23 @@ test('${scenario.title}', async ({ page }) => {
 `;
 }
 
+function buildScriptUsageNotes(fileName) {
+    return [
+        {
+            label: 'Base URL override',
+            description: 'Set PLAYWRIGHT_BASE_URL if the exported spec should point at a different host than the module default.'
+        },
+        {
+            label: 'Test credentials',
+            description: 'Set PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD so the generated sign-in helper can authenticate before protected routes are visited.'
+        },
+        {
+            label: 'Execution',
+            description: `Place the exported file into a Playwright project and run it with a command such as npx playwright test ${fileName}.`
+        }
+    ];
+}
+
 function buildPlaywrightScript({ baseUrl, scenarioId = DEFAULT_SCENARIO_ID } = {}) {
     const scenario = getScenarioDefinition(scenarioId);
 
@@ -349,6 +493,24 @@ function buildPlaywrightScript({ baseUrl, scenarioId = DEFAULT_SCENARIO_ID } = {
         fileName: `playwright-${scenario.id}.spec.js`,
         language: 'javascript',
         runtime: '@playwright/test',
+        baseUrl: normalizedBaseUrl,
+        requiresLogin: scenario.requiresLogin,
+        routePaths: [...scenario.routes],
+        routeTargets: scenario.routes.map((routePath) => ({
+            path: routePath,
+            url: `${normalizedBaseUrl}${routePath}`,
+            description: describeRoutePath(routePath)
+        })),
+        assertionDetails: scenario.assertions.map((assertion) => ({
+            label: assertion,
+            description: describeAssertion(assertion)
+        })),
+        tagDetails: scenario.tags.map((tag) => ({
+            label: tag,
+            description: describeTag(tag)
+        })),
+        usageNotes: buildScriptUsageNotes(`playwright-${scenario.id}.spec.js`),
+        functionDescription: buildScenarioFunctionDescription(scenario),
         content: buildScriptTemplate(normalizedBaseUrl, scenario)
     };
 }
