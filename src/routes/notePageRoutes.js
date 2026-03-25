@@ -1,13 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
-const Notes = require('../models/Notes');
-const mongoose = require('mongoose');
 const { handlePageError } = require('../utils/errorHandler');
 const { buildAutomationSection } = require('../utils/automationViewModel');
-const { buildCreateNoteData, buildUpdateNoteData } = require('../utils/noteMutations');
-
-const NOTE_LIST_SELECT = 'title content image createdAt updatedAt';
+const noteService = require('../services/noteService');
 
 router.get('/notes/new', requireAuth, (req, res) => {
     res.render('pages/note-form.ejs', {
@@ -18,9 +14,7 @@ router.get('/notes/new', requireAuth, (req, res) => {
 
 router.get('/notes', requireAuth, async (req, res) => {
     try {
-        const notes = await Notes.find({ user: req.user._id })
-            .select(NOTE_LIST_SELECT)
-            .sort({ updatedAt: -1 });
+        const notes = await noteService.listNotesForUser(req.user._id);
 
         res.render('pages/home.ejs', {
             title: 'Note App',
@@ -63,22 +57,17 @@ router.get('/research', requireAuth, (req, res) => {
 
 router.get('/notes/:id', requireAuth, async (req, res) => {
     try {
-        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
-
-        // Validate ObjectId
-        if (!mongoose.Types.ObjectId.isValid(id)) {
+        const noteResult = await noteService.getNoteForUser(req.user._id, req.params.id);
+        if (noteResult.kind === 'invalid_id') {
             return res.status(400).send('Invalid note ID');
         }
 
-        // Find note and verify ownership
-        const note = await Notes.findOne({ _id: id, user: req.user._id });
-
-        if (!note) {
+        if (!noteResult.ok) {
             return res.status(404).send('Note not found or access denied');
         }
 
         res.render('pages/note.ejs', {
-            note,
+            note: noteResult.note,
             csrfToken: res.locals.csrfToken
         });
     } catch (error) {
@@ -88,22 +77,17 @@ router.get('/notes/:id', requireAuth, async (req, res) => {
 
 router.get('/notes/:id/edit', requireAuth, async (req, res) => {
     try {
-        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
-
-        // Validate ObjectId
-        if (!mongoose.Types.ObjectId.isValid(id)) {
+        const noteResult = await noteService.getNoteForUser(req.user._id, req.params.id);
+        if (noteResult.kind === 'invalid_id') {
             return res.status(400).send('Invalid note ID');
         }
 
-        // Find note and verify ownership
-        const note = await Notes.findOne({ _id: id, user: req.user._id });
-
-        if (!note) {
+        if (!noteResult.ok) {
             return res.status(404).send('Note not found or access denied');
         }
 
         res.render('pages/note-form.ejs', {
-            note,
+            note: noteResult.note,
             csrfToken: res.locals.csrfToken
         });
     } catch (error) {
@@ -115,8 +99,8 @@ router.get('/notes/:id/edit', requireAuth, async (req, res) => {
 router.post('/notes', requireAuth, async (req, res) => {
     try {
         const payload = req.body || {};
-        const noteResult = buildCreateNoteData(payload, req.user._id);
-        if (!noteResult.isValid) {
+        const noteResult = await noteService.createNoteForUser(payload, req.user._id);
+        if (!noteResult.ok) {
             return res.status(400).render('pages/note-form.ejs', {
                 note: Object.assign({}, noteResult.inputData),
                 errors: noteResult.errors,
@@ -125,7 +109,6 @@ router.post('/notes', requireAuth, async (req, res) => {
             });
         }
 
-        await Notes.create(noteResult.data);
         return res.redirect('/notes');
     } catch (error) {
         handlePageError(res, error, 'Unable to create note');
@@ -135,28 +118,25 @@ router.post('/notes', requireAuth, async (req, res) => {
 // Handle form submission for updating a note (server-rendered flow)
 router.post('/notes/:id', requireAuth, async (req, res) => {
     try {
-        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
-        if (!mongoose.Types.ObjectId.isValid(id)) {
+        const updateResult = await noteService.updateNoteForUser(req.user._id, req.params.id, req.body);
+        if (updateResult.kind === 'invalid_id') {
             return res.status(400).send('Invalid note ID');
         }
 
-        const payload = req.body || {};
-        const updateResult = buildUpdateNoteData(payload);
-        if (!updateResult.isValid) {
+        if (updateResult.kind === 'validation') {
             return res.status(400).render('pages/note-form.ejs', {
-                note: Object.assign({}, updateResult.inputData, { _id: id }),
+                note: Object.assign({}, updateResult.inputData, { _id: updateResult.id }),
                 errors: updateResult.errors,
                 fieldErrors: updateResult.fieldErrors,
                 csrfToken: res.locals.csrfToken
             });
         }
 
-        const note = await Notes.findOneAndUpdate({ _id: id, user: req.user._id }, updateResult.data, { new: true });
-        if (!note) {
+        if (!updateResult.ok) {
             return res.status(404).send('Note not found or access denied');
         }
 
-        return res.redirect(`/notes/${note._id}`);
+        return res.redirect(`/notes/${updateResult.note._id}`);
     } catch (error) {
         handlePageError(res, error, 'Unable to update note');
     }

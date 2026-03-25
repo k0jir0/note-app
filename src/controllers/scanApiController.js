@@ -1,6 +1,6 @@
 const ScanResult = require('../models/ScanResult');
-const { parseScanInput, MAX_SCAN_INPUT_LENGTH } = require('../utils/scanParser');
 const { handleApiError } = require('../utils/errorHandler');
+const { persistScanImport } = require('../services/securityIngestService');
 
 const SCAN_LIST_SELECT = 'target tool findings summary importedAt';
 
@@ -24,31 +24,21 @@ exports.importScan = async (req, res) => {
             });
         }
 
-        const parsed = parseScanInput(rawInput);
-        const highCount = parsed.findings.filter((f) => f.severity === 'high').length;
-        const medCount = parsed.findings.filter((f) => f.severity === 'medium').length;
-        const summary = `${parsed.tool.toUpperCase()} scan of ${parsed.target}: ` +
-            `${parsed.findings.length} finding(s), ${highCount} high, ${medCount} medium`;
-
-        const scan = await ScanResult.create({
-            target: parsed.target,
-            tool: parsed.tool,
-            findings: parsed.findings,
-            summary,
-            importedAt: new Date(),
-            user: req.user._id,
-            source: 'manual-scan-input'
+        const result = await persistScanImport({
+            userId: req.user._id,
+            source: 'manual-scan-input',
+            rawInput
         });
 
         return res.status(200).json({
             success: true,
             message: 'Scan imported successfully',
             data: {
-                linesAnalyzed: parsed.linesAnalyzed,
-                truncated: parsed.truncated,
-                inputLimit: MAX_SCAN_INPUT_LENGTH,
-                findingsCount: parsed.findings.length,
-                scan
+                linesAnalyzed: result.linesAnalyzed,
+                truncated: result.truncated,
+                inputLimit: result.inputLimit,
+                findingsCount: result.findingsCount,
+                scan: result.scan
             }
         });
     } catch (error) {

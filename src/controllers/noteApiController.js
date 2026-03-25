@@ -1,21 +1,12 @@
-const Notes = require('../models/Notes');
-const mongoose = require('mongoose');
 const { handleApiError } = require('../utils/errorHandler');
 const { parsePaginationParams, createPaginationMeta } = require('../utils/pagination');
-const { buildCreateNoteData, buildUpdateNoteData } = require('../utils/noteMutations');
-
-const NOTE_LIST_SELECT = 'title content image createdAt updatedAt';
-
-// Helper function to validate MongoDB ObjectId
-const isValidObjectId = (id) => {
-    return mongoose.Types.ObjectId.isValid(id);
-};
+const noteService = require('../services/noteService');
 
 // CREATE Operations
 exports.createNote = async (req, res) => {
     try {
-        const noteResult = buildCreateNoteData(req.body, req.user._id);
-        if (!noteResult.isValid) {
+        const noteResult = await noteService.createNoteForUser(req.body, req.user._id);
+        if (!noteResult.ok) {
             return res.status(400).json({
                 success: false,
                 message: noteResult.message,
@@ -23,12 +14,10 @@ exports.createNote = async (req, res) => {
             });
         }
 
-        const note = await Notes.create(noteResult.data);
-
         res.status(201).json({
             success: true,
             message: 'Note created successfully',
-            data: note
+            data: noteResult.note
         });
     } catch (error) {
         handleApiError(res, error, 'Create note');
@@ -42,12 +31,8 @@ exports.getAllNotes = async (req, res) => {
         const { page, limit, skip } = parsePaginationParams(req.query);
 
         const [totalCount, notes] = await Promise.all([
-            Notes.countDocuments({ user: req.user._id }),
-            Notes.find({ user: req.user._id })
-                .select(NOTE_LIST_SELECT)
-                .sort({ updatedAt: -1 })
-                .skip(skip)
-                .limit(limit)
+            noteService.countNotesForUser(req.user._id),
+            noteService.listNotesForUser(req.user._id, { skip, limit })
         ]);
 
         // Create pagination metadata
@@ -66,10 +51,8 @@ exports.getAllNotes = async (req, res) => {
 
 exports.getNote = async (req, res) => {
     try {
-        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
-
-        // Validate ObjectId format
-        if (!isValidObjectId(id)) {
+        const noteResult = await noteService.getNoteForUser(req.user._id, req.params.id);
+        if (noteResult.kind === 'invalid_id') {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid note ID format',
@@ -77,10 +60,7 @@ exports.getNote = async (req, res) => {
             });
         }
 
-        // Find note and verify ownership
-        const note = await Notes.findOne({ _id: id, user: req.user._id });
-
-        if (!note) {
+        if (!noteResult.ok) {
             return res.status(404).json({
                 success: false,
                 message: 'Note not found or access denied',
@@ -90,7 +70,7 @@ exports.getNote = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            data: note
+            data: noteResult.note
         });
     } catch (error) {
         handleApiError(res, error, 'Get note');
@@ -100,10 +80,10 @@ exports.getNote = async (req, res) => {
 // UPDATE Operations
 exports.updateNote = async (req, res) => {
     try {
-        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
-
-        // Validate ObjectId format
-        if (!isValidObjectId(id)) {
+        const updateResult = await noteService.updateNoteForUser(req.user._id, req.params.id, req.body, {
+            runValidators: true
+        });
+        if (updateResult.kind === 'invalid_id') {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid note ID format',
@@ -111,8 +91,7 @@ exports.updateNote = async (req, res) => {
             });
         }
 
-        const updateResult = buildUpdateNoteData(req.body);
-        if (!updateResult.isValid) {
+        if (updateResult.kind === 'validation') {
             return res.status(400).json({
                 success: false,
                 message: updateResult.message,
@@ -120,14 +99,7 @@ exports.updateNote = async (req, res) => {
             });
         }
 
-        // Find and update only if owned by user
-        const note = await Notes.findOneAndUpdate(
-            { _id: id, user: req.user._id },
-            updateResult.data,
-            { new: true, runValidators: true }
-        );
-
-        if (!note) {
+        if (!updateResult.ok) {
             return res.status(404).json({
                 success: false,
                 message: 'Note not found or access denied',
@@ -138,7 +110,7 @@ exports.updateNote = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Note updated successfully',
-            data: note
+            data: updateResult.note
         });
     } catch (error) {
         handleApiError(res, error, 'Update note');
@@ -148,10 +120,8 @@ exports.updateNote = async (req, res) => {
 // DELETE Operations
 exports.deleteNote = async (req, res) => {
     try {
-        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
-
-        // Validate ObjectId format
-        if (!isValidObjectId(id)) {
+        const deleteResult = await noteService.deleteNoteForUser(req.user._id, req.params.id);
+        if (deleteResult.kind === 'invalid_id') {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid note ID format',
@@ -159,10 +129,7 @@ exports.deleteNote = async (req, res) => {
             });
         }
 
-        // Find and delete only if owned by user
-        const note = await Notes.findOneAndDelete({ _id: id, user: req.user._id });
-
-        if (!note) {
+        if (!deleteResult.ok) {
             return res.status(404).json({
                 success: false,
                 message: 'Note not found or access denied',
@@ -173,7 +140,7 @@ exports.deleteNote = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Note deleted successfully',
-            data: note
+            data: deleteResult.note
         });
     } catch (error) {
         handleApiError(res, error, 'Delete note');

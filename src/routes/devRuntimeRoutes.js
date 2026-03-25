@@ -1,5 +1,6 @@
 const express = require('express');
 const { requireAuthAPI } = require('../middleware/auth');
+const { toDiagnosticRuntimeConfig } = require('../config/runtimeConfig');
 
 const router = express.Router();
 
@@ -21,17 +22,17 @@ function parseEnabledFlag(value) {
     return null;
 }
 
-router.get('/__runtime-config', (req, res) => {
+router.get('/__runtime-config', requireAuthAPI, (req, res) => {
     try {
         return res.status(200).json({
-            runtimeConfig: req.app && req.app.locals ? req.app.locals.runtimeConfig || null : null
+            runtimeConfig: toDiagnosticRuntimeConfig(req.app && req.app.locals ? req.app.locals.runtimeConfig || null : null)
         });
     } catch (_error) {
         return res.status(500).json({ error: 'unable to read runtime config' });
     }
 });
 
-router.get('/__realtime-status', (req, res) => {
+router.get('/__realtime-status', requireAuthAPI, (req, res) => {
     try {
         return res.status(200).json({
             enableEnv: String(process.env.ENABLE_REALTIME || ''),

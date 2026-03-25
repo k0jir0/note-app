@@ -1,6 +1,9 @@
+const path = require('path');
+require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env.local'), override: true });
+
 const express = require('express');
 const helmet = require('helmet');
-const path = require('path');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const { MongoStore } = require('connect-mongo');
@@ -25,9 +28,6 @@ const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { requireAuth } = require('./src/middleware/auth');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
-const { startAutomation } = require('./src/services/automationService');
-
-require('dotenv').config();
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 
 (async function main() {
@@ -56,7 +56,6 @@ const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
     mongoose.connect(dbURI)
         .then(() => {
             console.log('MongoDB connected successfully');
-            startAutomation(runtimeConfig.automation);
         }).catch((err) => {
             console.error('MongoDB connection error:', err.message);
             process.exit(1);

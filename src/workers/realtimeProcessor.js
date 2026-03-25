@@ -4,11 +4,10 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../.env.local'), ov
 
 const mongoose = require('mongoose');
 const { redis, publisher } = require('../lib/redisClient');
-const SecurityAlert = require('../models/SecurityAlert');
-const { analyzeLogText } = require('../utils/logAnalysis');
-const { enrichAlertsForTriage } = require('../utils/alertTriage');
-const { executeIncidentResponses } = require('../services/incidentResponseService');
 const { workerPendingGauge } = require('../routes/metrics');
+const { validateRuntimeConfig } = require('../config/runtimeConfig');
+const { startAutomation } = require('../services/automationService');
+const { persistLogAnalysis } = require('../services/securityIngestService');
 
 const STREAM_KEY = 'security:ingest';
 const DEAD_LETTER_STREAM_KEY = `${STREAM_KEY}:dead-letter`;
@@ -66,6 +65,29 @@ function logError(logger, ...args) {
     }
 
     console.error(...args);
+}
+
+function normalizeWorkerEnv(env = process.env) {
+    if (env.MONGODB_URI || !env.MONGO_URI) {
+        return env;
+    }
+
+    return {
+        ...env,
+        MONGODB_URI: env.MONGO_URI
+    };
+}
+
+function hasEnabledAutomation(automationConfig = {}) {
+    return Boolean(
+        (automationConfig.logBatch && automationConfig.logBatch.enabled)
+        || (automationConfig.scanBatch && automationConfig.scanBatch.enabled)
+        || (automationConfig.intrusionBatch && automationConfig.intrusionBatch.enabled)
+    );
+}
+
+function isRealtimeConfigured(env = process.env) {
+    return Boolean(env.REDIS_URL) && env.DISABLE_REDIS !== '1';
 }
 
 async function createConsumerGroup({
@@ -138,11 +160,9 @@ async function deadLetterMessage({
 async function handleMessage(id, fields, options = {}) {
     const redisClient = options.redisClient || redis;
     const publisherClient = options.publisherClient || publisher;
-    const SecurityAlertModel = options.SecurityAlertModel || SecurityAlert;
-    const analyzeLogTextFn = options.analyzeLogTextFn || analyzeLogText;
-    const executeIncidentResponsesFn = options.executeIncidentResponsesFn || executeIncidentResponses;
     const mongooseLib = options.mongooseLib || mongoose;
     const logger = options.logger || console;
+    const persistLogAnalysisFn = options.persistLogAnalysisFn || persistLogAnalysis;
     const streamKey = options.streamKey || STREAM_KEY;
     const deadLetterKey = options.deadLetterKey || DEAD_LETTER_STREAM_KEY;
     const group = options.group || GROUP;
@@ -151,24 +171,19 @@ async function handleMessage(id, fields, options = {}) {
         const raw = fields.payload || '';
         const message = JSON.parse(raw);
         if (message.type === 'log' && message.logText) {
-            const analysis = analyzeLogTextFn(message.logText);
-            const alertsToCreate = enrichAlertsForTriage(analysis.alerts.map((alert) => ({
-                ...alert,
-                user: new mongooseLib.Types.ObjectId(message.user),
+            const result = await persistLogAnalysisFn({
+                userId: new mongooseLib.Types.ObjectId(message.user),
                 source: 'realtime-ingest',
+                logText: message.logText,
+                dedupeWindowMs: 0,
+                respondToIncidents: true,
                 detectedAt: new Date()
-            })));
-
-            let saved = [];
-            if (alertsToCreate.length > 0) {
-                saved = await SecurityAlertModel.insertMany(alertsToCreate);
-                const responseOutcome = await executeIncidentResponsesFn(saved, {
-                    SecurityAlertModel
-                });
-                saved = responseOutcome && Array.isArray(responseOutcome.alerts)
-                    ? responseOutcome.alerts
-                    : saved;
-            }
+            }, {
+                SecurityAlertModel: options.SecurityAlertModel,
+                analyzeLogTextFn: options.analyzeLogTextFn,
+                executeIncidentResponsesFn: options.executeIncidentResponsesFn
+            });
+            const saved = Array.isArray(result.alerts) ? result.alerts : [];
 
             // Publish created alerts for SSE/clients per-user
             if (saved.length > 0) {
@@ -336,55 +351,107 @@ async function loop(options = {}) {
     /* eslint-enable no-constant-condition */
 }
 
-async function start(options = {}) {
-    const redisClient = options.redisClient || redis;
+async function startBackgroundServices(options = {}) {
     const mongooseLib = options.mongooseLib || mongoose;
     const logger = options.logger || console;
+    const env = normalizeWorkerEnv(options.env || process.env);
+    const runtimeConfig = options.runtimeConfig || validateRuntimeConfig(env);
+    const automationConfig = runtimeConfig.automation || {};
+    const automationStarted = hasEnabledAutomation(automationConfig);
+    const realtimeStarted = options.realtimeEnabled === undefined
+        ? isRealtimeConfigured(env)
+        : Boolean(options.realtimeEnabled);
     const streamKey = options.streamKey || STREAM_KEY;
     const group = options.group || GROUP;
     const consumer = options.consumer || CONSUMER;
     const metricIntervalMs = options.metricIntervalMs || METRICS_INTERVAL_MS;
-    const mongoUri = options.mongoUri || process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/note-app';
+    const mongoUri = options.mongoUri || runtimeConfig.dbURI || env.MONGODB_URI || 'mongodb://127.0.0.1:27017/note-app';
+    const redisClient = options.redisClient || redis;
+    const startAutomationFn = options.startAutomationFn || startAutomation;
 
-    if (!process.env.REDIS_URL || process.env.DISABLE_REDIS === '1') {
-        logError(logger, '[realtime-worker] REDIS_URL is required to run the realtime worker');
-        process.exit(1);
-        return null;
+    if (!automationStarted && !realtimeStarted) {
+        logInfo(logger, '[background-worker] no automation or realtime services enabled');
+        return {
+            started: false,
+            automationStarted: false,
+            realtimeStarted: false,
+            stop: async () => {}
+        };
     }
 
-    try {
-        await mongooseLib.connect(mongoUri, options.mongooseConnectOptions || {});
-        logInfo(logger, '[realtime-worker] connected to mongo');
-    } catch (e) {
-        logError(logger, '[realtime-worker] mongo connect failed', e);
-        process.exit(1);
-        return null;
+    await mongooseLib.connect(mongoUri, options.mongooseConnectOptions || {});
+    logInfo(logger, '[background-worker] connected to mongo');
+
+    let automationController = null;
+    if (automationStarted) {
+        automationController = startAutomationFn(automationConfig, { unrefTimers: false });
+        logInfo(logger, '[background-worker] scheduled automation started');
     }
 
-    await createConsumerGroup({ redisClient, streamKey, group, logger });
-    // Periodically update pending gauge
-    const interval = setInterval(async () => {
-        try {
-            await updatePendingGaugeOnce({
-                redisClient,
-                gauge: options.gauge || workerPendingGauge,
-                streamKey,
-                group
-            });
-        } catch (_e) {
-            // ignore
-        }
-    }, metricIntervalMs);
-    interval.unref?.();
+    let interval = null;
+    if (realtimeStarted) {
+        await createConsumerGroup({ redisClient, streamKey, group, logger });
+        interval = setInterval(async () => {
+            try {
+                await updatePendingGaugeOnce({
+                    redisClient,
+                    gauge: options.gauge || workerPendingGauge,
+                    streamKey,
+                    group
+                });
+            } catch (_e) {
+                // ignore
+            }
+        }, metricIntervalMs);
+        interval.unref?.();
+    } else {
+        logInfo(logger, '[realtime-worker] realtime loop disabled; REDIS_URL is not configured');
+    }
 
-    logInfo(logger, '[realtime-worker] starting main loop');
-    return loop({
-        ...options,
+    return {
+        started: true,
+        automationStarted,
+        realtimeStarted,
         redisClient,
         streamKey,
         group,
-        consumer
-    });
+        consumer,
+        stop: async () => {
+            if (interval) {
+                clearInterval(interval);
+            }
+            if (automationController && typeof automationController.stop === 'function') {
+                automationController.stop();
+            }
+            if (options.disconnectMongoOnStop !== false && typeof mongooseLib.disconnect === 'function') {
+                await mongooseLib.disconnect();
+            }
+        }
+    };
+}
+
+async function start(options = {}) {
+    const logger = options.logger || console;
+
+    try {
+        const workerState = await startBackgroundServices(options);
+        if (!workerState.started || !workerState.realtimeStarted) {
+            return workerState;
+        }
+
+        logInfo(logger, '[realtime-worker] starting main loop');
+        return loop({
+            ...options,
+            redisClient: workerState.redisClient,
+            streamKey: workerState.streamKey,
+            group: workerState.group,
+            consumer: workerState.consumer
+        });
+    } catch (error) {
+        logError(logger, '[background-worker] startup failed', error);
+        process.exit(1);
+        return null;
+    }
 }
 
 if (require.main === module) {
@@ -400,8 +467,11 @@ module.exports = {
     extractPendingCount,
     createConsumerGroup,
     handleMessage,
+    hasEnabledAutomation,
+    isRealtimeConfigured,
     claimStaleMessages,
     readNewMessages,
+    startBackgroundServices,
     updatePendingGaugeOnce,
     start
 };

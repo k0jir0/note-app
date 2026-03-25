@@ -4,6 +4,7 @@ const {
     MIN_SESSION_SECRET_LENGTH,
     getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,
+    toDiagnosticRuntimeConfig,
     validateRuntimeConfig
 } = require('../src/config/runtimeConfig');
 
@@ -111,5 +112,48 @@ describe('Runtime Config Validation', () => {
 
         expect(() => validateRuntimeConfig(env)).to.throw('LOG_BATCH_ENABLED');
         expect(() => validateRuntimeConfig(env)).to.throw('SCAN_BATCH_USER_ID');
+    });
+
+    it('builds a sanitized runtime diagnostic view without secrets', () => {
+        const diagnostics = toDiagnosticRuntimeConfig({
+            dbURI: 'mongodb://localhost:27017/noteApp',
+            sessionSecret: 'super-secret-value',
+            noteEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            appBaseUrl: 'http://localhost:3000',
+            googleAuthEnabled: true,
+            automation: {
+                logBatch: {
+                    enabled: true,
+                    filePath: 'C:\\logs\\app.log',
+                    userId: '507f1f77bcf86cd799439011',
+                    source: 'server-log-batch',
+                    intervalMs: 60000,
+                    dedupeWindowMs: 300000,
+                    maxReadBytes: 65536
+                }
+            }
+        });
+
+        expect(diagnostics).to.include({
+            dbConfigured: true,
+            sessionSecretConfigured: true,
+            noteEncryptionConfigured: true,
+            appBaseUrl: 'http://localhost:3000',
+            googleAuthEnabled: true
+        });
+        expect(diagnostics).to.not.have.property('dbURI');
+        expect(diagnostics).to.not.have.property('sessionSecret');
+        expect(diagnostics).to.not.have.property('noteEncryptionKey');
+        expect(diagnostics.automation.logBatch).to.deep.equal({
+            enabled: true,
+            source: 'server-log-batch',
+            intervalMs: 60000,
+            dedupeWindowMs: 300000,
+            maxReadBytes: 65536,
+            fileConfigured: true,
+            userConfigured: true
+        });
+        expect(diagnostics.automation.scanBatch.enabled).to.equal(false);
+        expect(diagnostics.automation.intrusionBatch.enabled).to.equal(false);
     });
 });

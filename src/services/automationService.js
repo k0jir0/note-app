@@ -1,27 +1,17 @@
-const crypto = require('crypto');
 const fs = require('fs/promises');
 
 const SecurityAlert = require('../models/SecurityAlert');
-const ScanResult = require('../models/ScanResult');
 const metrics = require('../routes/metrics');
 const notificationService = require('./notificationService');
 const incidentResponseService = require('./incidentResponseService');
-const { analyzeLogText } = require('../utils/logAnalysis');
 const { enrichAlertsForTriage } = require('../utils/alertTriage');
-const { parseScanInput } = require('../utils/scanParser');
 const { parseFalcoJson } = require('../utils/intrusionParser');
-
-function buildScanSummary(parsedScan) {
-    const findings = Array.isArray(parsedScan.findings) ? parsedScan.findings : [];
-    const highCount = findings.filter((finding) => finding.severity === 'high').length;
-    const mediumCount = findings.filter((finding) => finding.severity === 'medium').length;
-
-    return `${parsedScan.tool.toUpperCase()} scan of ${parsedScan.target}: ${findings.length} finding(s), ${highCount} high, ${mediumCount} medium`;
-}
-
-function createContentFingerprint(content) {
-    return crypto.createHash('sha256').update(String(content || ''), 'utf8').digest('hex');
-}
+const {
+    buildScanSummary,
+    createContentFingerprint,
+    persistLogAnalysis,
+    persistScanImport
+} = require('./securityIngestService');
 
 function normalizeInsertedDocs(documents) {
     return Array.isArray(documents) ? documents : [];
@@ -57,125 +47,38 @@ async function readFileSlice(filePath, startPosition, length) {
 }
 
 async function persistAutomatedAlerts(config, logText) {
-    const analysis = analyzeLogText(logText);
-    if (!analysis.alerts.length) {
-        return {
-            linesAnalyzed: analysis.linesAnalyzed,
-            createdAlerts: 0,
-            skippedAlerts: 0,
-            truncated: analysis.truncated
-        };
-    }
-
-    const cutoff = config.dedupeWindowMs > 0
-        ? new Date(Date.now() - config.dedupeWindowMs)
-        : null;
-    const existingKeys = new Set();
-
-    if (cutoff) {
-        const existingAlerts = await SecurityAlert.find({
-            user: config.userId,
-            source: config.source,
-            detectedAt: { $gte: cutoff }
-        }).select('type summary');
-
-        existingAlerts.forEach((alert) => {
-            existingKeys.add(`${alert.type}::${alert.summary}`);
-        });
-    }
-
-    const alertsToCreate = enrichAlertsForTriage(analysis.alerts
-        .filter((alert) => !existingKeys.has(`${alert.type}::${alert.summary}`))
-        .map((alert) => ({
-            ...alert,
-            user: config.userId,
-            source: config.source,
-            detectedAt: new Date()
-        })));
-
-    let inserted = [];
-    if (alertsToCreate.length > 0) {
-        inserted = normalizeInsertedDocs(await SecurityAlert.insertMany(alertsToCreate));
-    }
-
-    await emitInsertedAlertSideEffects(inserted, {
-        respondToIncidents: config.respondToIncidents !== false
+    return persistLogAnalysis({
+        userId: config.userId,
+        source: config.source,
+        logText,
+        dedupeWindowMs: config.dedupeWindowMs,
+        respondToIncidents: config.respondToIncidents !== false,
+        detectedAt: new Date()
+    }, {
+        SecurityAlertModel: SecurityAlert,
+        ignoreIncidentResponseErrors: true,
+        logger: console,
+        executeIncidentResponsesFn: async (alerts, options = {}) => {
+            const responseOutcome = await incidentResponseService.executeIncidentResponses(alerts, options);
+            return responseOutcome;
+        }
     });
-
-    return {
-        linesAnalyzed: analysis.linesAnalyzed,
-        createdAlerts: alertsToCreate.length,
-        skippedAlerts: analysis.alerts.length - alertsToCreate.length,
-        truncated: analysis.truncated
-    };
 }
 
 async function persistAutomatedScan(config, rawInput) {
-    const trimmedInput = String(rawInput || '').trim();
-    if (!trimmedInput) {
-        return { created: false, skipped: true, reason: 'empty' };
-    }
-
-    const fingerprint = createContentFingerprint(trimmedInput);
-    const cutoff = config.dedupeWindowMs > 0
-        ? new Date(Date.now() - config.dedupeWindowMs)
-        : null;
-
-    if (cutoff) {
-        const existingScan = await ScanResult.findOne({
-            user: config.userId,
-            source: config.source,
-            fingerprint,
-            importedAt: { $gte: cutoff }
-        }).select('_id');
-
-        if (existingScan) {
-            return { created: false, skipped: true, reason: 'duplicate', fingerprint };
-        }
-    }
-
-    const parsedScan = parseScanInput(trimmedInput);
-    const scan = await ScanResult.create({
-        target: parsedScan.target,
-        tool: parsedScan.tool,
-        findings: parsedScan.findings,
-        summary: buildScanSummary(parsedScan),
-        importedAt: new Date(),
-        user: config.userId,
+    return persistScanImport({
+        userId: config.userId,
         source: config.source,
-        fingerprint
+        rawInput,
+        dedupeWindowMs: config.dedupeWindowMs,
+        importedAt: new Date()
+    }, {
+        emitMetrics: true,
+        metricsModule: metrics,
+        logger: console,
+        notifyOnHighFindings: true,
+        notifyScanImportFn: notificationService.notifyScanImport
     });
-
-    // Metrics: increment scan import counter and set findings gauge
-    try {
-        const toolLabel = parsedScan.tool || 'unknown';
-        metrics.scanImportCounter.inc({ tool: toolLabel }, 1);
-        metrics.scanFindingsGauge.set({ tool: toolLabel }, parsedScan.findings.length || 0);
-    } catch (e) {
-        console.warn('[automation] failed to emit scan metrics', e && e.message ? e.message : e);
-    }
-
-    // Notify if there are high severity findings
-    try {
-        const highFindings = Array.isArray(parsedScan.findings) ? parsedScan.findings.filter((f) => f.severity === 'high') : [];
-        if (highFindings.length > 0) {
-            void notificationService.notifyScanImport(parsedScan, {
-                findingsCount: parsedScan.findings.length,
-                summary: buildScanSummary(parsedScan)
-            }).catch((e) => console.warn('[automation] notifyScanImport failed', e && e.message ? e.message : e));
-        }
-    } catch (e) {
-        console.warn('[automation] scan notification failed', e && e.message ? e.message : e);
-    }
-    return {
-        created: true,
-        skipped: false,
-        fingerprint,
-        scanId: scan._id,
-        findingsCount: parsedScan.findings.length,
-        truncated: parsedScan.truncated,
-        linesAnalyzed: parsedScan.linesAnalyzed
-    };
 }
 
 async function persistAutomatedIntrusions(config, rawInput) {
@@ -342,7 +245,7 @@ function createFingerprintBatchRunner({ config, persistFn, getSuccessMessage }) 
     };
 }
 
-function registerAutomationTask(config, createRunner, stopCallbacks) {
+function registerAutomationTask(config, createRunner, stopCallbacks, options = {}) {
     if (!config || !config.enabled) {
         return;
     }
@@ -352,17 +255,19 @@ function registerAutomationTask(config, createRunner, stopCallbacks) {
         void runTask();
     }, config.intervalMs);
 
-    timer.unref();
+    if (options.unrefTimers && typeof timer.unref === 'function') {
+        timer.unref();
+    }
     void runTask();
     stopCallbacks.push(() => clearInterval(timer));
 }
 
-function startAutomation(automationConfig = {}) {
+function startAutomation(automationConfig = {}, options = {}) {
     const stopCallbacks = [];
 
-    registerAutomationTask(automationConfig.logBatch, createLogBatchRunner, stopCallbacks);
-    registerAutomationTask(automationConfig.scanBatch, createScanBatchRunner, stopCallbacks);
-    registerAutomationTask(automationConfig.intrusionBatch, createIntrusionBatchRunner, stopCallbacks);
+    registerAutomationTask(automationConfig.logBatch, createLogBatchRunner, stopCallbacks, options);
+    registerAutomationTask(automationConfig.scanBatch, createScanBatchRunner, stopCallbacks, options);
+    registerAutomationTask(automationConfig.intrusionBatch, createIntrusionBatchRunner, stopCallbacks, options);
 
     return {
         stop() {

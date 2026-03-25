@@ -7,6 +7,7 @@ const {
     GROUP,
     claimStaleMessages,
     handleMessage,
+    startBackgroundServices,
     updatePendingGaugeOnce
 } = require('../src/workers/realtimeProcessor');
 
@@ -154,5 +155,53 @@ describe('Realtime Processor', () => {
         expect(executeIncidentResponsesFn.calledOnce).to.equal(true);
         expect(publisherClient.publish.called).to.equal(true);
         expect(redisClient.xack.calledWith(STREAM_KEY, GROUP, '1-0')).to.equal(true);
+    });
+
+    it('starts scheduled automation in the worker even when realtime is disabled', async () => {
+        const mongooseLib = {
+            connect: sinon.stub().resolves(),
+            disconnect: sinon.stub().resolves()
+        };
+        const stop = sinon.stub();
+        const startAutomationFn = sinon.stub().returns({ stop });
+        const logger = {
+            log: sinon.stub(),
+            error: sinon.stub()
+        };
+
+        const workerState = await startBackgroundServices({
+            mongooseLib,
+            startAutomationFn,
+            logger,
+            realtimeEnabled: false,
+            disconnectMongoOnStop: false,
+            runtimeConfig: {
+                dbURI: 'mongodb://127.0.0.1:27017/note-app',
+                automation: {
+                    logBatch: {
+                        enabled: true,
+                        filePath: 'C:\\logs\\app.log',
+                        userId: '507f1f77bcf86cd799439011',
+                        intervalMs: 60000,
+                        dedupeWindowMs: 300000,
+                        source: 'server-log-batch',
+                        maxReadBytes: 65536
+                    },
+                    scanBatch: { enabled: false },
+                    intrusionBatch: { enabled: false }
+                }
+            }
+        });
+
+        expect(workerState.started).to.equal(true);
+        expect(workerState.automationStarted).to.equal(true);
+        expect(workerState.realtimeStarted).to.equal(false);
+        expect(mongooseLib.connect.calledOnce).to.equal(true);
+        expect(startAutomationFn.calledOnce).to.equal(true);
+        expect(startAutomationFn.firstCall.args[1]).to.deep.equal({ unrefTimers: false });
+
+        await workerState.stop();
+        expect(stop.calledOnce).to.equal(true);
+        expect(mongooseLib.disconnect.called).to.equal(false);
     });
 });

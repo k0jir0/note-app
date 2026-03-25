@@ -66,9 +66,9 @@ $webLabel = if ($Production) { 'test-app web (prod)' } else { 'test-app web (dev
 Start-LocalProcessWindow -Title $webLabel -CommandText $webCommand
 
 if ($WithWorker) {
-    Start-LocalProcessWindow -Title 'test-app realtime worker' -CommandText 'npm run worker'
+    Start-LocalProcessWindow -Title 'test-app background worker' -CommandText 'npm run worker'
 }
 
-$workerMessage = if ($WithWorker) { ' and the realtime worker' } else { '' }
+$workerMessage = if ($WithWorker) { ' and the background worker' } else { '' }
 $windowMessage = if ($CurrentWindow) { 'current shell' } else { 'new PowerShell window(s)' }
 Write-Host "Started the web app$workerMessage in $windowMessage from $projectRoot on port $Port."

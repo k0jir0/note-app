@@ -229,6 +229,39 @@ function buildIntrusionBatchConfig(env, errors) {
     };
 }
 
+function buildAutomationDiagnostics(config = {}) {
+    return {
+        enabled: Boolean(config && config.enabled),
+        source: isNonEmptyString(config && config.source) ? config.source.trim() : '',
+        intervalMs: Number.isFinite(config && config.intervalMs) ? config.intervalMs : null,
+        dedupeWindowMs: Number.isFinite(config && config.dedupeWindowMs) ? config.dedupeWindowMs : null,
+        maxReadBytes: Number.isFinite(config && config.maxReadBytes) ? config.maxReadBytes : null,
+        fileConfigured: isNonEmptyString(config && config.filePath),
+        userConfigured: isNonEmptyString(config && config.userId)
+    };
+}
+
+function toDiagnosticRuntimeConfig(runtimeConfig) {
+    if (!runtimeConfig || typeof runtimeConfig !== 'object') {
+        return null;
+    }
+
+    const automation = runtimeConfig.automation || {};
+
+    return {
+        dbConfigured: isNonEmptyString(runtimeConfig.dbURI),
+        sessionSecretConfigured: isNonEmptyString(runtimeConfig.sessionSecret),
+        noteEncryptionConfigured: isNonEmptyString(runtimeConfig.noteEncryptionKey),
+        appBaseUrl: isNonEmptyString(runtimeConfig.appBaseUrl) ? runtimeConfig.appBaseUrl.trim() : '',
+        googleAuthEnabled: Boolean(runtimeConfig.googleAuthEnabled),
+        automation: {
+            logBatch: buildAutomationDiagnostics(automation.logBatch),
+            scanBatch: buildAutomationDiagnostics(automation.scanBatch),
+            intrusionBatch: buildAutomationDiagnostics(automation.intrusionBatch)
+        }
+    };
+}
+
 function validateRuntimeConfig(env = process.env) {
     const errors = [];
 
@@ -314,5 +347,6 @@ module.exports = {
     MIN_SESSION_SECRET_LENGTH,
     getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,
+    toDiagnosticRuntimeConfig,
     validateRuntimeConfig
 };

@@ -31,23 +31,49 @@ describe('Dev Runtime Routes', () => {
         expect(routeLayers).to.have.length(3);
     });
 
-    it('returns runtime config from app locals', async () => {
+    it('protects the diagnostic GET routes with API auth middleware', () => {
+        const runtimeConfigLayer = findRouteLayer('get', '/__runtime-config');
+        const realtimeStatusLayer = findRouteLayer('get', '/__realtime-status');
+
+        expect(runtimeConfigLayer).to.exist;
+        expect(runtimeConfigLayer.route.stack).to.have.length(2);
+        expect(runtimeConfigLayer.route.stack[0].handle).to.equal(requireAuthAPI);
+
+        expect(realtimeStatusLayer).to.exist;
+        expect(realtimeStatusLayer.route.stack).to.have.length(2);
+        expect(realtimeStatusLayer.route.stack[0].handle).to.equal(requireAuthAPI);
+    });
+
+    it('returns a sanitized runtime config from app locals', async () => {
         const layer = findRouteLayer('get', '/__runtime-config');
         const req = {
             app: {
                 locals: {
-                    runtimeConfig: { appBaseUrl: 'http://localhost:3000' }
+                    runtimeConfig: {
+                        dbURI: 'mongodb://localhost:27017/noteApp',
+                        sessionSecret: 'super-secret-value',
+                        noteEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                        appBaseUrl: 'http://localhost:3000',
+                        googleAuthEnabled: true
+                    }
                 }
             }
         };
         const res = buildRes();
 
-        await layer.route.stack[0].handle(req, res);
+        await layer.route.stack[1].handle(req, res);
 
         expect(res.statusCode).to.equal(200);
-        expect(res.payload).to.deep.equal({
-            runtimeConfig: { appBaseUrl: 'http://localhost:3000' }
+        expect(res.payload.runtimeConfig).to.include({
+            dbConfigured: true,
+            sessionSecretConfigured: true,
+            noteEncryptionConfigured: true,
+            appBaseUrl: 'http://localhost:3000',
+            googleAuthEnabled: true
         });
+        expect(res.payload.runtimeConfig).to.not.have.property('dbURI');
+        expect(res.payload.runtimeConfig).to.not.have.property('sessionSecret');
+        expect(res.payload.runtimeConfig).to.not.have.property('noteEncryptionKey');
     });
 
     it('returns realtime status without router stack introspection', async () => {
@@ -62,7 +88,7 @@ describe('Dev Runtime Routes', () => {
         };
         const res = buildRes();
 
-        await layer.route.stack[0].handle(req, res);
+        await layer.route.stack[1].handle(req, res);
 
         expect(res.statusCode).to.equal(200);
         expect(res.payload).to.include({

@@ -2,11 +2,11 @@ const mongoose = require('mongoose');
 const SecurityAlert = require('../models/SecurityAlert');
 const ScanResult = require('../models/ScanResult');
 const { buildScanAlertCorrelations } = require('../utils/correlationAnalysis');
-const { analyzeLogText, MAX_LOG_TEXT_LENGTH } = require('../utils/logAnalysis');
 const { handleApiError } = require('../utils/errorHandler');
 const { buildPersistedCorrelationDemo, buildSampleCorrelationInputs } = require('../utils/sampleCorrelationData');
 const { VALID_FEEDBACK_LABELS, enrichAlertForTriage, enrichAlertsForTriage } = require('../utils/alertTriage');
 const { persistAutomatedAlerts, persistAutomatedScan } = require('../services/automationService');
+const { persistLogAnalysis } = require('../services/securityIngestService');
 const { redis, subscriber } = require('../lib/redisClient');
 const { ingestCounter } = require('../routes/metrics');
 
@@ -52,29 +52,21 @@ exports.analyzeLogs = async (req, res) => {
             });
         }
 
-        const analysis = analyzeLogText(logText);
-
-        const alertsToCreate = enrichAlertsForTriage(analysis.alerts.map((alert) => ({
-            ...alert,
-            user: req.user._id,
+        const result = await persistLogAnalysis({
+            userId: req.user._id,
             source: 'manual-log-input',
-            detectedAt: new Date()
-        })));
-
-        let savedAlerts = [];
-        if (alertsToCreate.length > 0) {
-            savedAlerts = await SecurityAlert.insertMany(alertsToCreate);
-        }
+            logText
+        });
 
         return res.status(200).json({
             success: true,
             message: 'Log analysis completed',
             data: {
-                linesAnalyzed: analysis.linesAnalyzed,
-                truncated: analysis.truncated,
-                inputLimit: MAX_LOG_TEXT_LENGTH,
-                createdAlerts: savedAlerts.length,
-                alerts: savedAlerts
+                linesAnalyzed: result.linesAnalyzed,
+                truncated: result.truncated,
+                inputLimit: result.inputLimit,
+                createdAlerts: result.createdAlerts,
+                alerts: result.alerts
             }
         });
     } catch (error) {
