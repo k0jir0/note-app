@@ -17,6 +17,7 @@ const playwrightPageRoutes = require('../../src/routes/playwrightPageRoutes');
 const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
 const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
 const playwrightResearchService = require('../../src/services/playwrightResearchService');
+const seleniumResearchService = require('../../src/services/seleniumResearchService');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
 const Notes = require('../../src/models/Notes');
 const SecurityAlert = require('../../src/models/SecurityAlert');
@@ -831,6 +832,7 @@ describe('Application end-to-end flows', function () {
         expect(seleniumHtml).to.include('Selenium Module');
         expect(seleniumHtml).to.include('/api/selenium/overview');
         expect(seleniumHtml).to.include('/api/selenium/script');
+        expect(seleniumHtml).to.include('Latest Suite Run');
         expect(seleniumHtml).to.include('Scenario Catalog');
         expect(seleniumHtml).to.include('Generated Script Preview');
         expect(seleniumHtml).to.include('Open Playwright Module');
@@ -843,7 +845,8 @@ describe('Application end-to-end flows', function () {
         expect(seleniumOverviewResponse.status).to.equal(200);
         expect(seleniumOverviewPayload.success).to.equal(true);
         expect(seleniumOverviewPayload.data.module.name).to.equal('Selenium Module');
-        expect(seleniumOverviewPayload.data.coverage.scenarioCount).to.equal(5);
+        expect(seleniumOverviewPayload.data.coverage.scenarioCount).to.equal(seleniumResearchService.getScenarioIds().length);
+        expect(seleniumOverviewPayload.data.suite.implementedScenarioCount).to.equal(seleniumResearchService.getScenarioIds().length);
         expect(seleniumOverviewPayload.data.defaultScenarioId).to.equal('research-full-suite');
 
         const seleniumScriptResponse = await client.request('/api/selenium/script?scenarioId=research-full-suite', {

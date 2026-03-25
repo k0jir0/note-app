@@ -1,6 +1,7 @@
 const { By, until } = require('selenium-webdriver');
 const { expect } = require('chai');
 
+const { getSeleniumScenario } = require('../src/lib/seleniumScenarioRegistry');
 const { createAuthenticatedSession, waitForLocationContains } = require('./helpers/auth');
 const {
     clickElement,
@@ -43,6 +44,32 @@ async function openMlModule(driver, baseUrl) {
     );
 }
 
+async function openSeleniumModule(driver, baseUrl) {
+    await driver.get(`${baseUrl}/selenium/module`);
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await waitForBodyText(driver, 'Selenium Module');
+    await waitForElementText(
+        driver,
+        By.id('selenium-status'),
+        (text) => text.includes('Selenium module ready.'),
+        20000,
+        'Expected the Selenium Module to finish loading.'
+    );
+}
+
+async function openPlaywrightModule(driver, baseUrl) {
+    await driver.get(`${baseUrl}/playwright/module`);
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await waitForBodyText(driver, 'Playwright Module');
+    await waitForElementText(
+        driver,
+        By.id('playwright-status'),
+        (text) => text.includes('Playwright module ready.'),
+        20000,
+        'Expected the Playwright Module to finish loading.'
+    );
+}
+
 describe('Research module browser coverage', function () {
     this.timeout(120000);
 
@@ -65,7 +92,7 @@ describe('Research module browser coverage', function () {
         }
     });
 
-    it('navigates from the Research Workspace into each module entry point', async () => {
+    it(getSeleniumScenario('workspace-navigation').title, async () => {
         await openResearchWorkspace(driver, baseUrl);
         await waitForBodyText(driver, 'Security Module');
         await waitForBodyText(driver, 'ML Module');
@@ -89,13 +116,6 @@ describe('Research module browser coverage', function () {
         await clickElement(driver, By.linkText('Open Selenium Module'));
         await waitForLocationContains(driver, '/selenium/module');
         await waitForBodyText(driver, 'Selenium Module');
-        await waitForElementText(
-            driver,
-            By.id('selenium-status'),
-            (text) => text.includes('Selenium module ready.'),
-            20000,
-            'Expected the Selenium Module to finish loading.'
-        );
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
@@ -103,16 +123,9 @@ describe('Research module browser coverage', function () {
         await clickElement(driver, By.linkText('Open Playwright Module'));
         await waitForLocationContains(driver, '/playwright/module');
         await waitForBodyText(driver, 'Playwright Module');
-        await waitForElementText(
-            driver,
-            By.id('playwright-status'),
-            (text) => text.includes('Playwright module ready.'),
-            20000,
-            'Expected the Playwright Module to finish loading.'
-        );
     });
 
-    it('runs the Security Module workflow with sample logs, scans, and correlations', async () => {
+    it(getSeleniumScenario('security-module-workflow').title, async () => {
         await openSecurityModule(driver, baseUrl);
 
         await clickElement(driver, By.id('workspace-load-sample-log'));
@@ -199,7 +212,7 @@ describe('Research module browser coverage', function () {
         }, 15000, 'Expected at least one correlation card to render.');
     });
 
-    it('refreshes the ML Module and injects an autonomy demo', async () => {
+    it(getSeleniumScenario('ml-module-workflow').title, async () => {
         await openMlModule(driver, baseUrl);
         await waitForBodyText(driver, 'Observed Autonomous Outcomes');
         await waitForBodyText(driver, 'Learned Feature Influence');
@@ -225,5 +238,23 @@ describe('Research module browser coverage', function () {
             const cards = await driver.findElements(By.css('#ml-recent-alerts-grid .security-alert-card'));
             return cards.length > 0;
         }, 15000, 'Expected recent scored alerts to render after the autonomy demo.');
+    });
+
+    it(getSeleniumScenario('research-full-suite').title, async () => {
+        await openResearchWorkspace(driver, baseUrl);
+        await waitForBodyText(driver, 'Security Module');
+        await waitForBodyText(driver, 'Selenium Module');
+
+        await openSecurityModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Security Controls');
+
+        await openMlModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Observed Autonomous Outcomes');
+
+        await openSeleniumModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Latest Suite Run');
+
+        await openPlaywrightModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Generated Spec Preview');
     });
 });

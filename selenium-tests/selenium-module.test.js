@@ -1,9 +1,10 @@
 const { By, until } = require('selenium-webdriver');
 const { expect } = require('chai');
 
-const seleniumResearchService = require('../src/services/seleniumResearchService');
+const { getSeleniumScenario, listSeleniumScenarios } = require('../src/lib/seleniumScenarioRegistry');
 const { createAuthenticatedSession } = require('./helpers/auth');
 const {
+    clickElement,
     parseNumber,
     waitForBodyText,
     waitForElementText
@@ -21,7 +22,7 @@ describe('Selenium module browser suite', function () {
     this.timeout(120000);
 
     const baseUrl = getBaseUrl();
-    const expectedScenarioCount = seleniumResearchService.getScenarioIds().length;
+    const expectedScenarioCount = listSeleniumScenarios().length;
     let driver;
 
     before(async () => {
@@ -40,14 +41,20 @@ describe('Selenium module browser suite', function () {
         }
     });
 
-    it('loads the live Selenium module overview from localhost and renders the generated script preview', async () => {
+    it(getSeleniumScenario('selenium-module-overview').title, async () => {
         await openSeleniumModule(driver, baseUrl);
 
         const scenarioCountText = await driver.findElement(By.id('selenium-scenario-count')).getText();
         expect(parseNumber(scenarioCountText)).to.equal(expectedScenarioCount);
 
+        const implementedCountText = await driver.findElement(By.id('selenium-suite-implemented-count')).getText();
+        expect(parseNumber(implementedCountText)).to.equal(expectedScenarioCount);
+
         const baseUrlText = await driver.findElement(By.id('selenium-base-url')).getText();
         expect(baseUrlText).to.equal(baseUrl);
+
+        const latestRunStatusText = await driver.findElement(By.id('selenium-latest-run-status')).getText();
+        expect(latestRunStatusText).to.not.equal('');
 
         await waitForElementText(
             driver,
@@ -60,21 +67,21 @@ describe('Selenium module browser suite', function () {
         expect(scriptPreview).to.include('/selenium/module');
     });
 
-    it('updates the script preview when a different Selenium scenario is selected and loaded', async () => {
+    it(getSeleniumScenario('selenium-script-preview-updates').title, async () => {
         await openSeleniumModule(driver, baseUrl);
 
-        await driver.findElement(By.css('#selenium-scenario-select option[value="security-module-smoke"]')).click();
+        await clickElement(driver, By.css('#selenium-scenario-select option[value="security-module-workflow"]'));
         await waitForBodyText(driver, 'Updated the Selenium script preview for the selected scenario.');
 
         let badgeText = await driver.findElement(By.id('selenium-script-file-badge')).getText();
-        expect(badgeText).to.equal('selenium-security-module-smoke.js');
+        expect(badgeText).to.equal('selenium-security-module-workflow.js');
 
         let scriptPreview = await driver.findElement(By.id('selenium-script-code')).getText();
         expect(scriptPreview).to.include('/security/module');
         expect(scriptPreview).to.include('Security Module');
 
-        await driver.findElement(By.css('#selenium-scenario-select option[value="research-full-suite"]')).click();
-        await driver.findElement(By.id('selenium-load-script-btn')).click();
+        await clickElement(driver, By.css('#selenium-scenario-select option[value="research-full-suite"]'));
+        await clickElement(driver, By.id('selenium-load-script-btn'));
         await waitForBodyText(driver, 'Loaded the selected Selenium script template.');
 
         badgeText = await driver.findElement(By.id('selenium-script-file-badge')).getText();
@@ -85,13 +92,13 @@ describe('Selenium module browser suite', function () {
         expect(scriptPreview).to.include('/ml/module');
     });
 
-    it('keeps Selenium module navigation and refresh controls working against the local app', async () => {
+    it(getSeleniumScenario('selenium-module-navigation').title, async () => {
         await openSeleniumModule(driver, baseUrl);
 
-        await driver.findElement(By.id('selenium-refresh-btn')).click();
+        await clickElement(driver, By.id('selenium-refresh-btn'));
         await waitForBodyText(driver, 'Selenium module refreshed.');
 
-        await driver.findElement(By.css('a[href="/playwright/module"]')).click();
+        await clickElement(driver, By.css('a[href="/playwright/module"]'));
         await driver.wait(async () => {
             const currentUrl = await driver.getCurrentUrl();
             return currentUrl.includes('/playwright/module');

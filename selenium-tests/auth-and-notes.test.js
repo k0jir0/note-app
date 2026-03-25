@@ -1,6 +1,7 @@
 const { By, until } = require('selenium-webdriver');
 const { expect } = require('chai');
 
+const { getSeleniumScenario } = require('../src/lib/seleniumScenarioRegistry');
 const {
     buildCredentials,
     createAuthenticatedSession,
@@ -36,7 +37,7 @@ describe('Authentication and notes browser coverage', function () {
         }
     });
 
-    it('renders the login and signup forms with their expected controls', async () => {
+    it(getSeleniumScenario('auth-login-form').title, async () => {
         await driver.get(`${baseUrl}/auth/login`);
         await driver.wait(until.elementLocated(By.css('form[action="/auth/login"]')), 15000);
         await waitForBodyText(driver, 'Login');
@@ -44,9 +45,10 @@ describe('Authentication and notes browser coverage', function () {
         expect(await driver.findElement(By.id('email')).getAttribute('type')).to.equal('email');
         expect(await driver.findElement(By.id('password')).getAttribute('type')).to.equal('password');
         expect(await driver.findElement(By.css('a[href="/auth/signup"]')).getText()).to.equal('Sign up');
+    });
 
-        await driver.findElement(By.css('a[href="/auth/signup"]')).click();
-        await waitForLocationContains(driver, '/auth/signup');
+    it(getSeleniumScenario('auth-signup-form').title, async () => {
+        await driver.get(`${baseUrl}/auth/signup`);
         await driver.wait(until.elementLocated(By.css('form[action="/auth/signup"]')), 15000);
         await waitForBodyText(driver, 'Sign Up');
         await waitForBodyText(driver, 'Password requirements:');
@@ -56,7 +58,7 @@ describe('Authentication and notes browser coverage', function () {
         expect(await driver.findElement(By.css('a[href="/auth/login"]')).getText()).to.equal('Login');
     });
 
-    it('can sign up, log in, and navigate from notes to the research workspace', async () => {
+    it(getSeleniumScenario('research-selenium-entry-flow').title, async () => {
         const credentials = buildCredentials();
 
         await signUp(driver, baseUrl, credentials);
@@ -76,7 +78,7 @@ describe('Authentication and notes browser coverage', function () {
         await waitForBodyText(driver, 'Playwright Module');
     });
 
-    it('can create, view, edit, and delete a note through the server-rendered UI', async () => {
+    it(getSeleniumScenario('notes-crud-workflow').title, async () => {
         const noteTitle = `Selenium note ${Date.now()}`;
         const noteContent = 'Created through the Selenium CRUD browser flow.';
         const updatedTitle = `${noteTitle} updated`;

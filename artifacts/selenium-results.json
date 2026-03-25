@@ -1,0 +1,124 @@
+{
+  "generatedAt": "2026-03-25T22:52:02.354Z",
+  "sourcePath": "artifacts/selenium-results.json",
+  "runtime": {
+    "browserName": "edge",
+    "headless": true,
+    "baseUrl": "http://localhost:3000"
+  },
+  "stats": {
+    "tests": 11,
+    "passes": 11,
+    "failures": 0,
+    "pending": 0,
+    "durationMs": 37663,
+    "startTime": "2026-03-25T22:51:24.691Z",
+    "endTime": "2026-03-25T22:52:02.354Z"
+  },
+  "files": [
+    "selenium-tests/auth-and-notes.test.js",
+    "selenium-tests/research-modules.test.js",
+    "selenium-tests/selenium-module.test.js"
+  ],
+  "tests": [
+    {
+      "scenarioId": "auth-login-form",
+      "title": "Login Form Smoke",
+      "fullTitle": "Authentication and notes browser coverage Login Form Smoke",
+      "file": "selenium-tests/auth-and-notes.test.js",
+      "status": "passed",
+      "durationMs": 343,
+      "err": null
+    },
+    {
+      "scenarioId": "auth-signup-form",
+      "title": "Signup Form Smoke",
+      "fullTitle": "Authentication and notes browser coverage Signup Form Smoke",
+      "file": "selenium-tests/auth-and-notes.test.js",
+      "status": "passed",
+      "durationMs": 333,
+      "err": null
+    },
+    {
+      "scenarioId": "research-selenium-entry-flow",
+      "title": "Signup, Login, and Research Entry Flow",
+      "fullTitle": "Authentication and notes browser coverage Signup, Login, and Research Entry Flow",
+      "file": "selenium-tests/auth-and-notes.test.js",
+      "status": "passed",
+      "durationMs": 1803,
+      "err": null
+    },
+    {
+      "scenarioId": "notes-crud-workflow",
+      "title": "Notes CRUD Workflow",
+      "fullTitle": "Authentication and notes browser coverage Notes CRUD Workflow",
+      "file": "selenium-tests/auth-and-notes.test.js",
+      "status": "passed",
+      "durationMs": 4806,
+      "err": null
+    },
+    {
+      "scenarioId": "workspace-navigation",
+      "title": "Research Workspace Navigation",
+      "fullTitle": "Research module browser coverage Research Workspace Navigation",
+      "file": "selenium-tests/research-modules.test.js",
+      "status": "passed",
+      "durationMs": 2267,
+      "err": null
+    },
+    {
+      "scenarioId": "security-module-workflow",
+      "title": "Security Module Interactive Workflow",
+      "fullTitle": "Research module browser coverage Security Module Interactive Workflow",
+      "file": "selenium-tests/research-modules.test.js",
+      "status": "passed",
+      "durationMs": 3817,
+      "err": null
+    },
+    {
+      "scenarioId": "ml-module-workflow",
+      "title": "ML Module Interaction Flow",
+      "fullTitle": "Research module browser coverage ML Module Interaction Flow",
+      "file": "selenium-tests/research-modules.test.js",
+      "status": "passed",
+      "durationMs": 1171,
+      "err": null
+    },
+    {
+      "scenarioId": "research-full-suite",
+      "title": "Research Workspace Full Suite",
+      "fullTitle": "Research module browser coverage Research Workspace Full Suite",
+      "file": "selenium-tests/research-modules.test.js",
+      "status": "passed",
+      "durationMs": 1423,
+      "err": null
+    },
+    {
+      "scenarioId": "selenium-module-overview",
+      "title": "Selenium Module Overview",
+      "fullTitle": "Selenium module browser suite Selenium Module Overview",
+      "file": "selenium-tests/selenium-module.test.js",
+      "status": "passed",
+      "durationMs": 519,
+      "err": null
+    },
+    {
+      "scenarioId": "selenium-script-preview-updates",
+      "title": "Selenium Script Preview Updates",
+      "fullTitle": "Selenium module browser suite Selenium Script Preview Updates",
+      "file": "selenium-tests/selenium-module.test.js",
+      "status": "passed",
+      "durationMs": 877,
+      "err": null
+    },
+    {
+      "scenarioId": "selenium-module-navigation",
+      "title": "Selenium Module Navigation Flow",
+      "fullTitle": "Selenium module browser suite Selenium Module Navigation Flow",
+      "file": "selenium-tests/selenium-module.test.js",
+      "status": "passed",
+      "durationMs": 1043,
+      "err": null
+    }
+  ]
+}

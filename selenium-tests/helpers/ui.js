@@ -6,7 +6,11 @@ function parseNumber(text) {
 }
 
 async function getBodyText(driver) {
-    return driver.findElement(By.css('body')).getText();
+    try {
+        return await driver.findElement(By.css('body')).getText();
+    } catch (_error) {
+        return '';
+    }
 }
 
 async function waitForBodyText(driver, textOrPattern, timeoutMs = 15000) {
