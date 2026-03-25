@@ -20,6 +20,10 @@
     "pm2:logs": "pm2 logs note-app-web --lines 200",
     "worker": "node src/workers/realtimeProcessor.js",
     "test": "mocha --require ./test/testSetup.js \"test/**/*.js\"",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:all": "playwright test",
+    "test:e2e:headed": "playwright test --project=chromium --headed",
+    "test:e2e:report": "playwright show-report",
     "lint": "eslint . --ext .js"
   },
   "repository": {
@@ -47,6 +51,7 @@
   },
   "homepage": "https://github.com/k0jir0/note-app#readme",
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "chai": "^4.3.7",
     "eslint": "^8.57.1",
     "mocha": "^11.7.5",

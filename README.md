@@ -90,6 +90,7 @@ node -e "const crypto=require('crypto'); console.log('SESSION_SECRET=' + crypto.
 npm run start-dev  # Development (auto-reload)
 npm start          # Production
 npm test           # Run tests
+npm run test:e2e   # Run Playwright smoke tests in Chromium
 npm run lint       # ESLint
 ```
 
@@ -100,6 +101,17 @@ For a more stable Windows local launch, prefer the included launcher instead of 
 .\run-local.ps1
 .\run-local.ps1 -WithWorker
 ```
+
+Playwright browser setup:
+```bash
+npx playwright install
+npm run test:e2e
+npm run test:e2e:all
+```
+
+Notes:
+- Playwright tests assume the app is already running on `http://localhost:3000` unless `PLAYWRIGHT_BASE_URL` is set.
+- `npm run test:e2e` runs the starter smoke suite in Chromium; `npm run test:e2e:all` runs it across Chromium, Firefox, and WebKit.
 
 Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
