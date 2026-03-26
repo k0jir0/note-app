@@ -39,7 +39,7 @@ async function listenAsync({ app, port, serverFactory } = {}) {
         throw new TypeError('A valid Express app is required to start the server.');
     }
 
-    if (serverFactory !== undefined && typeof serverFactory !== 'function') {
+    if (serverFactory != null && typeof serverFactory !== 'function') {
         throw new TypeError('serverFactory must be a function when provided.');
     }
 

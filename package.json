@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "start-dev": "npx nodemon index.js",
+    "start-dev": "node index.js",
     "local:run": "powershell -ExecutionPolicy Bypass -File .\\run-local.ps1",
     "local:run:worker": "powershell -ExecutionPolicy Bypass -File .\\run-local.ps1 -WithWorker",
     "check-env": "node scripts/env-check.js",

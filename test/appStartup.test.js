@@ -188,4 +188,34 @@ describe('app startup utilities', () => {
         expect(fakeTlsServer.listen.firstCall.args[0]).to.equal(3443);
         sinon.assert.notCalled(app.listen);
     });
+
+    it('treats a null serverFactory as a normal HTTP app.listen startup', async () => {
+        const logger = { log: sandbox.spy() };
+        const fakeServer = {
+            once: sandbox.stub(),
+            off: sandbox.stub()
+        };
+        const mongooseLib = {
+            connect: sandbox.stub().resolves()
+        };
+        const app = {
+            listen: sandbox.stub().callsFake((port, callback) => {
+                setImmediate(callback);
+                return fakeServer;
+            })
+        };
+
+        const server = await startApplication({
+            app,
+            mongooseLib,
+            dbURI: 'mongodb://127.0.0.1:27017/noteAppTest',
+            port: 3000,
+            logger,
+            serverFactory: null
+        });
+
+        expect(server).to.equal(fakeServer);
+        sinon.assert.calledOnce(app.listen);
+        sinon.assert.calledOnce(mongooseLib.connect);
+    });
 });
