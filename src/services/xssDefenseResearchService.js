@@ -91,7 +91,9 @@ function auditPageTemplates(rootDir = process.cwd()) {
     const javascriptHrefFiles = [];
 
     files.forEach((file) => {
-        if (/<%-/u.test(file.content)) {
+        const contentWithoutTrustedIncludes = file.content.replace(/<%-\s*include\([^)]*\)\s*%>/gu, '');
+
+        if (/<%-/u.test(contentWithoutTrustedIncludes)) {
             unescapedTemplateFiles.push(file.name);
         }
 
