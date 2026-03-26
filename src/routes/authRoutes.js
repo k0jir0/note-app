@@ -22,6 +22,20 @@ const router = express.Router();
 
 const GENERIC_LOGIN_ERROR = 'Invalid email or password';
 const AUTH_PAYLOAD_FIELDS = ['email', 'password', CSRF_BODY_FIELD];
+const GOOGLE_OAUTH_EXCHANGE_ERROR_MESSAGE = 'Google sign-in could not be completed. Verify the configured Google OAuth client secret and redirect URI for this environment.';
+
+function isGoogleTokenExchangeError(error) {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+
+    const errorName = typeof error.name === 'string' ? error.name : '';
+    const errorMessage = typeof error.message === 'string' ? error.message : '';
+
+    return errorName === 'TokenError'
+        || errorName === 'InternalOAuthError'
+        || errorMessage.includes('Failed to obtain access token');
+}
 
 function renderLogoutPage(res) {
     return res.render('pages/logout', {
@@ -359,11 +373,11 @@ router.get('/oauth2/redirect/google', (req, res, next) => {
 
     return passport.authenticate('google', (err, user, _info) => {
         if (err) {
-            if (err.name === 'TokenError') {
+            if (isGoogleTokenExchangeError(err)) {
                 console.warn('[auth] Google token exchange failed. Verify GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APP_BASE_URL, and the Google Cloud redirect URI for this environment.');
                 return res.status(502).render('pages/login', {
                     title: 'Login',
-                    error: 'Google sign-in could not be completed. Verify the configured Google OAuth client secret and redirect URI for this environment.',
+                    error: GOOGLE_OAUTH_EXCHANGE_ERROR_MESSAGE,
                     csrfToken: res.locals.csrfToken
                 });
             }
