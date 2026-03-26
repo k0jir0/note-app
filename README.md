@@ -4,35 +4,13 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 
 ## Features
 
-- User authentication (signup/login) with Passport.js & bcrypt
-- Optional Google OAuth sign-in with account linking by email
-- CRUD operations for notes (create, read, update, delete)
-- Encryption for note fields at rest (AES-256-GCM integration)
-- User-specific data isolation and authorization checks
-- Input validation & XSS protection
-- Session-backed CSRF protection for forms and authenticated JSON mutations
-- MongoDB-backed session persistence via connect-mongo
-- Helmet security headers with Content Security Policy
-- Route-specific rate limiting for auth, destructive actions, and security analysis
-- Security alert log analysis dashboard (server-side log analysis)
-- Scan import and findings dashboard (multi-format parsers: Nmap, Nikto, JSON)
-- Correlation dashboard linking scan findings with observed security alerts
-- Consolidated Research Workspace that unifies log analysis, scan import, correlations, and automation status
-- Dedicated ML Module for alert-triage model training, runtime inspection, explainable score analysis, feedback-aware supervision, and autonomy proof workflows
-- Dedicated Playwright Module for browser-automation coverage planning, scenario inspection, latest-run artifact reporting, and generated Playwright spec templates
-- Dedicated Selenium Module for browser-automation coverage planning, scenario inspection, latest-run artifact reporting, and generated Selenium WebDriver script templates
-- Dedicated Self-Healing Module for ranking Playwright and Selenium locator repairs from a broken locator, a step goal, and a current DOM snippet, now exposed at `/self-healing/module` with legacy locator-repair redirects
-- ML-driven autonomous response policy that can notify operators or trigger a block webhook for high-risk ingested alerts
-- Optional scheduled ingestion for logs, scans, and intrusion events (Falco JSON ingestion helper + Trivy runner support)
-- Optional Redis-backed realtime ingest endpoint and live alert stream, with separate server and browser connection status in the Security Module UI
-- Built-in automation runners: Falco ingestion, Trivy scanner wrappers, and batch dedupe persistence
-- Metrics endpoint exposed (`/metrics`) with `prom-client` counters/gauges for automation and scan ingestion
-- Notification service (Slack integration + optional SMTP via lazy `nodemailer`) for alerting
-- CI-friendly test harnesses and smoke/integration scripts (Mocha integration tests included)
-- Trivy report artifacts in CI (report-only mode) to enable triage without blocking merges
-- RESTful API with JSON responses
-- Responsive UI with Bootstrap 5
-- Test coverage with Mocha, Chai, Sinon, Playwright, and Selenium WebDriver, including end-to-end coverage for note, auth, Security Module, ML Module, Playwright Module, Selenium Module, Self-Healing Module, and autonomy-demo proof flows
+- Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, and per-user authorization.
+- Core web security: input validation, XSS protection, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers with CSP, and route-specific rate limiting.
+- Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security, automation, and browser-testing tools.
+- ML and response: an ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
+- Browser automation: Playwright and Selenium modules for scenario planning, latest-run artifact reporting, and generated test templates, plus a Self-Healing Module at `/self-healing/module` that ranks locator repairs from a broken selector, a step goal, and a DOM snippet while preserving legacy locator-repair redirects.
+- Optional automation and realtime: scheduled ingestion for logs, scans, and intrusion events; Falco and Trivy runners; Redis-backed live ingest and streaming; Slack or SMTP notifications; and `/metrics` instrumentation for automation and scan activity.
+- Delivery and quality: a REST API, responsive Bootstrap UI, CI-friendly smoke and integration coverage, report-only Trivy CI artifacts for triage, and end-to-end testing with Mocha, Chai, Sinon, Playwright, and Selenium across notes, auth, security, ML, browser modules, self-healing, and autonomy-demo flows.
 
 ## Tech Stack
 
