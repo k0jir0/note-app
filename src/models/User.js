@@ -77,6 +77,30 @@ const userSchema = new mongoose.Schema({
             type: Date,
             default: null
         },
+        registeredHardwareToken: {
+            type: Boolean,
+            default: false
+        },
+        hardwareTokenLabel: {
+            type: String,
+            default: ''
+        },
+        hardwareTokenSerial: {
+            type: String,
+            default: ''
+        },
+        registeredPkiCertificate: {
+            type: Boolean,
+            default: false
+        },
+        pkiCertificateSubject: {
+            type: String,
+            default: ''
+        },
+        pkiCertificateIssuer: {
+            type: String,
+            default: ''
+        },
         breakGlassApproved: {
             type: Boolean,
             default: false

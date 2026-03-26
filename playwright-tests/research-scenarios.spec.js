@@ -19,6 +19,7 @@ async function expectResearchWorkspace(page) {
     await expect(page.locator('body')).toContainText('Selenium Module');
     await expect(page.locator('body')).toContainText('Playwright Module');
     await expect(page.locator('body')).toContainText('Self-Healing Module');
+    await expect(page.locator('body')).toContainText('Hardware-First MFA Module');
     await expect(page.locator('body')).toContainText('Mission Assurance Module');
 }
 
@@ -74,6 +75,16 @@ async function expectMissionAssuranceModule(page) {
     await expect(page.locator('body')).toContainText('Policy Decision');
     await expect(page.locator('body')).toContainText('RBAC');
     await expect(page.locator('body')).toContainText('ABAC');
+}
+
+async function expectHardwareMfaModule(page) {
+    await expect(page).toHaveURL(/\/hardware-mfa\/module$/);
+    await expect(page.getByRole('heading', { name: 'Hardware-First MFA Module', exact: true })).toBeVisible();
+    await expect(page.locator('#hardware-mfa-start-btn')).toBeVisible();
+    await expect(page.locator('#hardware-mfa-verify-btn')).toBeVisible();
+    await expect(page.locator('body')).toContainText('Challenge And Verify');
+    await expect(page.locator('body')).toContainText('Hardware token');
+    await expect(page.locator('body')).toContainText('PKI');
 }
 
 test.describe('Research workspace scenario coverage', () => {
@@ -167,6 +178,9 @@ test.describe('Research workspace scenario coverage', () => {
 
         await page.goto('/self-healing/module');
         await expectSelfHealingModule(page);
+
+        await page.goto('/hardware-mfa/module');
+        await expectHardwareMfaModule(page);
 
         await page.goto('/mission-assurance/module');
         await expectMissionAssuranceModule(page);

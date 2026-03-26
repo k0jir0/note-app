@@ -31,7 +31,9 @@ describe('Mission access control service', () => {
                 assignedMissions: ['research-workspace', 'incident-response'],
                 deviceTier: 'hardened',
                 networkZones: ['mission'],
-                mfaVerified: true
+                mfaVerified: true,
+                mfaMethod: 'hardware_token',
+                mfaHardwareFirst: true
             },
             actionId: 'approve_block_action',
             resourceId: 'autonomy-block-policy',

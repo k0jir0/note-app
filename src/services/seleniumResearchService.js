@@ -55,6 +55,7 @@ const ROUTE_DESCRIPTIONS = {
     '/ml/module': 'Opens the ML Module so the suite can verify training, autonomy, and recent scored-alert panels.',
     '/selenium/module': 'Opens the Selenium Module so the suite can verify exported WebDriver coverage and latest-run metadata.',
     '/playwright/module': 'Opens the Playwright Module so cross-module Selenium navigation can confirm the broader browser-testing workflow.',
+    '/hardware-mfa/module': 'Opens the Hardware-First MFA Module so the suite can verify strong-factor step-up controls and current session assurance.',
     '/mission-assurance/module': 'Opens the Mission Assurance Module so the suite can verify tactical access-policy evaluation and current-user security context.'
 };
 
@@ -76,10 +77,12 @@ const ASSERTION_DESCRIPTIONS = {
     'Playwright Module navigation button remains available': 'Checks that the module still links back into the broader Research browser-testing workflow.',
     'Playwright Module heading loads from Selenium navigation': 'Checks that Selenium-to-Playwright navigation still lands on the expected destination.',
     'Mission Assurance Module card is present': 'Checks that the Research Workspace still exposes the Mission Assurance entry point.',
+    'Hardware-First MFA Module card is present': 'Checks that the Research Workspace still exposes the Hardware-First MFA entry point.',
     'Security Module renders its workflow controls': 'Checks that the Security Module still renders the controls used by the Selenium workflow.',
     'ML Module renders its autonomy controls': 'Checks that the ML Module still renders its training and autonomy surfaces.',
     'Selenium Module renders latest suite metadata': 'Checks that the Selenium Module still renders latest-run and export metadata.',
     'Playwright Module renders its starter spec preview': 'Checks that the Playwright Module still renders its generated starter spec preview.',
+    'Hardware-First MFA Module renders step-up controls': 'Confirms that the Hardware-First MFA page renders challenge, verify, and revoke controls.',
     'Mission Assurance Module renders policy evaluator': 'Confirms that the Mission Assurance page renders its policy evaluator and current profile summary.'
 };
 
@@ -517,6 +520,7 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(driver, \'Research Workspace\');',
         'await expectBodyText(driver, \'Selenium Module\');',
         'await expectBodyText(driver, \'Self-Healing Module\');',
+        'await expectBodyText(driver, \'Hardware-First MFA Module\');',
         'await expectBodyText(driver, \'Mission Assurance Module\');',
         '',
         'await driver.get(`${baseUrl}/security/module`);',
@@ -538,6 +542,11 @@ const SCRIPT_STEP_MAP = {
         'await driver.get(`${baseUrl}/self-healing/module`);',
         'await expectBodyText(driver, \'Self-Healing Module\');',
         'await expectBodyText(driver, \'Repair Candidates\');',
+        '',
+        'await driver.get(`${baseUrl}/hardware-mfa/module`);',
+        'await expectBodyText(driver, \'Hardware-First MFA Module\');',
+        'await driver.wait(until.elementLocated(By.id(\'hardware-mfa-start-btn\')), 15000);',
+        'await expectBodyText(driver, \'Challenge And Verify\');',
         '',
         'await driver.get(`${baseUrl}/mission-assurance/module`);',
         'await expectBodyText(driver, \'Mission Assurance Module\');',

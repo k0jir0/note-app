@@ -96,6 +96,19 @@ async function openMissionAssuranceModule(driver, baseUrl) {
     );
 }
 
+async function openHardwareMfaModule(driver, baseUrl) {
+    await driver.get(`${baseUrl}/hardware-mfa/module`);
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await waitForBodyText(driver, 'Hardware-First MFA Module');
+    await waitForElementText(
+        driver,
+        By.id('hardware-mfa-status'),
+        (text) => text.includes('Hardware-First MFA Module ready.'),
+        20000,
+        'Expected the Hardware-First MFA Module to finish loading.'
+    );
+}
+
 describe('Research module browser coverage', function () {
     this.timeout(120000);
 
@@ -125,6 +138,7 @@ describe('Research module browser coverage', function () {
         await waitForBodyText(driver, 'Selenium Module');
         await waitForBodyText(driver, 'Playwright Module');
         await waitForBodyText(driver, 'Self-Healing Module');
+        await waitForBodyText(driver, 'Hardware-First MFA Module');
         await waitForBodyText(driver, 'Mission Assurance Module');
 
         await clickElement(driver, By.linkText('Open Security Module'));
@@ -158,6 +172,13 @@ describe('Research module browser coverage', function () {
         await clickElement(driver, By.linkText('Open Self-Healing Module'));
         await waitForLocationContains(driver, '/self-healing/module');
         await waitForBodyText(driver, 'Self-Healing Module');
+
+        await clickElement(driver, By.css('a[href="/research"]'));
+        await waitForLocationContains(driver, '/research');
+
+        await clickElement(driver, By.linkText('Open Hardware-First MFA Module'));
+        await waitForLocationContains(driver, '/hardware-mfa/module');
+        await waitForBodyText(driver, 'Hardware-First MFA Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
@@ -301,6 +322,9 @@ describe('Research module browser coverage', function () {
 
         await openSelfHealingModule(driver, baseUrl);
         await waitForBodyText(driver, 'Repair Candidates');
+
+        await openHardwareMfaModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Challenge And Verify');
 
         await openMissionAssuranceModule(driver, baseUrl);
         await waitForBodyText(driver, 'Policy Decision');

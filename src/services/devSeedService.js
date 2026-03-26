@@ -1,7 +1,5 @@
 const crypto = require('crypto');
 
-const FIXED_MFA_VERIFIED_AT = new Date('2026-03-25T12:00:00.000Z');
-
 const DEV_SEED_ACCOUNT_BLUEPRINTS = [
     {
         label: 'Analyst User',
@@ -15,6 +13,9 @@ const DEV_SEED_ACCOUNT_BLUEPRINTS = [
             deviceTier: 'managed',
             networkZones: ['corp'],
             mfaVerifiedAt: null,
+            registeredPkiCertificate: true,
+            pkiCertificateSubject: 'CN=test@example.com, OU=CAF Research',
+            pkiCertificateIssuer: 'CN=CAF Root CA',
             breakGlassApproved: false,
             breakGlassReason: ''
         },
@@ -32,6 +33,9 @@ const DEV_SEED_ACCOUNT_BLUEPRINTS = [
             deviceTier: 'managed',
             networkZones: ['mission'],
             mfaVerifiedAt: null,
+            registeredHardwareToken: true,
+            hardwareTokenLabel: 'FieldKey Alpha',
+            hardwareTokenSerial: 'CAF-OP-1001',
             breakGlassApproved: false,
             breakGlassReason: ''
         }
@@ -47,7 +51,10 @@ const DEV_SEED_ACCOUNT_BLUEPRINTS = [
             assignedMissions: ['research-workspace', 'incident-response'],
             deviceTier: 'hardened',
             networkZones: ['corp', 'mission'],
-            mfaVerifiedAt: FIXED_MFA_VERIFIED_AT,
+            mfaVerifiedAt: null,
+            registeredHardwareToken: true,
+            hardwareTokenLabel: 'MissionLeadKey',
+            hardwareTokenSerial: 'CAF-ML-2001',
             breakGlassApproved: false,
             breakGlassReason: ''
         }
@@ -63,7 +70,10 @@ const DEV_SEED_ACCOUNT_BLUEPRINTS = [
             assignedMissions: ['research-workspace', 'incident-response'],
             deviceTier: 'managed',
             networkZones: ['corp'],
-            mfaVerifiedAt: FIXED_MFA_VERIFIED_AT,
+            mfaVerifiedAt: null,
+            registeredPkiCertificate: true,
+            pkiCertificateSubject: 'CN=auditor@example.com, OU=CAF Oversight',
+            pkiCertificateIssuer: 'CN=CAF Root CA',
             breakGlassApproved: false,
             breakGlassReason: ''
         }
@@ -79,7 +89,13 @@ const DEV_SEED_ACCOUNT_BLUEPRINTS = [
             assignedMissions: ['research-workspace', 'incident-response', 'cyber-governance'],
             deviceTier: 'hardened',
             networkZones: ['corp'],
-            mfaVerifiedAt: FIXED_MFA_VERIFIED_AT,
+            mfaVerifiedAt: null,
+            registeredHardwareToken: true,
+            hardwareTokenLabel: 'PolicyAdminKey',
+            hardwareTokenSerial: 'CAF-AD-9001',
+            registeredPkiCertificate: true,
+            pkiCertificateSubject: 'CN=admin@example.com, OU=CAF Governance',
+            pkiCertificateIssuer: 'CN=CAF Root CA',
             breakGlassApproved: false,
             breakGlassReason: ''
         }
@@ -95,7 +111,13 @@ const DEV_SEED_ACCOUNT_BLUEPRINTS = [
             assignedMissions: ['research-workspace', 'incident-response'],
             deviceTier: 'hardened',
             networkZones: ['corp', 'mission'],
-            mfaVerifiedAt: FIXED_MFA_VERIFIED_AT,
+            mfaVerifiedAt: null,
+            registeredHardwareToken: true,
+            hardwareTokenLabel: 'BreakGlassKey',
+            hardwareTokenSerial: 'CAF-BG-9999',
+            registeredPkiCertificate: true,
+            pkiCertificateSubject: 'CN=breakglass@example.com, OU=CAF Emergency',
+            pkiCertificateIssuer: 'CN=CAF Root CA',
             breakGlassApproved: true,
             breakGlassReason: 'Emergency containment authority during active incident response.'
         }
@@ -146,6 +168,8 @@ function listDevSeedAccounts() {
             unit: cloned.accessProfile.unit,
             assignedMissions: [...cloned.accessProfile.assignedMissions],
             networkZones: [...cloned.accessProfile.networkZones],
+            registeredHardwareToken: Boolean(cloned.accessProfile.registeredHardwareToken),
+            registeredPkiCertificate: Boolean(cloned.accessProfile.registeredPkiCertificate),
             breakGlassApproved: cloned.accessProfile.breakGlassApproved
         };
     });
@@ -216,6 +240,8 @@ async function seedDevelopmentData({ User, Notes, bcryptLib, password = '' } = {
             unit: account.accessProfile.unit,
             assignedMissions: [...account.accessProfile.assignedMissions],
             networkZones: [...account.accessProfile.networkZones],
+            registeredHardwareToken: Boolean(account.accessProfile.registeredHardwareToken),
+            registeredPkiCertificate: Boolean(account.accessProfile.registeredPkiCertificate),
             breakGlassApproved: account.accessProfile.breakGlassApproved
         }))
     };

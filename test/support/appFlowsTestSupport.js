@@ -14,10 +14,13 @@ const playwrightApiRoutes = require('../../src/routes/playwrightApiRoutes');
 const playwrightPageRoutes = require('../../src/routes/playwrightPageRoutes');
 const locatorRepairApiRoutes = require('../../src/routes/locatorRepairApiRoutes');
 const locatorRepairPageRoutes = require('../../src/routes/locatorRepairPageRoutes');
+const hardwareFirstMfaApiRoutes = require('../../src/routes/hardwareFirstMfaApiRoutes');
+const hardwareFirstMfaPageRoutes = require('../../src/routes/hardwareFirstMfaPageRoutes');
 const missionAssuranceApiRoutes = require('../../src/routes/missionAssuranceApiRoutes');
 const missionAssurancePageRoutes = require('../../src/routes/missionAssurancePageRoutes');
 const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
 const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
+const { attachSessionAuthAssurance } = require('../../src/middleware/sessionAuthAssurance');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
 const Notes = require('../../src/models/Notes');
 const SecurityAlert = require('../../src/models/SecurityAlert');
@@ -329,7 +332,28 @@ function createApp() {
     app.use((req, res, next) => {
         const authenticated = req.get('x-test-auth') === '1';
         req.isAuthenticated = () => authenticated;
-        req.user = authenticated ? { _id: TEST_USER_ID, email: 'tester@example.com' } : null;
+        req.user = authenticated
+            ? {
+                _id: TEST_USER_ID,
+                email: 'tester@example.com',
+                accessProfile: {
+                    missionRole: 'analyst',
+                    clearance: 'protected_b',
+                    unit: 'cyber-task-force',
+                    assignedMissions: ['research-workspace', 'browser-assurance'],
+                    deviceTier: 'managed',
+                    networkZones: ['corp'],
+                    registeredHardwareToken: true,
+                    hardwareTokenLabel: 'TestRigKey',
+                    hardwareTokenSerial: 'CAF-TST-1000',
+                    registeredPkiCertificate: true,
+                    pkiCertificateSubject: 'CN=tester@example.com, OU=CAF Research',
+                    pkiCertificateIssuer: 'CN=CAF Root CA',
+                    breakGlassApproved: false,
+                    breakGlassReason: ''
+                }
+            }
+            : null;
         req.logIn = (user, callback) => {
             req.user = user;
             callback(null);
@@ -337,6 +361,8 @@ function createApp() {
         req.logout = (callback) => callback(null);
         next();
     });
+
+    app.use(attachSessionAuthAssurance);
 
     app.use((req, res, next) => {
         res.locals.user = req.user || null;
@@ -360,6 +386,8 @@ function createApp() {
     app.use(playwrightPageRoutes);
     app.use(locatorRepairApiRoutes);
     app.use(locatorRepairPageRoutes);
+    app.use(hardwareFirstMfaApiRoutes);
+    app.use(hardwareFirstMfaPageRoutes);
     app.use(missionAssuranceApiRoutes);
     app.use(missionAssurancePageRoutes);
     app.use(seleniumApiRoutes);

@@ -73,7 +73,7 @@ const SELENIUM_SCENARIOS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Self-Healing, and Mission Assurance entry points remain available.',
+        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Self-Healing, Mission Assurance, and Hardware-First MFA entry points remain available.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Research Workspace heading is visible',
@@ -83,6 +83,7 @@ const SELENIUM_SCENARIOS = [
             'Playwright Module card is present',
             'Self-Healing Module card is present',
             'Mission Assurance Module card is present',
+            'Hardware-First MFA Module card is present',
             'Workspace navigation buttons open each module'
         ],
         tags: ['smoke', 'auth', 'navigation', 'research'],
@@ -183,8 +184,8 @@ const SELENIUM_SCENARIOS = [
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated Selenium path across Research, Security, ML, Selenium, Playwright, Self-Healing, and Mission Assurance so the end-to-end browser workflow is covered by a single smoke scenario.',
-        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/self-healing/module', '/mission-assurance/module'],
+        purpose: 'Run one authenticated Selenium path across Research, Security, ML, Selenium, Playwright, Self-Healing, Mission Assurance, and Hardware-First MFA so the end-to-end browser workflow is covered by a single smoke scenario.',
+        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/self-healing/module', '/hardware-mfa/module', '/mission-assurance/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',
             'Research Workspace renders all module entry points',
@@ -193,6 +194,7 @@ const SELENIUM_SCENARIOS = [
             'Selenium Module renders latest suite metadata',
             'Playwright Module renders its starter spec preview',
             'Self-Healing Module renders repair suggestions',
+            'Hardware-First MFA Module renders step-up controls',
             'Mission Assurance Module renders policy evaluator'
         ],
         tags: ['full-suite', 'research', 'smoke'],

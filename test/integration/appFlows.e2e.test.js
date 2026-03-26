@@ -299,11 +299,13 @@ describe('Application end-to-end flows', function () {
         expect(researchHtml).to.include('Selenium Module');
         expect(researchHtml).to.include('Playwright Module');
         expect(researchHtml).to.include('Self-Healing Module');
+        expect(researchHtml).to.include('Hardware-First MFA Module');
         expect(researchHtml).to.include('Mission Assurance Module');
         expect(researchHtml).to.include('/ml/module');
         expect(researchHtml).to.include('/selenium/module');
         expect(researchHtml).to.include('/playwright/module');
         expect(researchHtml).to.include('/self-healing/module');
+        expect(researchHtml).to.include('/hardware-mfa/module');
         expect(researchHtml).to.include('/mission-assurance/module');
 
         stores.alerts.push({
@@ -445,6 +447,7 @@ describe('Application end-to-end flows', function () {
         expect(seleniumScriptPayload.data.content).to.include('/selenium/module');
         expect(seleniumScriptPayload.data.content).to.include('/playwright/module');
         expect(seleniumScriptPayload.data.content).to.include('/self-healing/module');
+        expect(seleniumScriptPayload.data.content).to.include('/hardware-mfa/module');
         expect(seleniumScriptPayload.data.content).to.include('/mission-assurance/module');
 
         const playwrightPage = await client.request('/playwright/module', {
@@ -483,6 +486,7 @@ describe('Application end-to-end flows', function () {
         expect(playwrightScriptPayload.data.content).to.include('/ml/module');
         expect(playwrightScriptPayload.data.content).to.include('/selenium/module');
         expect(playwrightScriptPayload.data.content).to.include('/playwright/module');
+        expect(playwrightScriptPayload.data.content).to.include('/hardware-mfa/module');
         expect(playwrightScriptPayload.data.content).to.include('/mission-assurance/module');
 
         const legacyLocatorRepairPage = await client.request('/locator-repair/module', {
@@ -588,6 +592,93 @@ describe('Application end-to-end flows', function () {
         expect(locatorRepairTrainResponse.status).to.equal(200);
         expect(locatorRepairTrainPayload.success).to.equal(true);
         expect(locatorRepairTrainPayload.data.model.available).to.equal(true);
+
+        const hardwareMfaPage = await client.request('/hardware-mfa/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const hardwareMfaHtml = await hardwareMfaPage.text();
+
+        expect(hardwareMfaPage.status).to.equal(200);
+        expect(hardwareMfaHtml).to.include('Hardware-First MFA Module');
+        expect(hardwareMfaHtml).to.include('/api/hardware-mfa/overview');
+        expect(hardwareMfaHtml).to.include('/api/hardware-mfa/challenge');
+        expect(hardwareMfaHtml).to.include('/api/hardware-mfa/verify');
+        expect(hardwareMfaHtml).to.include('/api/hardware-mfa/revoke');
+        expect(hardwareMfaHtml).to.include('Challenge And Verify');
+        expect(hardwareMfaHtml).to.include('PKI');
+
+        const hardwareMfaOverviewResponse = await client.request('/api/hardware-mfa/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const hardwareMfaOverviewPayload = await hardwareMfaOverviewResponse.json();
+
+        expect(hardwareMfaOverviewResponse.status).to.equal(200);
+        expect(hardwareMfaOverviewPayload.success).to.equal(true);
+        expect(hardwareMfaOverviewPayload.data.module.name).to.equal('Hardware-First MFA Module');
+        expect(hardwareMfaOverviewPayload.data.registeredAuthenticators).to.have.length(2);
+        expect(hardwareMfaOverviewPayload.data.sessionAssurance.hardwareFirst).to.equal(false);
+
+        const hardwareMfaCsrfToken = await client.getCsrfToken();
+        const hardwareMfaChallengeResponse = await client.request('/api/hardware-mfa/challenge', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': hardwareMfaCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                method: 'pki_certificate'
+            })
+        });
+        const hardwareMfaChallengePayload = await hardwareMfaChallengeResponse.json();
+
+        expect(hardwareMfaChallengeResponse.status).to.equal(200);
+        expect(hardwareMfaChallengePayload.success).to.equal(true);
+        expect(hardwareMfaChallengePayload.data.challengeId).to.match(/^mfa-/);
+
+        const hardwareMfaVerifyResponse = await client.request('/api/hardware-mfa/verify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': hardwareMfaCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                method: 'pki_certificate',
+                challengeId: hardwareMfaChallengePayload.data.challengeId,
+                responseValue: 'CN=tester@example.com, OU=CAF Research'
+            })
+        });
+        const hardwareMfaVerifyPayload = await hardwareMfaVerifyResponse.json();
+
+        expect(hardwareMfaVerifyResponse.status).to.equal(200);
+        expect(hardwareMfaVerifyPayload.success).to.equal(true);
+        expect(hardwareMfaVerifyPayload.data.hardwareFirst).to.equal(true);
+        expect(hardwareMfaVerifyPayload.data.method).to.equal('pki_certificate');
+
+        const hardwareMfaRefreshedOverviewResponse = await client.request('/api/hardware-mfa/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const hardwareMfaRefreshedOverviewPayload = await hardwareMfaRefreshedOverviewResponse.json();
+
+        expect(hardwareMfaRefreshedOverviewResponse.status).to.equal(200);
+        expect(hardwareMfaRefreshedOverviewPayload.data.sessionAssurance.hardwareFirst).to.equal(true);
+        expect(hardwareMfaRefreshedOverviewPayload.data.currentProfile.mfaMethod).to.equal('pki_certificate');
+
+        const hardwareMfaRevokeResponse = await client.request('/api/hardware-mfa/revoke', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': hardwareMfaCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({})
+        });
+        const hardwareMfaRevokePayload = await hardwareMfaRevokeResponse.json();
+
+        expect(hardwareMfaRevokeResponse.status).to.equal(200);
+        expect(hardwareMfaRevokePayload.success).to.equal(true);
+        expect(hardwareMfaRevokePayload.data.hardwareFirst).to.equal(false);
 
         const missionAssurancePage = await client.request('/mission-assurance/module', {
             headers: { 'x-test-auth': '1' }

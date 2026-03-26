@@ -1,3 +1,9 @@
+const {
+    isHardwareFirstMfaMethod,
+    normalizeMfaMethod,
+    normalizeRegisteredAuthenticators
+} = require('./hardwareFirstMfaService');
+
 const MISSION_ROLES = [
     'operator',
     'analyst',
@@ -40,6 +46,15 @@ const DEFAULT_USER_PROFILE = {
     deviceTier: 'managed',
     networkZones: ['corp'],
     mfaVerified: false,
+    mfaMethod: 'none',
+    mfaAssurance: 'password_only',
+    mfaHardwareFirst: false,
+    registeredHardwareToken: false,
+    hardwareTokenLabel: '',
+    hardwareTokenSerial: '',
+    registeredPkiCertificate: false,
+    pkiCertificateSubject: '',
+    pkiCertificateIssuer: '',
     breakGlassApproved: false,
     breakGlassReason: ''
 };
@@ -51,6 +66,7 @@ const ACTION_CATALOG = [
         description: 'Inspect the policy surface, controls, and current-user security context.',
         allowedRoles: ['analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
         requiresMfa: false,
+        requiredMfaMethod: 'none',
         breakGlassEligible: true,
         allowedNetworkZones: ['corp', 'mission'],
         sensitivity: 'moderate'
@@ -61,6 +77,7 @@ const ACTION_CATALOG = [
         description: 'Simulate a tactical authorization decision before a sensitive workflow is exposed.',
         allowedRoles: ['analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
         requiresMfa: false,
+        requiredMfaMethod: 'none',
         breakGlassEligible: true,
         allowedNetworkZones: ['corp', 'mission'],
         sensitivity: 'moderate'
@@ -71,6 +88,7 @@ const ACTION_CATALOG = [
         description: 'Review the live alert feed for a mission-aligned workspace.',
         allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
         requiresMfa: false,
+        requiredMfaMethod: 'none',
         breakGlassEligible: true,
         allowedNetworkZones: ['corp', 'mission'],
         sensitivity: 'moderate'
@@ -81,6 +99,7 @@ const ACTION_CATALOG = [
         description: 'Launch or approve a new alert-triage model build.',
         allowedRoles: ['mission_lead', 'admin', 'break_glass'],
         requiresMfa: true,
+        requiredMfaMethod: 'hardware_first',
         breakGlassEligible: true,
         allowedNetworkZones: ['corp', 'mission'],
         sensitivity: 'high'
@@ -91,6 +110,7 @@ const ACTION_CATALOG = [
         description: 'Export an incident summary that may contain sensitive operational data.',
         allowedRoles: ['mission_lead', 'auditor', 'admin', 'break_glass'],
         requiresMfa: true,
+        requiredMfaMethod: 'hardware_first',
         breakGlassEligible: true,
         allowedNetworkZones: ['corp', 'mission'],
         sensitivity: 'high'
@@ -101,6 +121,7 @@ const ACTION_CATALOG = [
         description: 'Authorize a block or containment action against a mission-relevant target.',
         allowedRoles: ['mission_lead', 'admin', 'break_glass'],
         requiresMfa: true,
+        requiredMfaMethod: 'hardware_first',
         breakGlassEligible: true,
         allowedNetworkZones: ['mission'],
         sensitivity: 'critical'
@@ -111,9 +132,32 @@ const ACTION_CATALOG = [
         description: 'Change access-control policy definitions or override rules.',
         allowedRoles: ['admin', 'break_glass'],
         requiresMfa: true,
+        requiredMfaMethod: 'hardware_first',
         breakGlassEligible: false,
         allowedNetworkZones: ['corp'],
         sensitivity: 'critical'
+    },
+    {
+        id: 'view_hardware_mfa_module',
+        label: 'View Hardware-First MFA Module',
+        description: 'Inspect registered strong factors, session assurance state, and hardware-first MFA guidance.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['corp', 'mission'],
+        sensitivity: 'moderate'
+    },
+    {
+        id: 'perform_hardware_mfa_step_up',
+        label: 'Perform Hardware-First Step-Up',
+        description: 'Request and verify a hardware-token or PKI-backed step-up challenge.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['corp', 'mission'],
+        sensitivity: 'moderate'
     }
 ];
 
@@ -143,6 +187,19 @@ const RESOURCE_CATALOG = [
         requiresMfa: false
     },
     {
+        id: 'hardware-mfa-lab',
+        title: 'Hardware-First MFA Lab',
+        summary: 'A research surface for hardware-token and PKI-backed step-up assurance.',
+        classification: 'protected_b',
+        missionId: 'research-workspace',
+        allowedActions: ['view_hardware_mfa_module', 'perform_hardware_mfa_step_up'],
+        allowedUnits: [],
+        requiredDeviceTier: 'managed',
+        allowedNetworkZones: ['corp', 'mission'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none'
+    },
+    {
         id: 'triage-model-training',
         title: 'Alert Triage Model Training',
         summary: 'The model-training surface that can change how future alerts are prioritized.',
@@ -152,7 +209,8 @@ const RESOURCE_CATALOG = [
         allowedUnits: ['cyber-task-force', 'model-ops'],
         requiredDeviceTier: 'managed',
         allowedNetworkZones: ['corp', 'mission'],
-        requiresMfa: true
+        requiresMfa: true,
+        requiredMfaMethod: 'hardware_first'
     },
     {
         id: 'incident-report-export',
@@ -164,7 +222,8 @@ const RESOURCE_CATALOG = [
         allowedUnits: [],
         requiredDeviceTier: 'managed',
         allowedNetworkZones: ['corp', 'mission'],
-        requiresMfa: true
+        requiresMfa: true,
+        requiredMfaMethod: 'hardware_first'
     },
     {
         id: 'autonomy-block-policy',
@@ -176,7 +235,8 @@ const RESOURCE_CATALOG = [
         allowedUnits: ['cyber-task-force'],
         requiredDeviceTier: 'hardened',
         allowedNetworkZones: ['mission'],
-        requiresMfa: true
+        requiresMfa: true,
+        requiredMfaMethod: 'hardware_first'
     },
     {
         id: 'policy-admin-console',
@@ -188,7 +248,8 @@ const RESOURCE_CATALOG = [
         allowedUnits: ['cyber-governance'],
         requiredDeviceTier: 'hardened',
         allowedNetworkZones: ['corp'],
-        requiresMfa: true
+        requiresMfa: true,
+        requiredMfaMethod: 'hardware_first'
     }
 ];
 
@@ -211,7 +272,7 @@ const POLICY_PRINCIPLES = [
     {
         id: 'step-up-auth',
         label: 'Step-Up Authentication',
-        description: 'Sensitive actions require fresh MFA evidence before the policy engine will allow them.'
+        description: 'Sensitive actions require fresh hardware-token or PKI-backed MFA evidence before the policy engine will allow them.'
     },
     {
         id: 'audited-exceptions',
@@ -237,6 +298,11 @@ const RECOMMENDED_CONTROLS = [
         description: 'High-trust actions should require temporary elevation rather than long-lived standing privilege.'
     },
     {
+        id: 'hardware-first-mfa',
+        label: 'Hardware-first MFA',
+        description: 'Prefer hardware tokens or PKI-backed client certificates over weaker software-only second factors.'
+    },
+    {
         id: 'immutable-audit',
         label: 'Immutable audit trail',
         description: 'Record who accessed what, when, under which rule, from which network zone, and with which MFA state.'
@@ -254,7 +320,12 @@ const SAMPLE_PERSONAS = [
         assignedMissions: ['research-workspace'],
         deviceTier: 'managed',
         networkZones: ['mission'],
+        registeredHardwareToken: true,
+        hardwareTokenLabel: 'FieldKey Alpha',
+        hardwareTokenSerial: 'CAF-OP-1001',
         mfaVerified: false,
+        mfaMethod: 'none',
+        mfaHardwareFirst: false,
         breakGlassApproved: false
     },
     {
@@ -267,7 +338,12 @@ const SAMPLE_PERSONAS = [
         assignedMissions: ['research-workspace', 'incident-response'],
         deviceTier: 'managed',
         networkZones: ['corp'],
+        registeredPkiCertificate: true,
+        pkiCertificateSubject: 'CN=cyber-analyst, OU=CAF Research',
+        pkiCertificateIssuer: 'CN=CAF Root CA',
         mfaVerified: true,
+        mfaMethod: 'pki_certificate',
+        mfaHardwareFirst: true,
         breakGlassApproved: false
     },
     {
@@ -280,7 +356,12 @@ const SAMPLE_PERSONAS = [
         assignedMissions: ['research-workspace', 'incident-response'],
         deviceTier: 'hardened',
         networkZones: ['corp', 'mission'],
+        registeredHardwareToken: true,
+        hardwareTokenLabel: 'MissionLeadKey',
+        hardwareTokenSerial: 'CAF-ML-2001',
         mfaVerified: true,
+        mfaMethod: 'hardware_token',
+        mfaHardwareFirst: true,
         breakGlassApproved: false
     },
     {
@@ -293,7 +374,12 @@ const SAMPLE_PERSONAS = [
         assignedMissions: ['incident-response'],
         deviceTier: 'managed',
         networkZones: ['corp'],
+        registeredPkiCertificate: true,
+        pkiCertificateSubject: 'CN=auditor, OU=CAF Oversight',
+        pkiCertificateIssuer: 'CN=CAF Root CA',
         mfaVerified: true,
+        mfaMethod: 'pki_certificate',
+        mfaHardwareFirst: true,
         breakGlassApproved: false
     },
     {
@@ -306,7 +392,15 @@ const SAMPLE_PERSONAS = [
         assignedMissions: ['research-workspace'],
         deviceTier: 'hardened',
         networkZones: ['corp', 'mission'],
+        registeredHardwareToken: true,
+        hardwareTokenLabel: 'BreakGlassKey',
+        hardwareTokenSerial: 'CAF-BG-9999',
+        registeredPkiCertificate: true,
+        pkiCertificateSubject: 'CN=break-glass-lead, OU=CAF Emergency',
+        pkiCertificateIssuer: 'CN=CAF Root CA',
         mfaVerified: true,
+        mfaMethod: 'hardware_token',
+        mfaHardwareFirst: true,
         breakGlassApproved: true,
         breakGlassReason: 'Emergency containment authority during active incident response.'
     }
@@ -373,10 +467,13 @@ function normalizeUserAccessProfile(user = {}) {
     const source = user && user.accessProfile && typeof user.accessProfile === 'object'
         ? user.accessProfile
         : user;
+    const registeredAuthenticators = normalizeRegisteredAuthenticators(user);
 
     const missionRole = String(source.missionRole || DEFAULT_USER_PROFILE.missionRole).trim().toLowerCase();
     const clearance = String(source.clearance || DEFAULT_USER_PROFILE.clearance).trim().toLowerCase();
     const deviceTier = String(source.deviceTier || DEFAULT_USER_PROFILE.deviceTier).trim().toLowerCase();
+    const normalizedMfaMethod = normalizeMfaMethod(source.mfaMethod || DEFAULT_USER_PROFILE.mfaMethod);
+    const mfaHardwareFirst = Boolean(source.mfaHardwareFirst || isHardwareFirstMfaMethod(normalizedMfaMethod));
     const normalized = {
         id: user && user._id ? String(user._id) : '',
         displayName: String(source.displayName || user.name || user.email || 'Current user'),
@@ -388,6 +485,10 @@ function normalizeUserAccessProfile(user = {}) {
         deviceTier: isValidDeviceTier(deviceTier) ? deviceTier : DEFAULT_USER_PROFILE.deviceTier,
         networkZones: normalizeNetworkZoneList(source.networkZones, DEFAULT_USER_PROFILE.networkZones),
         mfaVerified: Boolean(source.mfaVerified || source.mfaVerifiedAt),
+        mfaMethod: normalizedMfaMethod,
+        mfaAssurance: mfaHardwareFirst ? 'hardware_first' : 'password_only',
+        mfaHardwareFirst,
+        registeredAuthenticators,
         breakGlassApproved: Boolean(source.breakGlassApproved),
         breakGlassReason: String(source.breakGlassReason || '').trim()
     };
@@ -478,6 +579,7 @@ function evaluateMissionAccess({ user, subject, actionId, resourceId, contextOve
     const context = buildEvaluationContext(resolvedSubject, contextOverrides);
     const breakGlassActive = resolvedSubject.breakGlassApproved
         && Boolean((resolvedSubject.breakGlassReason || context.justification).trim());
+    const requiredMfaMethod = String(resolvedAction.requiredMfaMethod || resolvedResource.requiredMfaMethod || 'none').trim().toLowerCase();
 
     const checks = [];
 
@@ -552,15 +654,27 @@ function evaluateMissionAccess({ user, subject, actionId, resourceId, contextOve
     ));
 
     const mfaRequired = resolvedAction.requiresMfa || resolvedResource.requiresMfa;
-    const mfaPass = !mfaRequired || resolvedSubject.mfaVerified;
+    const hardwareFirstRequired = mfaRequired && requiredMfaMethod === 'hardware_first';
+    const mfaPass = !mfaRequired || (
+        resolvedSubject.mfaVerified
+        && (!hardwareFirstRequired || resolvedSubject.mfaHardwareFirst)
+    );
+    const mfaSuccessDetail = hardwareFirstRequired
+        ? `Hardware-first MFA is verified through ${resolvedSubject.mfaMethod === 'pki_certificate' ? 'a PKI certificate' : 'a hardware token'}.`
+        : (mfaRequired
+            ? 'Fresh MFA evidence is present for this sensitive action.'
+            : 'This action does not require step-up MFA.');
+    const mfaFailureDetail = hardwareFirstRequired
+        ? 'A verified hardware token or PKI certificate is required before this action can proceed.'
+        : (mfaRequired
+            ? 'Fresh MFA evidence is required before this action can proceed.'
+            : 'This action does not require step-up MFA.');
     checks.push(buildCheck(
         'mfa',
         'Step-up authentication',
         mfaPass,
-        mfaRequired
-            ? 'Fresh MFA evidence is present for this sensitive action.'
-            : 'This action does not require step-up MFA.',
-        'Fresh MFA evidence is required before this action can proceed.'
+        mfaSuccessDetail,
+        mfaFailureDetail
     ));
 
     const justificationPass = !breakGlassActive || Boolean((context.justification || resolvedSubject.breakGlassReason).trim());
@@ -581,7 +695,11 @@ function evaluateMissionAccess({ user, subject, actionId, resourceId, contextOve
         obligations.push('Record an immutable audit event with role, clearance, network zone, and resource id.');
 
         if (mfaRequired) {
-            obligations.push('Bind the approval to the current MFA proof and expire it after the action completes.');
+            obligations.push(
+                hardwareFirstRequired
+                    ? 'Bind the approval to the current hardware token or PKI-backed proof and expire it after the action completes.'
+                    : 'Bind the approval to the current MFA proof and expire it after the action completes.'
+            );
         }
 
         if (breakGlassActive) {
