@@ -1,4 +1,3 @@
-const fs = require('fs');
 const path = require('path');
 const {
     DEFAULT_SELENIUM_SCENARIO_ID,
@@ -16,6 +15,7 @@ const {
     collectSuiteFiles,
     normalizeBaseUrl
 } = require('./browserResearchModuleShared');
+const { readCachedJsonArtifact } = require('./browserArtifactCache');
 
 const DEFAULT_SCENARIO_ID = DEFAULT_SELENIUM_SCENARIO_ID;
 const SELENIUM_RESULTS_PATH = path.join(process.cwd(), 'artifacts', 'selenium-results.json');
@@ -196,7 +196,9 @@ function summarizeAggregateStatus(currentStatus, nextStatus) {
 }
 
 function buildLatestRunSummary(reportPath = SELENIUM_RESULTS_PATH) {
-    if (!fs.existsSync(reportPath)) {
+    const cachedArtifact = readCachedJsonArtifact(reportPath);
+
+    if (!cachedArtifact.exists) {
         return {
             available: false,
             status: 'unavailable',
@@ -215,10 +217,30 @@ function buildLatestRunSummary(reportPath = SELENIUM_RESULTS_PATH) {
         };
     }
 
+    if (cachedArtifact.error) {
+        return {
+            available: false,
+            status: 'unavailable',
+            total: 0,
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            durationMs: 0,
+            generatedAt: '',
+            sourcePath: 'artifacts/selenium-results.json',
+            browserName: 'unknown',
+            headless: true,
+            baseUrl: normalizeBaseUrl(),
+            error: cachedArtifact.error.message,
+            files: [],
+            scenarioResults: []
+        };
+    }
+
     try {
-        const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+        const report = cachedArtifact.report;
         const stats = report && report.stats ? report.stats : {};
-        const fileStats = fs.statSync(reportPath);
+        const fileStats = cachedArtifact.fileStats;
         const tests = Array.isArray(report.tests) ? report.tests : [];
         const scenarioTitleIndex = new Map(
             listSeleniumScenarios().map((scenario) => [scenario.title, scenario.id])

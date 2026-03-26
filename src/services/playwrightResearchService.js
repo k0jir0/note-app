@@ -1,4 +1,3 @@
-const fs = require('fs');
 const path = require('path');
 const {
     DEFAULT_PLAYWRIGHT_SCENARIO_ID,
@@ -16,6 +15,7 @@ const {
     collectSuiteFiles,
     normalizeBaseUrl
 } = require('./browserResearchModuleShared');
+const { readCachedJsonArtifact } = require('./browserArtifactCache');
 
 const DEFAULT_SCENARIO_ID = DEFAULT_PLAYWRIGHT_SCENARIO_ID;
 const PLAYWRIGHT_RESULTS_PATH = path.join(process.cwd(), 'artifacts', 'playwright-results.json');
@@ -225,7 +225,9 @@ function walkSuiteTree(entries, visitSpec) {
 }
 
 function buildLatestRunSummary(reportPath = PLAYWRIGHT_RESULTS_PATH) {
-    if (!fs.existsSync(reportPath)) {
+    const cachedArtifact = readCachedJsonArtifact(reportPath);
+
+    if (!cachedArtifact.exists) {
         return {
             available: false,
             status: 'unavailable',
@@ -242,10 +244,28 @@ function buildLatestRunSummary(reportPath = PLAYWRIGHT_RESULTS_PATH) {
         };
     }
 
+    if (cachedArtifact.error) {
+        return {
+            available: false,
+            status: 'unavailable',
+            total: 0,
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            flaky: 0,
+            durationMs: 0,
+            generatedAt: '',
+            sourcePath: 'artifacts/playwright-results.json',
+            error: cachedArtifact.error.message,
+            projects: [],
+            scenarioResults: []
+        };
+    }
+
     try {
-        const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+        const report = cachedArtifact.report;
         const stats = report && report.stats ? report.stats : {};
-        const fileStats = fs.statSync(reportPath);
+        const fileStats = cachedArtifact.fileStats;
         const projects = new Map();
         const scenarioResults = [];
         const summary = {
@@ -462,7 +482,8 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(page, \'Security Module\');',
         'await expectBodyText(page, \'ML Module\');',
         'await expectBodyText(page, \'Selenium Module\');',
-        'await expectBodyText(page, \'Playwright Module\');'
+        'await expectBodyText(page, \'Playwright Module\');',
+        'await expectBodyText(page, \'Self-Healing Module\');'
     ].join('\n    '),
     'security-module-smoke': [
         'await signIn(page);',

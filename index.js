@@ -1,6 +1,4 @@
 const path = require('path');
-require('dotenv').config();
-require('dotenv').config({ path: path.join(__dirname, '.env.local'), override: true });
 
 const express = require('express');
 const helmet = require('helmet');
@@ -27,11 +25,14 @@ const devRuntimeRoute = require('./src/routes/devRuntimeRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const metricsRoute = require('./src/routes/metrics');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
+const { loadRuntimeEnvironment, reapplyLocalEnvOverrides } = require('./src/config/runtimeEnv');
 const { requireAuth } = require('./src/middleware/auth');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 const { startApplication } = require('./src/utils/appStartup');
+
+const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
 
 (async function main() {
     try {
@@ -41,7 +42,7 @@ const { startApplication } = require('./src/utils/appStartup');
         }
         // Apply local-only overrides last so localhost auth uses `.env.local`
         // even when shared env files or the system keyring are also configured.
-        require('dotenv').config({ path: path.join(__dirname, '.env.local'), override: true });
+        reapplyLocalEnvOverrides(localEnvOverrides);
 
         const runtimeConfig = validateRuntimeConfig();
         require('./src/config/passport')(passport);
