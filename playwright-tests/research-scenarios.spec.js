@@ -18,6 +18,7 @@ async function expectResearchWorkspace(page) {
     await expect(page.locator('body')).toContainText('ML Module');
     await expect(page.locator('body')).toContainText('Selenium Module');
     await expect(page.locator('body')).toContainText('Playwright Module');
+    await expect(page.locator('body')).toContainText('Self-Healing Module');
 }
 
 async function expectSecurityModule(page) {
@@ -54,6 +55,15 @@ async function expectPlaywrightModule(page) {
     await expect(page.locator('body')).toContainText('Scenario Catalog');
     await expect(page.locator('body')).toContainText('Generated Spec Preview');
     await expect(page.locator('body')).toContainText('Playwright Prerequisites');
+}
+
+async function expectSelfHealingModule(page) {
+    await expect(page).toHaveURL(/\/self-healing\/module$/);
+    await expect(page.getByRole('heading', { name: 'Self-Healing Module', exact: true })).toBeVisible();
+    await expect(page.locator('#locator-repair-sample-select')).toBeVisible();
+    await expect(page.locator('#locator-repair-analyze-btn')).toBeVisible();
+    await expect(page.locator('body')).toContainText('Repair Candidates');
+    await expect(page.locator('#locator-repair-output-targets')).toContainText(/Playwright (?:and|\+) Selenium/);
 }
 
 test.describe('Research workspace scenario coverage', () => {
@@ -104,6 +114,26 @@ test.describe('Research workspace scenario coverage', () => {
         await expect(page.locator('#playwright-script-code')).toContainText('@playwright/test');
     });
 
+    test(getPlaywrightScenario('self-healing-module-smoke').title, async ({ page }, testInfo) => {
+        const scenario = getPlaywrightScenario('self-healing-module-smoke');
+        annotateScenario(testInfo, scenario);
+
+        await createAuthenticatedSession(page, testInfo);
+        await page.goto('/locator-repair/module');
+        await expectSelfHealingModule(page);
+        await expect(page.locator('#locator-repair-status')).toContainText('Self-Healing Module ready.');
+
+        await page.locator('#locator-repair-sample-select').selectOption('locator-analyze-button-drift');
+        await page.locator('#locator-repair-load-sample-btn').click();
+        await expect(page.locator('#locator-repair-status')).toContainText('Loaded the selected sample case.');
+        await expect(page.locator('#locator-repair-original-locator')).toHaveValue(/Analyze Locator/);
+
+        await page.locator('#locator-repair-analyze-btn').click();
+        await expect(page.locator('#locator-repair-status')).toContainText('Generated ML-assisted self-healing suggestions.');
+        await expect(page.locator('#locator-repair-suggestions')).toContainText('data-testid');
+        await expect(page.locator('#locator-repair-suggestions')).toContainText('locator-repair-analyze-btn');
+    });
+
     test(getPlaywrightScenario('research-full-suite').title, async ({ page }, testInfo) => {
         const scenario = getPlaywrightScenario('research-full-suite');
         annotateScenario(testInfo, scenario);
@@ -124,5 +154,8 @@ test.describe('Research workspace scenario coverage', () => {
 
         await page.goto('/playwright/module');
         await expectPlaywrightModule(page);
+
+        await page.goto('/self-healing/module');
+        await expectSelfHealingModule(page);
     });
 });

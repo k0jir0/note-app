@@ -25,6 +25,7 @@ describe('Playwright research service', () => {
         expect(overview.prerequisites).to.have.length(5);
         expect(overview.suite.implementedScenarioCount).to.equal(scenarioCount);
         expect(overview.suite.latestRun).to.have.property('available');
+        expect(overview.scenarios.find((scenario) => scenario.id === 'self-healing-module-smoke')).to.exist;
         expect(overview.scenarios[0].routes[0]).to.match(/^http:\/\/127\.0\.0\.1:3000\//);
         expect(overview.scenarios[0].routeTargets[0].description).to.be.a('string').and.not.equal('');
         expect(overview.scenarios[0].assertionDetails[0].description).to.be.a('string').and.not.equal('');
@@ -49,6 +50,21 @@ describe('Playwright research service', () => {
         expect(script.content).to.include('/security/module');
         expect(script.content).to.include('/selenium/module');
         expect(script.content).to.include('/playwright/module');
+        expect(script.content).to.include('/self-healing/module');
+    });
+
+    it('builds a playwright spec template for the self-healing scenario', () => {
+        const script = playwrightResearchService.buildPlaywrightScript({
+            baseUrl: 'http://localhost:3000',
+            scenarioId: 'self-healing-module-smoke'
+        });
+
+        expect(script.fileName).to.equal('playwright-self-healing-module-smoke.spec.js');
+        expect(script.routePaths).to.include('/locator-repair/module');
+        expect(script.routePaths).to.include('/self-healing/module');
+        expect(script.content).to.include('/locator-repair/module');
+        expect(script.content).to.include('/self-healing/module');
+        expect(script.content).to.include('#locator-repair-analyze-btn');
     });
 
     it('throws when an unknown scenario is requested', () => {

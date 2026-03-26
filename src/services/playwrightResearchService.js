@@ -44,11 +44,13 @@ const ROUTE_DESCRIPTIONS = {
     '/auth/signup': 'Opens the signup form so the suite can verify account-creation guidance or create a disposable user.',
     '/notes': 'Loads the authenticated notes home so the suite can verify the primary post-login workspace.',
     '/notes/new': 'Opens the server-rendered note creation form for CRUD smoke coverage.',
-    '/research': 'Opens the Research Workspace, the hub for the Security, ML, Selenium, and Playwright modules.',
+    '/research': 'Opens the Research Workspace, the hub for the Security, ML, Selenium, Playwright, and Self-Healing modules.',
     '/security/module': 'Opens the Security Module so the spec can verify analysis, scan, correlation, and realtime controls.',
     '/ml/module': 'Opens the ML Module so the spec can verify training, scoring, explainability, and autonomy panels.',
     '/selenium/module': 'Opens the Selenium Module so the suite can verify the Selenium export surface.',
-    '/playwright/module': 'Opens the Playwright Module so the suite can verify the Playwright export surface.'
+    '/playwright/module': 'Opens the Playwright Module so the suite can verify the Playwright export surface.',
+    '/self-healing/module': 'Opens the Self-Healing Module so the suite can verify redirect handling, sample loading, and repair suggestion output.',
+    '/locator-repair/module': 'Legacy entry point that should redirect to the canonical Self-Healing Module route before browser checks continue.'
 };
 
 const ASSERTION_DESCRIPTIONS = {
@@ -69,6 +71,7 @@ const ASSERTION_DESCRIPTIONS = {
     'ML Module card is present': 'Checks that the Research page still links to the ML module.',
     'Selenium Module card is present': 'Checks that the Research page still links to the Selenium module.',
     'Playwright Module card is present': 'Checks that the Research page still links to the Playwright module.',
+    'Self-Healing Module card is present': 'Checks that the Research page still links to the Self-Healing module.',
     'Playwright module loads from the workspace entry point': 'Checks that the workspace link still opens the Playwright module successfully.',
     'Create Note form is visible': 'Checks that the note creation form loads with its expected controls.',
     'Note creation redirects to the notes home': 'Checks that creating a note returns the browser to the notes list.',
@@ -92,6 +95,12 @@ const ASSERTION_DESCRIPTIONS = {
     'Playwright Module heading is visible': 'Confirms that navigation reached the Playwright module.',
     'Generated Spec Preview panel is visible': 'Confirms that the Playwright preview panel is visible.',
     'Playwright prerequisites render': 'Confirms that the page still lists the setup needed to run the exported spec.',
+    'Legacy self-healing redirect resolves to the canonical route': 'Checks that the old locator-repair path still lands on the canonical Self-Healing Module URL.',
+    'Self-Healing Module heading is visible': 'Confirms that navigation reached the Self-Healing module.',
+    'Suggest Repairs button is present': 'Checks that the primary self-healing analysis action is visible.',
+    'Repair Candidates panel is visible': 'Confirms that ranked repair suggestions render in the module UI.',
+    'Generated self-healing suggestions render': 'Checks that loading a sample and re-running analysis produces ranked repair output.',
+    'Self-Healing Module renders repair suggestions': 'Confirms that the Self-Healing page still renders sample-driven repair suggestions.',
     'Sample log helper loads log input': 'Checks that the sample log helper populates the Security Module input.',
     'Log analysis creates persisted alerts': 'Checks that log analysis creates saved alerts and refreshes the findings view.',
     'Sample scan helper loads scan input': 'Checks that the sample scan helper populates the importer input.',
@@ -119,6 +128,7 @@ const TAG_DESCRIPTIONS = {
     ml: 'Targets the ML-assisted triage surfaces.',
     triage: 'Focuses on scoring, review, and autonomy-related UI.',
     selenium: 'Covers the Selenium export surface.',
+    'self-healing': 'Covers the Self-Healing locator-repair workspace.',
     export: 'Focuses on generated automation artifacts.',
     playwright: 'Covers the Playwright export surface.',
     'full-suite': 'Covers the broadest path across multiple modules.',
@@ -587,6 +597,19 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(page, \'Generated Spec Preview\');',
         'await expectBodyText(page, \'Playwright Prerequisites\');'
     ].join('\n    '),
+    'self-healing-module-smoke': [
+        'await signIn(page);',
+        'await page.goto(`${baseUrl}/locator-repair/module`, { waitUntil: \'domcontentloaded\' });',
+        'await expect(page).toHaveURL(`${baseUrl}/self-healing/module`);',
+        'await expectBodyText(page, \'Self-Healing Module\');',
+        'await expect(page.locator(\'#locator-repair-sample-select\')).toBeVisible();',
+        'await expect(page.locator(\'#locator-repair-analyze-btn\')).toBeVisible();',
+        'await page.locator(\'#locator-repair-sample-select\').selectOption(\'locator-analyze-button-drift\');',
+        'await page.locator(\'#locator-repair-load-sample-btn\').click();',
+        'await page.locator(\'#locator-repair-analyze-btn\').click();',
+        'await expectBodyText(page, \'Generated ML-assisted self-healing suggestions.\');',
+        'await expect(page.locator(\'#locator-repair-suggestions\')).toContainText(\'data-testid\');'
+    ].join('\n    '),
     'notes-crud-workflow': [
         'await signIn(page);',
         'await page.goto(`${baseUrl}/notes/new`, { waitUntil: \'domcontentloaded\' });',
@@ -633,6 +656,7 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(page, \'Research Workspace\');',
         'await expectBodyText(page, \'Selenium Module\');',
         'await expectBodyText(page, \'Playwright Module\');',
+        'await expectBodyText(page, \'Self-Healing Module\');',
         '',
         'await page.goto(`${baseUrl}/security/module`, { waitUntil: \'domcontentloaded\' });',
         'await expectBodyText(page, \'Security Module\');',
@@ -648,7 +672,12 @@ const SCRIPT_STEP_MAP = {
         '',
         'await page.goto(`${baseUrl}/playwright/module`, { waitUntil: \'domcontentloaded\' });',
         'await expectBodyText(page, \'Playwright Module\');',
-        'await expectBodyText(page, \'Generated Spec Preview\');'
+        'await expectBodyText(page, \'Generated Spec Preview\');',
+        '',
+        'await page.goto(`${baseUrl}/self-healing/module`, { waitUntil: \'domcontentloaded\' });',
+        'await expectBodyText(page, \'Self-Healing Module\');',
+        'await expect(page.locator(\'#locator-repair-analyze-btn\')).toBeVisible();',
+        'await expectBodyText(page, \'Repair Candidates\');'
     ].join('\n    ')
 };
 

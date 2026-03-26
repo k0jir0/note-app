@@ -70,7 +70,7 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, and Playwright entry points are visible.',
+        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, and Self-Healing entry points are visible.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Login form is reachable',
@@ -78,7 +78,8 @@ const PLAYWRIGHT_SCENARIOS = [
             'Security Module card is present',
             'ML Module card is present',
             'Selenium Module card is present',
-            'Playwright Module card is present'
+            'Playwright Module card is present',
+            'Self-Healing Module card is present'
         ],
         tags: ['smoke', 'auth', 'navigation'],
         requiresLogin: true,
@@ -159,6 +160,25 @@ const PLAYWRIGHT_SCENARIOS = [
         suiteFile: 'playwright-tests/research-scenarios.spec.js'
     },
     {
+        id: 'self-healing-module-smoke',
+        title: 'Self-Healing Module Smoke',
+        purpose: 'Open the legacy locator-repair entry point, confirm it redirects to the canonical Self-Healing page, and verify that a loaded sample produces ranked repair suggestions.',
+        routes: ['/locator-repair/module', '/self-healing/module'],
+        assertions: [
+            'Legacy self-healing redirect resolves to the canonical route',
+            'Self-Healing Module heading is visible',
+            'Sample selector is present',
+            'Suggest Repairs button is present',
+            'Repair Candidates panel is visible',
+            'Generated self-healing suggestions render'
+        ],
+        tags: ['self-healing', 'browser', 'workspace'],
+        requiresLogin: true,
+        optionalDependencies: ['The in-app sample cases and repair suggestions should work without a separate self-healing runtime.'],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/research-scenarios.spec.js'
+    },
+    {
         id: 'notes-crud-workflow',
         title: 'Notes CRUD Workflow',
         purpose: 'Create, view, edit, and delete a note through the server-rendered HTML flow.',
@@ -213,15 +233,16 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, and Playwright to validate the end-to-end workspace flow.',
-        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module'],
+        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, Playwright, and Self-Healing to validate the end-to-end workspace flow.',
+        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/self-healing/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',
             'Research Workspace renders all module entry points',
             'Security Module renders its main controls',
             'ML Module renders training and autonomy panels',
             'Selenium Module renders a script preview',
-            'Playwright Module renders a spec preview'
+            'Playwright Module renders a spec preview',
+            'Self-Healing Module renders repair suggestions'
         ],
         tags: ['full-suite', 'research', 'smoke'],
         requiresLogin: true,
