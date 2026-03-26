@@ -149,6 +149,28 @@ const ACTION_CATALOG = [
         sensitivity: 'moderate'
     },
     {
+        id: 'view_session_management_module',
+        label: 'View Session Management Module',
+        description: 'Inspect strict timeout policy, current session state, and concurrent-login controls.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        sensitivity: 'moderate'
+    },
+    {
+        id: 'evaluate_session_lockdown_controls',
+        label: 'Evaluate Session Lockdown Controls',
+        description: 'Simulate whether an abandoned or superseded session should be locked immediately.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        sensitivity: 'moderate'
+    },
+    {
         id: 'perform_hardware_mfa_step_up',
         label: 'Perform Hardware-First Step-Up',
         description: 'Request and verify a hardware-token or PKI-backed step-up challenge.',
@@ -196,6 +218,19 @@ const RESOURCE_CATALOG = [
         allowedUnits: [],
         requiredDeviceTier: 'managed',
         allowedNetworkZones: ['corp', 'mission'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none'
+    },
+    {
+        id: 'session-management-lab',
+        title: 'Session Management Lab',
+        summary: 'A research surface for strict timeout, terminal lock, and concurrent-login enforcement.',
+        classification: 'protected_b',
+        missionId: 'research-workspace',
+        allowedActions: ['view_session_management_module', 'evaluate_session_lockdown_controls'],
+        allowedUnits: [],
+        requiredDeviceTier: 'managed',
+        allowedNetworkZones: ['public', 'corp', 'mission'],
         requiresMfa: false,
         requiredMfaMethod: 'none'
     },
@@ -408,6 +443,7 @@ const SAMPLE_PERSONAS = [
 
 const MATRIX_COMBINATIONS = [
     { actionId: 'view_security_alerts', resourceId: 'security-alert-feed' },
+    { actionId: 'evaluate_session_lockdown_controls', resourceId: 'session-management-lab' },
     { actionId: 'train_ml_model', resourceId: 'triage-model-training' },
     { actionId: 'export_incident_report', resourceId: 'incident-report-export' },
     { actionId: 'approve_block_action', resourceId: 'autonomy-block-policy' },

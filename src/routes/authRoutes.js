@@ -11,6 +11,12 @@ const {
     validateLoginPassword,
     sanitizeAuthPayload
 } = require('../utils/validation');
+const {
+    SESSION_LOCK_REASONS,
+    beginAuthenticatedSession,
+    clearCurrentSessionBinding,
+    getLoginReasonMessage
+} = require('../services/sessionManagementService');
 
 const router = express.Router();
 
@@ -24,24 +30,88 @@ function renderLogoutPage(res) {
     });
 }
 
-function completeAuthenticatedLogin(req, res, next, user) {
+function regenerateSession(req) {
     if (!req.session || typeof req.session.regenerate !== 'function') {
-        return next(new Error('Session regeneration is unavailable'));
+        return Promise.reject(new Error('Session regeneration is unavailable'));
     }
 
-    return req.session.regenerate((regenerateError) => {
-        if (regenerateError) {
-            return next(regenerateError);
-        }
-
-        return req.logIn(user, (loginError) => {
-            if (loginError) {
-                return next(loginError);
+    return new Promise((resolve, reject) => {
+        req.session.regenerate((error) => {
+            if (error) {
+                reject(error);
+                return;
             }
 
-            return res.redirect('/');
+            resolve();
         });
     });
+}
+
+function logInUser(req, user) {
+    if (!req || typeof req.logIn !== 'function') {
+        return Promise.reject(new Error('Session login is unavailable'));
+    }
+
+    return new Promise((resolve, reject) => {
+        req.logIn(user, (error) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            resolve();
+        });
+    });
+}
+
+function logoutUser(req) {
+    if (!req || typeof req.logout !== 'function') {
+        return Promise.reject(new Error('Logout is unavailable'));
+    }
+
+    return new Promise((resolve, reject) => {
+        req.logout((error) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            resolve();
+        });
+    });
+}
+
+function destroySession(req) {
+    if (!req.session || typeof req.session.destroy !== 'function') {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+        req.session.destroy((error) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            resolve();
+        });
+    });
+}
+
+async function completeAuthenticatedLogin(req, res, next, user) {
+    try {
+        await regenerateSession(req);
+        await logInUser(req, user);
+        await beginAuthenticatedSession({
+            user,
+            session: req.session,
+            runtimeConfig: req.app && req.app.locals ? req.app.locals.runtimeConfig : {}
+        });
+
+        return res.redirect('/');
+    } catch (error) {
+        return next(error);
+    }
 }
 
 function maybeRedirectToConfiguredAppBaseUrl(req, res) {
@@ -59,41 +129,36 @@ function maybeRedirectToConfiguredAppBaseUrl(req, res) {
     return true;
 }
 
-function destroyAuthenticatedSession(req, res, next) {
-    req.logout((logoutError) => {
-        if (logoutError) {
-            if (typeof next === 'function') {
-                return next(logoutError);
-            }
+async function destroyAuthenticatedSession(req, res, next) {
+    try {
+        await clearCurrentSessionBinding({
+            user: req.user,
+            session: req.session,
+            reason: SESSION_LOCK_REASONS.MANUAL_LOCKDOWN
+        }).catch(() => false);
 
-            return res.status(500).json({ error: 'Logout failed' });
+        await logoutUser(req);
+        await destroySession(req);
+        res.clearCookie('connect.sid');
+        return res.redirect('/auth/login');
+    } catch (error) {
+        if (typeof next === 'function') {
+            return next(error);
         }
 
-        if (!req.session || typeof req.session.destroy !== 'function') {
-            res.clearCookie('connect.sid');
-            return res.redirect('/auth/login');
-        }
-
-        return req.session.destroy((sessionError) => {
-            if (sessionError) {
-                if (typeof next === 'function') {
-                    return next(sessionError);
-                }
-
-                return res.status(500).json({ error: 'Logout failed' });
-            }
-
-            res.clearCookie('connect.sid');
-            return res.redirect('/auth/login');
-        });
-    });
+        return res.status(500).json({ error: 'Logout failed' });
+    }
 }
 
 // GET login page
 router.get('/login', (req, res) => {
+    const sessionReason = typeof req.query?.reason === 'string'
+        ? getLoginReasonMessage(req.query.reason)
+        : '';
+
     res.render('pages/login', {
         title: 'Login',
-        error: null,
+        error: sessionReason || null,
         csrfToken: res.locals.csrfToken
     });
 });
@@ -144,7 +209,7 @@ router.post('/login', authRateLimiter, (req, res, next) => {
     req.body.email = email;
     req.body.password = password;
 
-    passport.authenticate('local', (err, user, _info) => {
+    return passport.authenticate('local', (err, user, _info) => {
         if (err) {
             return next(err);
         }
@@ -259,7 +324,7 @@ router.get('/logout', (req, res) => {
 
 // POST logout
 router.post('/logout', (req, res, next) => {
-    destroyAuthenticatedSession(req, res, next);
+    return destroyAuthenticatedSession(req, res, next);
 });
 
 // Google Auth

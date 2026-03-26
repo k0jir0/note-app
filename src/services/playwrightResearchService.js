@@ -55,6 +55,7 @@ const ROUTE_DESCRIPTIONS = {
     '/ml/module': 'Opens the ML Module so the spec can verify training, scoring, explainability, and autonomy panels.',
     '/playwright/module': 'Opens the Playwright Module so the suite can verify the Playwright export surface.',
     '/self-healing/module': 'Opens the Self-Healing Module so the suite can verify redirect handling, sample loading, and repair suggestion output.',
+    '/session-management/module': 'Opens the Session Management Module so the suite can verify strict timeout posture, current session state, and lockdown-evaluation controls.',
     '/hardware-mfa/module': 'Opens the Hardware-First MFA Module so the suite can verify strong-factor step-up controls and current session assurance.',
     '/mission-assurance/module': 'Opens the Mission Assurance Module so the suite can verify RBAC plus ABAC policy evaluation and current-user access context.',
     '/locator-repair/module': 'Legacy entry point that should redirect to the canonical Self-Healing Module route before browser checks continue.'
@@ -82,6 +83,12 @@ const ASSERTION_DESCRIPTIONS = {
     'Self-Healing Module renders repair suggestions': 'Confirms that the Self-Healing page still renders sample-driven repair suggestions.',
     'Mission Assurance Module card is present': 'Checks that the Research Workspace still exposes the Mission Assurance entry point.',
     'Hardware-First MFA Module card is present': 'Checks that the Research Workspace still exposes the Hardware-First MFA entry point.',
+    'Session Management Module card is present': 'Checks that the Research Workspace still exposes the Session Management entry point.',
+    'Session Management Module heading is visible': 'Confirms that navigation reached the Session Management module.',
+    'Live session summary is visible': 'Checks that the page surfaces the current server-side session state.',
+    'Lockdown evaluation controls are visible': 'Checks that the timeout and concurrent-login evaluation form is visible.',
+    'Lockdown decision panel is visible': 'Confirms that the module renders a server-side lockdown decision summary.',
+    'Session Management Module renders lockdown controls': 'Confirms that the Session Management page renders session-state and lockdown-evaluation controls.',
     'Hardware-First MFA Module renders step-up controls': 'Confirms that the Hardware-First MFA page renders challenge, verify, and revoke controls.',
     'Mission Assurance Module renders policy evaluator': 'Confirms that the Mission Assurance page renders its policy-decision controls and current session context.',
     'Scenario selector updates the generated spec': 'Checks that changing the selected scenario refreshes the generated Playwright preview.',
@@ -489,7 +496,10 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(page, \'ML Module\');',
         'await expectBodyText(page, \'Selenium Module\');',
         'await expectBodyText(page, \'Playwright Module\');',
-        'await expectBodyText(page, \'Self-Healing Module\');'
+        'await expectBodyText(page, \'Self-Healing Module\');',
+        'await expectBodyText(page, \'Session Management Module\');',
+        'await expectBodyText(page, \'Hardware-First MFA Module\');',
+        'await expectBodyText(page, \'Mission Assurance Module\');'
     ].join('\n    '),
     'security-module-smoke': [
         'await signIn(page);',
@@ -540,6 +550,15 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(page, \'Generated ML-assisted self-healing suggestions.\');',
         'await expect(page.locator(\'#locator-repair-suggestions\')).toContainText(\'data-testid\');'
     ].join('\n    '),
+    'session-management-module-smoke': [
+        'await signIn(page);',
+        'await page.goto(`${baseUrl}/session-management/module`, { waitUntil: \'domcontentloaded\' });',
+        'await expectBodyText(page, \'Session Management Module\');',
+        'await expect(page.locator(\'#session-management-summary\')).toContainText(\'Network zone\');',
+        'await expect(page.locator(\'#session-management-scenario-select\')).toBeVisible();',
+        'await expect(page.locator(\'#session-management-evaluate-btn\')).toBeVisible();',
+        'await expect(page.locator(\'#session-management-evaluation\')).toContainText(\'Lockdown Decision\');'
+    ].join('\n    '),
     'notes-crud-workflow': [
         'await signIn(page);',
         'await page.goto(`${baseUrl}/notes/new`, { waitUntil: \'domcontentloaded\' });',
@@ -587,6 +606,7 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(page, \'Selenium Module\');',
         'await expectBodyText(page, \'Playwright Module\');',
         'await expectBodyText(page, \'Self-Healing Module\');',
+        'await expectBodyText(page, \'Session Management Module\');',
         'await expectBodyText(page, \'Hardware-First MFA Module\');',
         'await expectBodyText(page, \'Mission Assurance Module\');',
         '',
@@ -610,6 +630,11 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(page, \'Self-Healing Module\');',
         'await expect(page.locator(\'#locator-repair-analyze-btn\')).toBeVisible();',
         'await expectBodyText(page, \'Repair Candidates\');',
+        '',
+        'await page.goto(`${baseUrl}/session-management/module`, { waitUntil: \'domcontentloaded\' });',
+        'await expectBodyText(page, \'Session Management Module\');',
+        'await expect(page.locator(\'#session-management-evaluate-btn\')).toBeVisible();',
+        'await expectBodyText(page, \'Lockdown Decision\');',
         '',
         'await page.goto(`${baseUrl}/hardware-mfa/module`, { waitUntil: \'domcontentloaded\' });',
         'await expectBodyText(page, \'Hardware-First MFA Module\');',

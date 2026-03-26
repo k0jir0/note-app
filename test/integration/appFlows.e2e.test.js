@@ -299,12 +299,14 @@ describe('Application end-to-end flows', function () {
         expect(researchHtml).to.include('Selenium Module');
         expect(researchHtml).to.include('Playwright Module');
         expect(researchHtml).to.include('Self-Healing Module');
+        expect(researchHtml).to.include('Session Management Module');
         expect(researchHtml).to.include('Hardware-First MFA Module');
         expect(researchHtml).to.include('Mission Assurance Module');
         expect(researchHtml).to.include('/ml/module');
         expect(researchHtml).to.include('/selenium/module');
         expect(researchHtml).to.include('/playwright/module');
         expect(researchHtml).to.include('/self-healing/module');
+        expect(researchHtml).to.include('/session-management/module');
         expect(researchHtml).to.include('/hardware-mfa/module');
         expect(researchHtml).to.include('/mission-assurance/module');
 
@@ -464,6 +466,7 @@ describe('Application end-to-end flows', function () {
         expect(seleniumScriptPayload.data.content).to.include('/selenium/module');
         expect(seleniumScriptPayload.data.content).to.include('/playwright/module');
         expect(seleniumScriptPayload.data.content).to.include('/self-healing/module');
+        expect(seleniumScriptPayload.data.content).to.include('/session-management/module');
         expect(seleniumScriptPayload.data.content).to.include('/hardware-mfa/module');
         expect(seleniumScriptPayload.data.content).to.include('/mission-assurance/module');
 
@@ -503,6 +506,8 @@ describe('Application end-to-end flows', function () {
         expect(playwrightScriptPayload.data.content).to.include('/ml/module');
         expect(playwrightScriptPayload.data.content).to.include('/selenium/module');
         expect(playwrightScriptPayload.data.content).to.include('/playwright/module');
+        expect(playwrightScriptPayload.data.content).to.include('/self-healing/module');
+        expect(playwrightScriptPayload.data.content).to.include('/session-management/module');
         expect(playwrightScriptPayload.data.content).to.include('/hardware-mfa/module');
         expect(playwrightScriptPayload.data.content).to.include('/mission-assurance/module');
 
@@ -609,6 +614,54 @@ describe('Application end-to-end flows', function () {
         expect(locatorRepairTrainResponse.status).to.equal(200);
         expect(locatorRepairTrainPayload.success).to.equal(true);
         expect(locatorRepairTrainPayload.data.model.available).to.equal(true);
+
+        const sessionManagementPage = await client.request('/session-management/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const sessionManagementHtml = await sessionManagementPage.text();
+
+        expect(sessionManagementPage.status).to.equal(200);
+        expect(sessionManagementHtml).to.include('Session Management Module');
+        expect(sessionManagementHtml).to.include('/api/session-management/overview');
+        expect(sessionManagementHtml).to.include('/api/session-management/evaluate');
+        expect(sessionManagementHtml).to.include('Live Session State');
+        expect(sessionManagementHtml).to.include('Lockdown Decision');
+
+        const sessionManagementOverviewResponse = await client.request('/api/session-management/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const sessionManagementOverviewPayload = await sessionManagementOverviewResponse.json();
+
+        expect(sessionManagementOverviewResponse.status).to.equal(200);
+        expect(sessionManagementOverviewPayload.success).to.equal(true);
+        expect(sessionManagementOverviewPayload.data.module.name).to.equal('Session Management Module');
+        expect(sessionManagementOverviewPayload.data.policy.preventConcurrentLogins).to.equal(true);
+        expect(sessionManagementOverviewPayload.data.controls).to.have.length(4);
+        expect(sessionManagementOverviewPayload.data.scenarios).to.be.an('array').that.is.not.empty;
+
+        const sessionManagementCsrfToken = await client.getCsrfToken();
+        const sessionManagementEvaluateResponse = await client.request('/api/session-management/evaluate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': sessionManagementCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                scenarioId: 'abandoned-field-terminal',
+                networkZone: 'mission',
+                idleMinutes: 8,
+                elapsedHours: 1,
+                concurrentLoginDetected: false
+            })
+        });
+        const sessionManagementEvaluatePayload = await sessionManagementEvaluateResponse.json();
+
+        expect(sessionManagementEvaluateResponse.status).to.equal(200);
+        expect(sessionManagementEvaluatePayload.success).to.equal(true);
+        expect(sessionManagementEvaluatePayload.data.locked).to.equal(true);
+        expect(sessionManagementEvaluatePayload.data.decision).to.equal('lock');
+        expect(sessionManagementEvaluatePayload.data.failedChecks).to.include('idle-timeout');
 
         const hardwareMfaPage = await client.request('/hardware-mfa/module', {
             headers: { 'x-test-auth': '1' }

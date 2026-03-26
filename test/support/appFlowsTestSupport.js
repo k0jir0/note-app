@@ -18,9 +18,12 @@ const hardwareFirstMfaApiRoutes = require('../../src/routes/hardwareFirstMfaApiR
 const hardwareFirstMfaPageRoutes = require('../../src/routes/hardwareFirstMfaPageRoutes');
 const missionAssuranceApiRoutes = require('../../src/routes/missionAssuranceApiRoutes');
 const missionAssurancePageRoutes = require('../../src/routes/missionAssurancePageRoutes');
+const sessionManagementApiRoutes = require('../../src/routes/sessionManagementApiRoutes');
+const sessionManagementPageRoutes = require('../../src/routes/sessionManagementPageRoutes');
 const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
 const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
 const { attachSessionAuthAssurance } = require('../../src/middleware/sessionAuthAssurance');
+const { enforceStrictSessionManagement } = require('../../src/middleware/sessionManagement');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
 const Notes = require('../../src/models/Notes');
 const SecurityAlert = require('../../src/models/SecurityAlert');
@@ -297,6 +300,13 @@ function createApp() {
     app.set('view engine', 'ejs');
     app.set('views', path.join(__dirname, '../../src/views'));
     app.locals.runtimeConfig = {
+        sessionManagement: {
+            idleTimeoutMs: 15 * 60 * 1000,
+            absoluteTimeoutMs: 8 * 60 * 60 * 1000,
+            missionIdleTimeoutMs: 5 * 60 * 1000,
+            missionAbsoluteTimeoutMs: 2 * 60 * 60 * 1000,
+            preventConcurrentLogins: true
+        },
         automation: {
             logBatch: {
                 enabled: true,
@@ -362,6 +372,7 @@ function createApp() {
         next();
     });
 
+    app.use(enforceStrictSessionManagement);
     app.use(attachSessionAuthAssurance);
 
     app.use((req, res, next) => {
@@ -390,6 +401,8 @@ function createApp() {
     app.use(hardwareFirstMfaPageRoutes);
     app.use(missionAssuranceApiRoutes);
     app.use(missionAssurancePageRoutes);
+    app.use(sessionManagementApiRoutes);
+    app.use(sessionManagementPageRoutes);
     app.use(seleniumApiRoutes);
     app.use(seleniumPageRoutes);
     app.use(scanApiRoutes);

@@ -142,6 +142,24 @@ const userSchema = new mongoose.Schema({
             type: String,
             default: ''
         }
+    },
+    sessionControl: {
+        activeSessionId: {
+            type: String,
+            default: ''
+        },
+        activeSessionIssuedAt: {
+            type: Date,
+            default: null
+        },
+        lastLockReason: {
+            type: String,
+            default: ''
+        },
+        lastLockAt: {
+            type: Date,
+            default: null
+        }
     }
 }, {
     timestamps: true

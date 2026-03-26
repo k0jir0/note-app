@@ -19,6 +19,7 @@ async function expectResearchWorkspace(page) {
     await expect(page.locator('body')).toContainText('Selenium Module');
     await expect(page.locator('body')).toContainText('Playwright Module');
     await expect(page.locator('body')).toContainText('Self-Healing Module');
+    await expect(page.locator('body')).toContainText('Session Management Module');
     await expect(page.locator('body')).toContainText('Hardware-First MFA Module');
     await expect(page.locator('body')).toContainText('Mission Assurance Module');
 }
@@ -85,6 +86,15 @@ async function expectHardwareMfaModule(page) {
     await expect(page.locator('body')).toContainText('Challenge And Verify');
     await expect(page.locator('body')).toContainText('Hardware token');
     await expect(page.locator('body')).toContainText('PKI');
+}
+
+async function expectSessionManagementModule(page) {
+    await expect(page).toHaveURL(/\/session-management\/module$/);
+    await expect(page.getByRole('heading', { name: 'Session Management Module', exact: true })).toBeVisible();
+    await expect(page.locator('#session-management-scenario-select')).toBeVisible();
+    await expect(page.locator('#session-management-evaluate-btn')).toBeVisible();
+    await expect(page.locator('body')).toContainText('Live Session State');
+    await expect(page.locator('body')).toContainText('Lockdown Decision');
 }
 
 test.describe('Research workspace scenario coverage', () => {
@@ -155,6 +165,16 @@ test.describe('Research workspace scenario coverage', () => {
         await expect(page.locator('#locator-repair-suggestions')).toContainText('locator-repair-analyze-btn');
     });
 
+    test(getPlaywrightScenario('session-management-module-smoke').title, async ({ page }, testInfo) => {
+        const scenario = getPlaywrightScenario('session-management-module-smoke');
+        annotateScenario(testInfo, scenario);
+
+        await createAuthenticatedSession(page, testInfo);
+        await page.goto('/session-management/module');
+        await expectSessionManagementModule(page);
+        await expect(page.locator('#session-management-status')).toContainText('Session Management Module ready.');
+    });
+
     test(getPlaywrightScenario('research-full-suite').title, async ({ page }, testInfo) => {
         const scenario = getPlaywrightScenario('research-full-suite');
         annotateScenario(testInfo, scenario);
@@ -178,6 +198,9 @@ test.describe('Research workspace scenario coverage', () => {
 
         await page.goto('/self-healing/module');
         await expectSelfHealingModule(page);
+
+        await page.goto('/session-management/module');
+        await expectSessionManagementModule(page);
 
         await page.goto('/hardware-mfa/module');
         await expectHardwareMfaModule(page);

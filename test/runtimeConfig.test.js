@@ -74,6 +74,17 @@ describe('Runtime Config Validation', () => {
     it('returns disabled automation config by default', () => {
         const config = validateRuntimeConfig(createValidEnv());
 
+        expect(config.sessionManagement).to.deep.equal({
+            idleTimeoutMinutes: 15,
+            idleTimeoutMs: 15 * 60 * 1000,
+            absoluteTimeoutHours: 8,
+            absoluteTimeoutMs: 8 * 60 * 60 * 1000,
+            missionIdleTimeoutMinutes: 5,
+            missionIdleTimeoutMs: 5 * 60 * 1000,
+            missionAbsoluteTimeoutHours: 2,
+            missionAbsoluteTimeoutMs: 2 * 60 * 60 * 1000,
+            preventConcurrentLogins: true
+        });
         expect(config.automation.logBatch.enabled).to.equal(false);
         expect(config.automation.scanBatch.enabled).to.equal(false);
         expect(config.transport).to.deep.equal({
@@ -124,6 +135,29 @@ describe('Runtime Config Validation', () => {
         expect(() => validateRuntimeConfig(env)).to.throw('HTTPS_CA_PATH is required when HTTPS_REQUEST_CLIENT_CERT=true');
     });
 
+    it('accepts custom session-timeout settings and concurrent-login policy', () => {
+        const env = createValidEnv();
+        env.SESSION_IDLE_TIMEOUT_MINUTES = '20';
+        env.SESSION_ABSOLUTE_TIMEOUT_HOURS = '10';
+        env.MISSION_SESSION_IDLE_TIMEOUT_MINUTES = '4';
+        env.MISSION_SESSION_ABSOLUTE_TIMEOUT_HOURS = '1';
+        env.PREVENT_CONCURRENT_LOGINS = 'false';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.sessionManagement).to.deep.equal({
+            idleTimeoutMinutes: 20,
+            idleTimeoutMs: 20 * 60 * 1000,
+            absoluteTimeoutHours: 10,
+            absoluteTimeoutMs: 10 * 60 * 60 * 1000,
+            missionIdleTimeoutMinutes: 4,
+            missionIdleTimeoutMs: 4 * 60 * 1000,
+            missionAbsoluteTimeoutHours: 1,
+            missionAbsoluteTimeoutMs: 1 * 60 * 60 * 1000,
+            preventConcurrentLogins: false
+        });
+    });
+
     it('requires file path and user id when log batch automation is enabled', () => {
         const env = createValidEnv();
         env.LOG_BATCH_ENABLED = 'true';
@@ -167,6 +201,13 @@ describe('Runtime Config Validation', () => {
             noteEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true,
+            sessionManagement: {
+                idleTimeoutMinutes: 15,
+                absoluteTimeoutHours: 8,
+                missionIdleTimeoutMinutes: 5,
+                missionAbsoluteTimeoutHours: 2,
+                preventConcurrentLogins: true
+            },
             transport: {
                 httpsEnabled: true,
                 requestClientCertificate: true,
@@ -199,6 +240,13 @@ describe('Runtime Config Validation', () => {
             requestClientCertificate: true,
             requireClientCertificate: false,
             trustProxyClientCertHeaders: true
+        });
+        expect(diagnostics.sessionManagement).to.deep.equal({
+            idleTimeoutMinutes: 15,
+            absoluteTimeoutHours: 8,
+            missionIdleTimeoutMinutes: 5,
+            missionAbsoluteTimeoutHours: 2,
+            preventConcurrentLogins: true
         });
         expect(diagnostics).to.not.have.property('dbURI');
         expect(diagnostics).to.not.have.property('sessionSecret');

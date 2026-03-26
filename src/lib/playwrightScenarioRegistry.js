@@ -70,7 +70,7 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Self-Healing, Mission Assurance, and Hardware-First MFA entry points are visible.',
+        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Self-Healing, Mission Assurance, Hardware-First MFA, and Session Management entry points are visible.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Login form is reachable',
@@ -81,7 +81,8 @@ const PLAYWRIGHT_SCENARIOS = [
             'Playwright Module card is present',
             'Self-Healing Module card is present',
             'Mission Assurance Module card is present',
-            'Hardware-First MFA Module card is present'
+            'Hardware-First MFA Module card is present',
+            'Session Management Module card is present'
         ],
         tags: ['smoke', 'auth', 'navigation'],
         requiresLogin: true,
@@ -181,6 +182,24 @@ const PLAYWRIGHT_SCENARIOS = [
         suiteFile: 'playwright-tests/research-scenarios.spec.js'
     },
     {
+        id: 'session-management-module-smoke',
+        title: 'Session Management Module Smoke',
+        purpose: 'Open the Session Management Module and confirm that the live session summary, timeout policy, and lockdown-evaluation controls are visible.',
+        routes: ['/session-management/module'],
+        assertions: [
+            'Session Management Module heading is visible',
+            'Live session summary is visible',
+            'Lockdown evaluation controls are visible',
+            'Scenario selector is present',
+            'Lockdown decision panel is visible'
+        ],
+        tags: ['session-management', 'browser', 'workspace'],
+        requiresLogin: true,
+        optionalDependencies: ['The module uses the active authenticated session and does not require extra infrastructure.'],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/research-scenarios.spec.js'
+    },
+    {
         id: 'notes-crud-workflow',
         title: 'Notes CRUD Workflow',
         purpose: 'Create, view, edit, and delete a note through the server-rendered HTML flow.',
@@ -235,8 +254,8 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, Playwright, Self-Healing, Mission Assurance, and Hardware-First MFA to validate the end-to-end workspace flow.',
-        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/self-healing/module', '/hardware-mfa/module', '/mission-assurance/module'],
+        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, Playwright, Self-Healing, Session Management, Mission Assurance, and Hardware-First MFA to validate the end-to-end workspace flow.',
+        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/self-healing/module', '/session-management/module', '/hardware-mfa/module', '/mission-assurance/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',
             'Research Workspace renders all module entry points',
@@ -245,6 +264,7 @@ const PLAYWRIGHT_SCENARIOS = [
             'Selenium Module renders a script preview',
             'Playwright Module renders a spec preview',
             'Self-Healing Module renders repair suggestions',
+            'Session Management Module renders lockdown controls',
             'Hardware-First MFA Module renders step-up controls',
             'Mission Assurance Module renders policy evaluator'
         ],

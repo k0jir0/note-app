@@ -142,7 +142,7 @@ describe('Auth Routes', () => {
             }
         });
 
-        it('regenerates the session and redirects home after a successful Google callback', () => {
+        it('regenerates the session and redirects home after a successful Google callback', async () => {
             const handler = getHandler('get', '/oauth2/redirect/google');
             const originalClientId = process.env.GOOGLE_CLIENT_ID;
             const originalClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -165,7 +165,7 @@ describe('Auth Routes', () => {
                 const res = buildRes();
                 const next = sinon.stub();
 
-                handler(req, res, next);
+                await handler(req, res, next);
 
                 expect(req.session.regenerate.calledOnce).to.equal(true);
                 expect(req.logIn.calledOnce).to.equal(true);
@@ -306,7 +306,7 @@ describe('Auth Routes', () => {
             })).to.be.true;
         });
 
-        it('should allow the csrf field in login submissions', () => {
+        it('should allow the csrf field in login submissions', async () => {
             const handler = getHandler('post', '/login', 1);
 
             sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
@@ -328,13 +328,13 @@ describe('Auth Routes', () => {
             const res = buildRes();
             const next = sinon.stub();
 
-            handler(req, res, next);
+            await handler(req, res, next);
 
             expect(res.redirect.calledWith('/')).to.be.true;
             expect(next.called).to.be.false;
         });
 
-        it('should regenerate the session before logging in and redirect home', () => {
+        it('should regenerate the session before logging in and redirect home', async () => {
             const handler = getHandler('post', '/login', 1);
 
             sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
@@ -355,7 +355,7 @@ describe('Auth Routes', () => {
             const res = buildRes();
             const next = sinon.stub();
 
-            handler(req, res, next);
+            await handler(req, res, next);
 
             expect(req.session.regenerate.calledOnce).to.be.true;
             expect(req.logIn.calledOnce).to.be.true;
@@ -522,7 +522,7 @@ describe('Auth Routes', () => {
     });
 
     describe('POST /logout', () => {
-        it('should logout, destroy the session, clear the cookie, and redirect to login', () => {
+        it('should logout, destroy the session, clear the cookie, and redirect to login', async () => {
             const handler = getHandler('post', '/logout');
 
             const req = {
@@ -533,7 +533,7 @@ describe('Auth Routes', () => {
             };
             const res = buildRes();
 
-            handler(req, res);
+            await handler(req, res);
 
             expect(req.logout.called).to.be.true;
             expect(req.session.destroy.called).to.be.true;
@@ -541,7 +541,7 @@ describe('Auth Routes', () => {
             expect(res.redirect.calledWith('/auth/login')).to.be.true;
         });
 
-        it('should return 500 if logout fails', () => {
+        it('should return 500 if logout fails', async () => {
             const handler = getHandler('post', '/logout');
 
             const req = {
@@ -552,13 +552,13 @@ describe('Auth Routes', () => {
             };
             const res = buildRes();
 
-            handler(req, res);
+            await handler(req, res);
 
             expect(res.status.calledWith(500)).to.be.true;
             expect(res.json.calledWith({ error: 'Logout failed' })).to.be.true;
         });
 
-        it('should return 500 if session destruction fails after logout', () => {
+        it('should return 500 if session destruction fails after logout', async () => {
             const handler = getHandler('post', '/logout');
 
             const req = {
@@ -569,7 +569,7 @@ describe('Auth Routes', () => {
             };
             const res = buildRes();
 
-            handler(req, res);
+            await handler(req, res);
 
             expect(res.status.calledWith(500)).to.be.true;
             expect(res.json.calledWith({ error: 'Logout failed' })).to.be.true;

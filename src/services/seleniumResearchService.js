@@ -55,6 +55,7 @@ const ROUTE_DESCRIPTIONS = {
     '/ml/module': 'Opens the ML Module so the suite can verify training, autonomy, and recent scored-alert panels.',
     '/selenium/module': 'Opens the Selenium Module so the suite can verify exported WebDriver coverage and latest-run metadata.',
     '/playwright/module': 'Opens the Playwright Module so cross-module Selenium navigation can confirm the broader browser-testing workflow.',
+    '/session-management/module': 'Opens the Session Management Module so the suite can verify strict timeout posture, live session state, and lockdown-evaluation controls.',
     '/hardware-mfa/module': 'Opens the Hardware-First MFA Module so the suite can verify strong-factor step-up controls and current session assurance.',
     '/mission-assurance/module': 'Opens the Mission Assurance Module so the suite can verify tactical access-policy evaluation and current-user security context.'
 };
@@ -78,6 +79,12 @@ const ASSERTION_DESCRIPTIONS = {
     'Playwright Module heading loads from Selenium navigation': 'Checks that Selenium-to-Playwright navigation still lands on the expected destination.',
     'Mission Assurance Module card is present': 'Checks that the Research Workspace still exposes the Mission Assurance entry point.',
     'Hardware-First MFA Module card is present': 'Checks that the Research Workspace still exposes the Hardware-First MFA entry point.',
+    'Session Management Module card is present': 'Checks that the Research Workspace still exposes the Session Management entry point.',
+    'Session Management Module heading is visible': 'Confirms that navigation reached the Session Management module.',
+    'Live session summary is visible': 'Checks that the page surfaces the current server-side session state.',
+    'Lockdown evaluation controls are visible': 'Checks that the timeout and concurrent-login evaluation form is visible.',
+    'Lockdown decision panel is visible': 'Confirms that the module renders a server-side lockdown decision summary.',
+    'Session Management Module renders lockdown controls': 'Confirms that the Session Management page renders session-state and lockdown-evaluation controls.',
     'Security Module renders its workflow controls': 'Checks that the Security Module still renders the controls used by the Selenium workflow.',
     'ML Module renders its autonomy controls': 'Checks that the ML Module still renders its training and autonomy surfaces.',
     'Selenium Module renders latest suite metadata': 'Checks that the Selenium Module still renders latest-run and export metadata.',
@@ -462,7 +469,8 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(driver, \'ML Module\');',
         'await expectBodyText(driver, \'Selenium Module\');',
         'await expectBodyText(driver, \'Playwright Module\');',
-        'await expectBodyText(driver, \'Self-Healing Module\');'
+        'await expectBodyText(driver, \'Self-Healing Module\');',
+        'await expectBodyText(driver, \'Session Management Module\');'
     ].join('\n        '),
     'security-module-workflow': [
         'await createAuthenticatedSession(driver);',
@@ -514,12 +522,22 @@ const SCRIPT_STEP_MAP = {
         'await waitForLocationContains(driver, \'/playwright/module\');',
         'await expectBodyText(driver, \'Playwright Module\');'
     ].join('\n        '),
+    'session-management-module-smoke': [
+        'await createAuthenticatedSession(driver);',
+        'await driver.get(`${baseUrl}/session-management/module`);',
+        'await expectBodyText(driver, \'Session Management Module\');',
+        'await expectBodyText(driver, \'Live Session State\');',
+        'await driver.findElement(By.id(\'session-management-scenario-select\'));',
+        'await driver.findElement(By.id(\'session-management-evaluate-btn\'));',
+        'await expectBodyText(driver, \'Lockdown Decision\');'
+    ].join('\n        '),
     'research-full-suite': [
         'await createAuthenticatedSession(driver);',
         'await driver.get(`${baseUrl}/research`);',
         'await expectBodyText(driver, \'Research Workspace\');',
         'await expectBodyText(driver, \'Selenium Module\');',
         'await expectBodyText(driver, \'Self-Healing Module\');',
+        'await expectBodyText(driver, \'Session Management Module\');',
         'await expectBodyText(driver, \'Hardware-First MFA Module\');',
         'await expectBodyText(driver, \'Mission Assurance Module\');',
         '',
@@ -542,6 +560,10 @@ const SCRIPT_STEP_MAP = {
         'await driver.get(`${baseUrl}/self-healing/module`);',
         'await expectBodyText(driver, \'Self-Healing Module\');',
         'await expectBodyText(driver, \'Repair Candidates\');',
+        '',
+        'await driver.get(`${baseUrl}/session-management/module`);',
+        'await expectBodyText(driver, \'Session Management Module\');',
+        'await expectBodyText(driver, \'Lockdown Decision\');',
         '',
         'await driver.get(`${baseUrl}/hardware-mfa/module`);',
         'await expectBodyText(driver, \'Hardware-First MFA Module\');',

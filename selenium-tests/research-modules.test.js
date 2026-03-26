@@ -109,6 +109,19 @@ async function openHardwareMfaModule(driver, baseUrl) {
     );
 }
 
+async function openSessionManagementModule(driver, baseUrl) {
+    await driver.get(`${baseUrl}/session-management/module`);
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await waitForBodyText(driver, 'Session Management Module');
+    await waitForElementText(
+        driver,
+        By.id('session-management-status'),
+        (text) => text.includes('Session Management Module ready.'),
+        20000,
+        'Expected the Session Management Module to finish loading.'
+    );
+}
+
 describe('Research module browser coverage', function () {
     this.timeout(120000);
 
@@ -138,6 +151,7 @@ describe('Research module browser coverage', function () {
         await waitForBodyText(driver, 'Selenium Module');
         await waitForBodyText(driver, 'Playwright Module');
         await waitForBodyText(driver, 'Self-Healing Module');
+        await waitForBodyText(driver, 'Session Management Module');
         await waitForBodyText(driver, 'Hardware-First MFA Module');
         await waitForBodyText(driver, 'Mission Assurance Module');
 
@@ -172,6 +186,13 @@ describe('Research module browser coverage', function () {
         await clickElement(driver, By.linkText('Open Self-Healing Module'));
         await waitForLocationContains(driver, '/self-healing/module');
         await waitForBodyText(driver, 'Self-Healing Module');
+
+        await clickElement(driver, By.css('a[href="/research"]'));
+        await waitForLocationContains(driver, '/research');
+
+        await clickElement(driver, By.linkText('Open Session Management Module'));
+        await waitForLocationContains(driver, '/session-management/module');
+        await waitForBodyText(driver, 'Session Management Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
@@ -320,6 +341,9 @@ describe('Research module browser coverage', function () {
         await openPlaywrightModule(driver, baseUrl);
         await waitForBodyText(driver, 'Generated Spec Preview');
 
+        await openSessionManagementModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Lockdown Decision');
+
         await openSelfHealingModule(driver, baseUrl);
         await waitForBodyText(driver, 'Repair Candidates');
 
@@ -328,5 +352,13 @@ describe('Research module browser coverage', function () {
 
         await openMissionAssuranceModule(driver, baseUrl);
         await waitForBodyText(driver, 'Policy Decision');
+    });
+
+    it(getSeleniumScenario('session-management-module-smoke').title, async () => {
+        await openSessionManagementModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Live Session State');
+        await driver.findElement(By.id('session-management-scenario-select'));
+        await driver.findElement(By.id('session-management-evaluate-btn'));
+        await waitForBodyText(driver, 'Lockdown Decision');
     });
 });

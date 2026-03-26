@@ -21,6 +21,8 @@ const hardwareFirstMfaApiRoute = require('./src/routes/hardwareFirstMfaApiRoutes
 const hardwareFirstMfaPageRoute = require('./src/routes/hardwareFirstMfaPageRoutes');
 const missionAssuranceApiRoute = require('./src/routes/missionAssuranceApiRoutes');
 const missionAssurancePageRoute = require('./src/routes/missionAssurancePageRoutes');
+const sessionManagementApiRoute = require('./src/routes/sessionManagementApiRoutes');
+const sessionManagementPageRoute = require('./src/routes/sessionManagementPageRoutes');
 const seleniumApiRoute = require('./src/routes/seleniumApiRoutes');
 const seleniumPageRoute = require('./src/routes/seleniumPageRoutes');
 const scanApiRoute = require('./src/routes/scanApiRoutes');
@@ -33,6 +35,7 @@ const { loadRuntimeEnvironment, reapplyLocalEnvOverrides } = require('./src/conf
 const { requireAuth } = require('./src/middleware/auth');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { attachSessionAuthAssurance } = require('./src/middleware/sessionAuthAssurance');
+const { enforceStrictSessionManagement } = require('./src/middleware/sessionManagement');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 const { buildSeedResponseMessage, seedDevelopmentData } = require('./src/services/devSeedService');
@@ -126,6 +129,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         // Passport middleware (must come after session)
         app.use(passport.initialize());
         app.use(passport.session());
+        app.use(enforceStrictSessionManagement);
         app.use(attachSessionAuthAssurance);
 
         app.use(ensureCsrfToken);
@@ -184,6 +188,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.use(hardwareFirstMfaPageRoute);
         app.use(missionAssuranceApiRoute);
         app.use(missionAssurancePageRoute);
+        app.use(sessionManagementApiRoute);
+        app.use(sessionManagementPageRoute);
         app.use(seleniumApiRoute);
         app.use(seleniumPageRoute);
         app.use(scanApiRoute);

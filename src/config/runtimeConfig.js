@@ -285,6 +285,52 @@ function buildTransportConfig(env, errors) {
     };
 }
 
+function buildSessionManagementConfig(env, errors) {
+    const idleTimeoutMinutes = parseIntegerEnv('SESSION_IDLE_TIMEOUT_MINUTES', env, {
+        defaultValue: 15,
+        min: 1,
+        max: 240
+    }, errors);
+    const absoluteTimeoutHours = parseIntegerEnv('SESSION_ABSOLUTE_TIMEOUT_HOURS', env, {
+        defaultValue: 8,
+        min: 1,
+        max: 24
+    }, errors);
+    const missionIdleTimeoutMinutes = parseIntegerEnv('MISSION_SESSION_IDLE_TIMEOUT_MINUTES', env, {
+        defaultValue: 5,
+        min: 1,
+        max: 120
+    }, errors);
+    const missionAbsoluteTimeoutHours = parseIntegerEnv('MISSION_SESSION_ABSOLUTE_TIMEOUT_HOURS', env, {
+        defaultValue: 2,
+        min: 1,
+        max: 12
+    }, errors);
+    const preventConcurrentLogins = env.PREVENT_CONCURRENT_LOGINS === undefined
+        ? true
+        : parseBooleanEnv('PREVENT_CONCURRENT_LOGINS', env, errors);
+
+    if (missionIdleTimeoutMinutes > idleTimeoutMinutes) {
+        errors.push('MISSION_SESSION_IDLE_TIMEOUT_MINUTES must be less than or equal to SESSION_IDLE_TIMEOUT_MINUTES');
+    }
+
+    if (missionAbsoluteTimeoutHours > absoluteTimeoutHours) {
+        errors.push('MISSION_SESSION_ABSOLUTE_TIMEOUT_HOURS must be less than or equal to SESSION_ABSOLUTE_TIMEOUT_HOURS');
+    }
+
+    return {
+        idleTimeoutMinutes,
+        idleTimeoutMs: idleTimeoutMinutes * 60 * 1000,
+        absoluteTimeoutHours,
+        absoluteTimeoutMs: absoluteTimeoutHours * 60 * 60 * 1000,
+        missionIdleTimeoutMinutes,
+        missionIdleTimeoutMs: missionIdleTimeoutMinutes * 60 * 1000,
+        missionAbsoluteTimeoutHours,
+        missionAbsoluteTimeoutMs: missionAbsoluteTimeoutHours * 60 * 60 * 1000,
+        preventConcurrentLogins
+    };
+}
+
 function toDiagnosticRuntimeConfig(runtimeConfig) {
     if (!runtimeConfig || typeof runtimeConfig !== 'object') {
         return null;
@@ -298,6 +344,21 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
         noteEncryptionConfigured: isNonEmptyString(runtimeConfig.noteEncryptionKey),
         appBaseUrl: isNonEmptyString(runtimeConfig.appBaseUrl) ? runtimeConfig.appBaseUrl.trim() : '',
         googleAuthEnabled: Boolean(runtimeConfig.googleAuthEnabled),
+        sessionManagement: {
+            idleTimeoutMinutes: Number.isFinite(runtimeConfig.sessionManagement && runtimeConfig.sessionManagement.idleTimeoutMinutes)
+                ? runtimeConfig.sessionManagement.idleTimeoutMinutes
+                : null,
+            absoluteTimeoutHours: Number.isFinite(runtimeConfig.sessionManagement && runtimeConfig.sessionManagement.absoluteTimeoutHours)
+                ? runtimeConfig.sessionManagement.absoluteTimeoutHours
+                : null,
+            missionIdleTimeoutMinutes: Number.isFinite(runtimeConfig.sessionManagement && runtimeConfig.sessionManagement.missionIdleTimeoutMinutes)
+                ? runtimeConfig.sessionManagement.missionIdleTimeoutMinutes
+                : null,
+            missionAbsoluteTimeoutHours: Number.isFinite(runtimeConfig.sessionManagement && runtimeConfig.sessionManagement.missionAbsoluteTimeoutHours)
+                ? runtimeConfig.sessionManagement.missionAbsoluteTimeoutHours
+                : null,
+            preventConcurrentLogins: Boolean(runtimeConfig.sessionManagement && runtimeConfig.sessionManagement.preventConcurrentLogins)
+        },
         transport: {
             protocol: runtimeConfig.transport && runtimeConfig.transport.httpsEnabled ? 'https' : 'http',
             httpsEnabled: Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled),
@@ -375,6 +436,7 @@ function validateRuntimeConfig(env = process.env) {
     const logBatch = buildLogBatchConfig(env, errors);
     const scanBatch = buildScanBatchConfig(env, errors);
     const intrusionBatch = buildIntrusionBatchConfig(env, errors);
+    const sessionManagement = buildSessionManagementConfig(env, errors);
     const transport = buildTransportConfig(env, errors);
 
     if (errors.length > 0) {
@@ -387,6 +449,7 @@ function validateRuntimeConfig(env = process.env) {
         noteEncryptionKey: env.NOTE_ENCRYPTION_KEY.trim(),
         appBaseUrl: getConfiguredAppBaseUrl(env),
         googleAuthEnabled: hasGoogleAuthCredentials(env),
+        sessionManagement,
         transport,
         automation: {
             logBatch,
