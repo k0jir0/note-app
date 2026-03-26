@@ -140,9 +140,7 @@ function renderDistributionBars(target, items = [], emptyMessage, formatter = (i
                     <span class="fw-semibold">${escapeHtml(item.label)}</span>
                     <span class="text-muted small">${escapeHtml(formatter(item))}</span>
                 </div>
-                <div class="ml-distribution-track">
-                    <div class="ml-distribution-fill" style="width: ${width.toFixed(1)}%"></div>
-                </div>
+                <progress class="ml-progress ml-distribution-progress" max="100" value="${width.toFixed(1)}">${width.toFixed(1)}%</progress>
             </div>
         `;
     }).join('');
@@ -167,9 +165,7 @@ function renderFeatureHighlights(target, features = [], emptyMessage, tone) {
                     <span class="fw-semibold">${escapeHtml(feature.label)}</span>
                     <span class="small text-muted">${escapeHtml(feature.weight.toFixed(3))}</span>
                 </div>
-                <div class="ml-feature-track">
-                    <div class="ml-feature-fill tone-${escapeHtml(tone)}" style="width: ${width.toFixed(1)}%"></div>
-                </div>
+                <progress class="ml-progress tone-${escapeHtml(tone)}" max="100" value="${width.toFixed(1)}">${width.toFixed(1)}%</progress>
             </div>
         `;
     }).join('');
@@ -187,20 +183,34 @@ function renderAlertTypeBreakdown(items = []) {
 
     alertTypeBreakdownEl.innerHTML = items.map((item) => {
         const total = Number(item.total) || 1;
-        const highWidth = (Number(item.high || 0) / total) * 100;
-        const mediumWidth = (Number(item.medium || 0) / total) * 100;
-        const lowWidth = (Number(item.low || 0) / total) * 100;
-
         return `
             <div class="ml-type-row">
                 <div class="d-flex justify-content-between gap-3 mb-1">
                     <span class="fw-semibold">${escapeHtml(item.label)}</span>
                     <span class="text-muted small">${escapeHtml(item.total)} alert(s)</span>
                 </div>
-                <div class="ml-stacked-track mb-2" role="img" aria-label="${escapeHtml(item.label)} priority distribution">
-                    <div class="ml-stack-segment tone-high" style="width: ${highWidth.toFixed(1)}%"></div>
-                    <div class="ml-stack-segment tone-medium" style="width: ${mediumWidth.toFixed(1)}%"></div>
-                    <div class="ml-stack-segment tone-low" style="width: ${lowWidth.toFixed(1)}%"></div>
+                <div class="d-grid gap-2 mb-2" role="img" aria-label="${escapeHtml(item.label)} priority distribution">
+                    <div>
+                        <div class="d-flex justify-content-between gap-3 small mb-1">
+                            <span>High</span>
+                            <span>${escapeHtml(item.high || 0)}</span>
+                        </div>
+                        <progress class="ml-progress tone-high" max="${total}" value="${Number(item.high || 0)}">${escapeHtml(item.high || 0)}</progress>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between gap-3 small mb-1">
+                            <span>Medium</span>
+                            <span>${escapeHtml(item.medium || 0)}</span>
+                        </div>
+                        <progress class="ml-progress tone-medium" max="${total}" value="${Number(item.medium || 0)}">${escapeHtml(item.medium || 0)}</progress>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between gap-3 small mb-1">
+                            <span>Low</span>
+                            <span>${escapeHtml(item.low || 0)}</span>
+                        </div>
+                        <progress class="ml-progress tone-low" max="${total}" value="${Number(item.low || 0)}">${escapeHtml(item.low || 0)}</progress>
+                    </div>
                 </div>
                 <div class="d-flex flex-wrap gap-2 small text-muted">
                     <span>High ${escapeHtml(item.high || 0)}</span>

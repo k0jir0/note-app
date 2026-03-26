@@ -73,7 +73,7 @@ const SELENIUM_SCENARIOS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Injection Prevention, Self-Healing, Mission Assurance, Hardware-First MFA, and Session Management entry points remain available.',
+        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Self-Healing, Mission Assurance, Hardware-First MFA, and Session Management entry points remain available.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Research Workspace heading is visible',
@@ -82,6 +82,7 @@ const SELENIUM_SCENARIOS = [
             'Selenium Module card is present',
             'Playwright Module card is present',
             'Injection Prevention Module card is present',
+            'XSS Defense Module card is present',
             'Self-Healing Module card is present',
             'Mission Assurance Module card is present',
             'Hardware-First MFA Module card is present',
@@ -202,6 +203,24 @@ const SELENIUM_SCENARIOS = [
         suiteFile: 'selenium-tests/research-modules.test.js'
     },
     {
+        id: 'xss-defense-module-smoke',
+        title: 'XSS Defense Module Smoke',
+        purpose: 'Open the XSS Defense Module and confirm that escaped rendering posture, strict CSP directives, and payload-evaluation controls are visible.',
+        routes: ['/xss-defense/module'],
+        assertions: [
+            'XSS Defense Module heading is visible',
+            'Escaped rendering controls are visible',
+            'CSP directives are visible',
+            'Scenario selector is present',
+            'XSS decision panel is visible'
+        ],
+        tags: ['xss-defense', 'research', 'browser'],
+        requiresLogin: true,
+        optionalDependencies: [],
+        implementedInSuite: true,
+        suiteFile: 'selenium-tests/research-modules.test.js'
+    },
+    {
         id: 'session-management-module-smoke',
         title: 'Session Management Module Smoke',
         purpose: 'Open the Session Management Module and confirm that the live session summary, timeout policy, and lockdown-evaluation controls are visible.',
@@ -222,8 +241,8 @@ const SELENIUM_SCENARIOS = [
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated Selenium path across Research, Security, ML, Selenium, Playwright, Injection Prevention, Self-Healing, Session Management, Mission Assurance, and Hardware-First MFA so the end-to-end browser workflow is covered by a single smoke scenario.',
-        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/injection-prevention/module', '/self-healing/module', '/session-management/module', '/hardware-mfa/module', '/mission-assurance/module'],
+        purpose: 'Run one authenticated Selenium path across Research, Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Self-Healing, Session Management, Mission Assurance, and Hardware-First MFA so the end-to-end browser workflow is covered by a single smoke scenario.',
+        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/injection-prevention/module', '/xss-defense/module', '/self-healing/module', '/session-management/module', '/hardware-mfa/module', '/mission-assurance/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',
             'Research Workspace renders all module entry points',
@@ -232,6 +251,7 @@ const SELENIUM_SCENARIOS = [
             'Selenium Module renders latest suite metadata',
             'Playwright Module renders its starter spec preview',
             'Injection Prevention Module renders hardening controls',
+            'XSS Defense Module renders CSP controls',
             'Self-Healing Module renders repair suggestions',
             'Session Management Module renders lockdown controls',
             'Hardware-First MFA Module renders step-up controls',

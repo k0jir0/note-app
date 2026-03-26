@@ -193,6 +193,28 @@ const ACTION_CATALOG = [
         sensitivity: 'moderate'
     },
     {
+        id: 'view_xss_defense_module',
+        label: 'View XSS Defense Module',
+        description: 'Inspect escaped rendering posture, CSP controls, and browser-facing XSS defenses.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        sensitivity: 'moderate'
+    },
+    {
+        id: 'evaluate_xss_defense_controls',
+        label: 'Evaluate XSS Defense Controls',
+        description: 'Simulate whether untrusted browser content is neutralized by escaped rendering and strict CSP.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        sensitivity: 'moderate'
+    },
+    {
         id: 'perform_hardware_mfa_step_up',
         label: 'Perform Hardware-First Step-Up',
         description: 'Request and verify a hardware-token or PKI-backed step-up challenge.',
@@ -263,6 +285,19 @@ const RESOURCE_CATALOG = [
         classification: 'protected_b',
         missionId: 'research-workspace',
         allowedActions: ['view_injection_prevention_module', 'evaluate_injection_prevention_controls'],
+        allowedUnits: [],
+        requiredDeviceTier: 'managed',
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none'
+    },
+    {
+        id: 'xss-defense-lab',
+        title: 'XSS Defense Lab',
+        summary: 'A research surface for escaped rendering, sink discipline, and strict Content Security Policy controls.',
+        classification: 'protected_b',
+        missionId: 'research-workspace',
+        allowedActions: ['view_xss_defense_module', 'evaluate_xss_defense_controls'],
         allowedUnits: [],
         requiredDeviceTier: 'managed',
         allowedNetworkZones: ['public', 'corp', 'mission'],
@@ -479,6 +514,7 @@ const SAMPLE_PERSONAS = [
 const MATRIX_COMBINATIONS = [
     { actionId: 'view_security_alerts', resourceId: 'security-alert-feed' },
     { actionId: 'evaluate_injection_prevention_controls', resourceId: 'injection-prevention-lab' },
+    { actionId: 'evaluate_xss_defense_controls', resourceId: 'xss-defense-lab' },
     { actionId: 'evaluate_session_lockdown_controls', resourceId: 'session-management-lab' },
     { actionId: 'train_ml_model', resourceId: 'triage-model-training' },
     { actionId: 'export_incident_report', resourceId: 'incident-report-export' },

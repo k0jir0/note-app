@@ -1,4 +1,5 @@
 const express = require('express');
+const helmet = require('helmet');
 const mongoose = require('mongoose');
 const path = require('path');
 const session = require('express-session');
@@ -14,6 +15,8 @@ const playwrightApiRoutes = require('../../src/routes/playwrightApiRoutes');
 const playwrightPageRoutes = require('../../src/routes/playwrightPageRoutes');
 const injectionPreventionApiRoutes = require('../../src/routes/injectionPreventionApiRoutes');
 const injectionPreventionPageRoutes = require('../../src/routes/injectionPreventionPageRoutes');
+const xssDefenseApiRoutes = require('../../src/routes/xssDefenseApiRoutes');
+const xssDefensePageRoutes = require('../../src/routes/xssDefensePageRoutes');
 const locatorRepairApiRoutes = require('../../src/routes/locatorRepairApiRoutes');
 const locatorRepairPageRoutes = require('../../src/routes/locatorRepairPageRoutes');
 const hardwareFirstMfaApiRoutes = require('../../src/routes/hardwareFirstMfaApiRoutes');
@@ -28,6 +31,7 @@ const { enforceInjectionPrevention } = require('../../src/middleware/injectionPr
 const { attachSessionAuthAssurance } = require('../../src/middleware/sessionAuthAssurance');
 const { enforceStrictSessionManagement } = require('../../src/middleware/sessionManagement');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
+const { buildContentSecurityPolicyDirectives, buildHelmetProtectionOptions } = require('../../src/config/xssDefense');
 const { applyMongooseInjectionDefaults } = require('../../src/services/injectionPreventionService');
 const Notes = require('../../src/models/Notes');
 const SecurityAlert = require('../../src/models/SecurityAlert');
@@ -338,9 +342,15 @@ function createApp() {
         requestGuardEnabled: true,
         ...mongoosePosture
     };
+    app.locals.xssDefense = {
+        escapedServerRendering: true,
+        strictCspEnabled: true,
+        directives: buildContentSecurityPolicyDirectives()
+    };
     app.locals.realtimeAvailable = true;
     app.locals.realtimeEnabled = true;
 
+    app.use(helmet(buildHelmetProtectionOptions({ isProduction: false })));
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
     app.use(enforceInjectionPrevention);
@@ -408,6 +418,8 @@ function createApp() {
     app.use(playwrightPageRoutes);
     app.use(injectionPreventionApiRoutes);
     app.use(injectionPreventionPageRoutes);
+    app.use(xssDefenseApiRoutes);
+    app.use(xssDefensePageRoutes);
     app.use(locatorRepairApiRoutes);
     app.use(locatorRepairPageRoutes);
     app.use(hardwareFirstMfaApiRoutes);

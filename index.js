@@ -17,6 +17,8 @@ const playwrightApiRoute = require('./src/routes/playwrightApiRoutes');
 const playwrightPageRoute = require('./src/routes/playwrightPageRoutes');
 const locatorRepairApiRoute = require('./src/routes/locatorRepairApiRoutes');
 const locatorRepairPageRoute = require('./src/routes/locatorRepairPageRoutes');
+const xssDefenseApiRoute = require('./src/routes/xssDefenseApiRoutes');
+const xssDefensePageRoute = require('./src/routes/xssDefensePageRoutes');
 const hardwareFirstMfaApiRoute = require('./src/routes/hardwareFirstMfaApiRoutes');
 const hardwareFirstMfaPageRoute = require('./src/routes/hardwareFirstMfaPageRoutes');
 const missionAssuranceApiRoute = require('./src/routes/missionAssuranceApiRoutes');
@@ -32,6 +34,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const metricsRoute = require('./src/routes/metrics');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { loadRuntimeEnvironment, reapplyLocalEnvOverrides } = require('./src/config/runtimeEnv');
+const { buildContentSecurityPolicyDirectives, buildHelmetProtectionOptions } = require('./src/config/xssDefense');
 const { requireAuth } = require('./src/middleware/auth');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { attachSessionAuthAssurance } = require('./src/middleware/sessionAuthAssurance');
@@ -74,6 +77,11 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
             requestGuardEnabled: true,
             ...mongooseSecurity
         };
+        app.locals.xssDefense = {
+            escapedServerRendering: true,
+            strictCspEnabled: true,
+            directives: buildContentSecurityPolicyDirectives()
+        };
         // runtime toggle for realtime (can be changed without restarting when Redis is configured)
         app.locals.realtimeEnabled = realtimeAvailable && process.env.ENABLE_REALTIME === '1';
         app.locals.transportSecurity = runtimeConfig.transport;
@@ -85,24 +93,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.set('view engine', 'ejs');
         app.set('views', path.join(__dirname, 'src', 'views'));
 
-        app.use(helmet({
-            contentSecurityPolicy: {
-                directives: {
-                    defaultSrc: ['\'self\''],
-                    scriptSrc: ['\'self\''],
-                    // Removed 'unsafe-inline' for styles; app uses external CSS files only
-                    styleSrc: ['\'self\'', 'https://cdn.jsdelivr.net'],
-                    imgSrc: ['\'self\'', 'data:', 'https:'],
-                    fontSrc: ['\'self\'', 'data:', 'https://cdn.jsdelivr.net'],
-                    connectSrc: ['\'self\''],
-                    objectSrc: ['\'none\''],
-                    baseUri: ['\'self\''],
-                    formAction: ['\'self\''],
-                    frameAncestors: ['\'none\'']
-                }
-            },
-            hsts: isProduction ? undefined : false
-        }));
+        app.use(helmet(buildHelmetProtectionOptions({ isProduction })));
 
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
@@ -195,6 +186,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.use(playwrightPageRoute);
         app.use(injectionPreventionApiRoute);
         app.use(injectionPreventionPageRoute);
+        app.use(xssDefenseApiRoute);
+        app.use(xssDefensePageRoute);
         app.use(locatorRepairApiRoute);
         app.use(locatorRepairPageRoute);
         app.use(hardwareFirstMfaApiRoute);

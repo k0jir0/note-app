@@ -295,10 +295,13 @@ describe('Application end-to-end flows', function () {
         const researchHtml = await researchPage.text();
 
         expect(researchPage.status).to.equal(200);
+        expect(researchPage.headers.get('content-security-policy')).to.include('script-src \'self\'');
+        expect(researchPage.headers.get('content-security-policy')).to.include('script-src-attr \'none\'');
         expect(researchHtml).to.include('ML Module');
         expect(researchHtml).to.include('Selenium Module');
         expect(researchHtml).to.include('Playwright Module');
         expect(researchHtml).to.include('Injection Prevention Module');
+        expect(researchHtml).to.include('XSS Defense Module');
         expect(researchHtml).to.include('Self-Healing Module');
         expect(researchHtml).to.include('Session Management Module');
         expect(researchHtml).to.include('Hardware-First MFA Module');
@@ -307,6 +310,7 @@ describe('Application end-to-end flows', function () {
         expect(researchHtml).to.include('/selenium/module');
         expect(researchHtml).to.include('/playwright/module');
         expect(researchHtml).to.include('/injection-prevention/module');
+        expect(researchHtml).to.include('/xss-defense/module');
         expect(researchHtml).to.include('/self-healing/module');
         expect(researchHtml).to.include('/session-management/module');
         expect(researchHtml).to.include('/hardware-mfa/module');
@@ -468,6 +472,7 @@ describe('Application end-to-end flows', function () {
         expect(seleniumScriptPayload.data.content).to.include('/selenium/module');
         expect(seleniumScriptPayload.data.content).to.include('/playwright/module');
         expect(seleniumScriptPayload.data.content).to.include('/injection-prevention/module');
+        expect(seleniumScriptPayload.data.content).to.include('/xss-defense/module');
         expect(seleniumScriptPayload.data.content).to.include('/self-healing/module');
         expect(seleniumScriptPayload.data.content).to.include('/session-management/module');
         expect(seleniumScriptPayload.data.content).to.include('/hardware-mfa/module');
@@ -510,6 +515,7 @@ describe('Application end-to-end flows', function () {
         expect(playwrightScriptPayload.data.content).to.include('/selenium/module');
         expect(playwrightScriptPayload.data.content).to.include('/playwright/module');
         expect(playwrightScriptPayload.data.content).to.include('/injection-prevention/module');
+        expect(playwrightScriptPayload.data.content).to.include('/xss-defense/module');
         expect(playwrightScriptPayload.data.content).to.include('/self-healing/module');
         expect(playwrightScriptPayload.data.content).to.include('/session-management/module');
         expect(playwrightScriptPayload.data.content).to.include('/hardware-mfa/module');
@@ -581,6 +587,51 @@ describe('Application end-to-end flows', function () {
         expect(injectionBlockedPayload.success).to.equal(false);
         expect(injectionBlockedPayload.message).to.equal('Rejected potentially unsafe request input');
         expect(injectionBlockedPayload.errors[0]).to.include('body.probe.$ne');
+
+        const xssDefensePage = await client.request('/xss-defense/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const xssDefenseHtml = await xssDefensePage.text();
+
+        expect(xssDefensePage.status).to.equal(200);
+        expect(xssDefenseHtml).to.include('XSS Defense Module');
+        expect(xssDefenseHtml).to.include('/api/xss-defense/overview');
+        expect(xssDefenseHtml).to.include('/api/xss-defense/evaluate');
+        expect(xssDefenseHtml).to.include('Rendering And Header Controls');
+        expect(xssDefenseHtml).to.include('Escaping And CSP Outcome');
+
+        const xssDefenseOverviewResponse = await client.request('/api/xss-defense/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const xssDefenseOverviewPayload = await xssDefenseOverviewResponse.json();
+
+        expect(xssDefenseOverviewResponse.status).to.equal(200);
+        expect(xssDefenseOverviewPayload.success).to.equal(true);
+        expect(xssDefenseOverviewPayload.data.module.name).to.equal('XSS Defense Module');
+        expect(xssDefenseOverviewPayload.data.csp.enforced).to.equal(true);
+        expect(xssDefenseOverviewPayload.data.csp.directives.scriptSrc).to.deep.equal(['\'self\'']);
+        expect(xssDefenseOverviewPayload.data.csp.directives.scriptSrcAttr).to.deep.equal(['\'none\'']);
+        expect(xssDefenseOverviewPayload.data.rendering.serverTemplates.escapedInterpolationOnly).to.equal(true);
+
+        const xssDefenseCsrfToken = await client.getCsrfToken();
+        const xssDefenseEvaluateResponse = await client.request('/api/xss-defense/evaluate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': xssDefenseCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                scenarioId: 'script-tag-note-title'
+            })
+        });
+        const xssDefenseEvaluatePayload = await xssDefenseEvaluateResponse.json();
+
+        expect(xssDefenseEvaluateResponse.status).to.equal(200);
+        expect(xssDefenseEvaluatePayload.success).to.equal(true);
+        expect(xssDefenseEvaluatePayload.data.decision).to.equal('escape-and-restrict');
+        expect(xssDefenseEvaluatePayload.data.dangerSignals).to.be.an('array').that.is.not.empty;
+        expect(xssDefenseEvaluatePayload.data.escapedPreview).to.include('&lt;script&gt;');
 
         const legacyLocatorRepairPage = await client.request('/locator-repair/module', {
             headers: { 'x-test-auth': '1' }

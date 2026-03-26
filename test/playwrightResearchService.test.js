@@ -26,6 +26,7 @@ describe('Playwright research service', () => {
         expect(overview.suite.implementedScenarioCount).to.equal(scenarioCount);
         expect(overview.suite.latestRun).to.have.property('available');
         expect(overview.scenarios.find((scenario) => scenario.id === 'injection-prevention-module-smoke')).to.exist;
+        expect(overview.scenarios.find((scenario) => scenario.id === 'xss-defense-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'self-healing-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'session-management-module-smoke')).to.exist;
         expect(overview.scenarios[0].routes[0]).to.match(/^http:\/\/127\.0\.0\.1:3000\//);
@@ -53,6 +54,7 @@ describe('Playwright research service', () => {
         expect(script.content).to.include('/selenium/module');
         expect(script.content).to.include('/playwright/module');
         expect(script.content).to.include('/injection-prevention/module');
+        expect(script.content).to.include('/xss-defense/module');
         expect(script.content).to.include('/self-healing/module');
         expect(script.content).to.include('/session-management/module');
         expect(script.content).to.include('/mission-assurance/module');
@@ -70,6 +72,19 @@ describe('Playwright research service', () => {
         expect(script.content).to.include('/injection-prevention/module');
         expect(script.content).to.include('#injection-prevention-scenario-select');
         expect(script.content).to.include('#injection-prevention-evaluation');
+    });
+
+    it('builds a playwright spec template for the xss-defense scenario', () => {
+        const script = playwrightResearchService.buildPlaywrightScript({
+            baseUrl: 'http://localhost:3000',
+            scenarioId: 'xss-defense-module-smoke'
+        });
+
+        expect(script.fileName).to.equal('playwright-xss-defense-module-smoke.spec.js');
+        expect(script.routePaths).to.include('/xss-defense/module');
+        expect(script.content).to.include('/xss-defense/module');
+        expect(script.content).to.include('#xss-defense-scenario-select');
+        expect(script.content).to.include('#xss-defense-evaluation');
     });
 
     it('builds a playwright spec template for the self-healing scenario', () => {

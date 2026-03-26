@@ -19,6 +19,7 @@ async function expectResearchWorkspace(page) {
     await expect(page.locator('body')).toContainText('Selenium Module');
     await expect(page.locator('body')).toContainText('Playwright Module');
     await expect(page.locator('body')).toContainText('Injection Prevention Module');
+    await expect(page.locator('body')).toContainText('XSS Defense Module');
     await expect(page.locator('body')).toContainText('Self-Healing Module');
     await expect(page.locator('body')).toContainText('Session Management Module');
     await expect(page.locator('body')).toContainText('Hardware-First MFA Module');
@@ -69,6 +70,16 @@ async function expectInjectionPreventionModule(page) {
     await expect(page.locator('body')).toContainText('Architectural Controls');
     await expect(page.locator('body')).toContainText('Structured Query Templates');
     await expect(page.locator('body')).toContainText('Prevention Decision');
+}
+
+async function expectXssDefenseModule(page) {
+    await expect(page).toHaveURL(/\/xss-defense\/module$/);
+    await expect(page.getByRole('heading', { name: 'XSS Defense Module', exact: true })).toBeVisible();
+    await expect(page.locator('#xss-defense-scenario-select')).toBeVisible();
+    await expect(page.locator('#xss-defense-evaluate-btn')).toBeVisible();
+    await expect(page.locator('body')).toContainText('Rendering And Header Controls');
+    await expect(page.locator('body')).toContainText('Directive Set');
+    await expect(page.locator('body')).toContainText('Escaping And CSP Outcome');
 }
 
 async function expectSelfHealingModule(page) {
@@ -166,6 +177,16 @@ test.describe('Research workspace scenario coverage', () => {
         await expect(page.locator('#injection-prevention-status')).toContainText('Injection Prevention Module ready.');
     });
 
+    test(getPlaywrightScenario('xss-defense-module-smoke').title, async ({ page }, testInfo) => {
+        const scenario = getPlaywrightScenario('xss-defense-module-smoke');
+        annotateScenario(testInfo, scenario);
+
+        await createAuthenticatedSession(page, testInfo);
+        await page.goto('/xss-defense/module');
+        await expectXssDefenseModule(page);
+        await expect(page.locator('#xss-defense-status')).toContainText('XSS Defense Module ready.');
+    });
+
     test(getPlaywrightScenario('self-healing-module-smoke').title, async ({ page }, testInfo) => {
         const scenario = getPlaywrightScenario('self-healing-module-smoke');
         annotateScenario(testInfo, scenario);
@@ -219,6 +240,9 @@ test.describe('Research workspace scenario coverage', () => {
 
         await page.goto('/injection-prevention/module');
         await expectInjectionPreventionModule(page);
+
+        await page.goto('/xss-defense/module');
+        await expectXssDefenseModule(page);
 
         await page.goto('/self-healing/module');
         await expectSelfHealingModule(page);

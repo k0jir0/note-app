@@ -83,6 +83,19 @@ async function openInjectionPreventionModule(driver, baseUrl) {
     );
 }
 
+async function openXssDefenseModule(driver, baseUrl) {
+    await driver.get(`${baseUrl}/xss-defense/module`);
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await waitForBodyText(driver, 'XSS Defense Module');
+    await waitForElementText(
+        driver,
+        By.id('xss-defense-status'),
+        (text) => text.includes('XSS Defense Module ready.'),
+        20000,
+        'Expected the XSS Defense Module to finish loading.'
+    );
+}
+
 async function openSelfHealingModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/self-healing/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
@@ -164,6 +177,7 @@ describe('Research module browser coverage', function () {
         await waitForBodyText(driver, 'Selenium Module');
         await waitForBodyText(driver, 'Playwright Module');
         await waitForBodyText(driver, 'Injection Prevention Module');
+        await waitForBodyText(driver, 'XSS Defense Module');
         await waitForBodyText(driver, 'Self-Healing Module');
         await waitForBodyText(driver, 'Session Management Module');
         await waitForBodyText(driver, 'Hardware-First MFA Module');
@@ -200,6 +214,13 @@ describe('Research module browser coverage', function () {
         await clickElement(driver, By.linkText('Open Injection Prevention Module'));
         await waitForLocationContains(driver, '/injection-prevention/module');
         await waitForBodyText(driver, 'Injection Prevention Module');
+
+        await clickElement(driver, By.css('a[href="/research"]'));
+        await waitForLocationContains(driver, '/research');
+
+        await clickElement(driver, By.linkText('Open XSS Defense Module'));
+        await waitForLocationContains(driver, '/xss-defense/module');
+        await waitForBodyText(driver, 'XSS Defense Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
@@ -354,6 +375,15 @@ describe('Research module browser coverage', function () {
         await waitForBodyText(driver, 'Prevention Decision');
     });
 
+    it(getSeleniumScenario('xss-defense-module-smoke').title, async () => {
+        await openXssDefenseModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Rendering And Header Controls');
+        await waitForBodyText(driver, 'Directive Set');
+        await driver.findElement(By.id('xss-defense-scenario-select'));
+        await driver.findElement(By.id('xss-defense-evaluate-btn'));
+        await waitForBodyText(driver, 'Escaping And CSP Outcome');
+    });
+
     it(getSeleniumScenario('research-full-suite').title, async () => {
         await openResearchWorkspace(driver, baseUrl);
         await waitForBodyText(driver, 'Security Module');
@@ -373,6 +403,9 @@ describe('Research module browser coverage', function () {
 
         await openInjectionPreventionModule(driver, baseUrl);
         await waitForBodyText(driver, 'Prevention Decision');
+
+        await openXssDefenseModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Escaping And CSP Outcome');
 
         await openSessionManagementModule(driver, baseUrl);
         await waitForBodyText(driver, 'Lockdown Decision');
