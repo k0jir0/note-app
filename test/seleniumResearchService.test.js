@@ -49,6 +49,7 @@ describe('Selenium research service', () => {
         expect(script.content).to.include('/security/module');
         expect(script.content).to.include('/selenium/module');
         expect(script.content).to.include('/playwright/module');
+        expect(script.content).to.include('/self-healing/module');
     });
 
     it('throws when an unknown scenario is requested', () => {

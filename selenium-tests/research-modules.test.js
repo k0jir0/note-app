@@ -70,6 +70,19 @@ async function openPlaywrightModule(driver, baseUrl) {
     );
 }
 
+async function openSelfHealingModule(driver, baseUrl) {
+    await driver.get(`${baseUrl}/self-healing/module`);
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await waitForBodyText(driver, 'Self-Healing Module');
+    await waitForElementText(
+        driver,
+        By.id('locator-repair-status'),
+        (text) => text.includes('Self-Healing Module ready.'),
+        20000,
+        'Expected the Self-Healing Module to finish loading.'
+    );
+}
+
 describe('Research module browser coverage', function () {
     this.timeout(120000);
 
@@ -98,6 +111,7 @@ describe('Research module browser coverage', function () {
         await waitForBodyText(driver, 'ML Module');
         await waitForBodyText(driver, 'Selenium Module');
         await waitForBodyText(driver, 'Playwright Module');
+        await waitForBodyText(driver, 'Self-Healing Module');
 
         await clickElement(driver, By.linkText('Open Security Module'));
         await waitForLocationContains(driver, '/security/module');
@@ -123,6 +137,13 @@ describe('Research module browser coverage', function () {
         await clickElement(driver, By.linkText('Open Playwright Module'));
         await waitForLocationContains(driver, '/playwright/module');
         await waitForBodyText(driver, 'Playwright Module');
+
+        await clickElement(driver, By.css('a[href="/research"]'));
+        await waitForLocationContains(driver, '/research');
+
+        await clickElement(driver, By.linkText('Open Self-Healing Module'));
+        await waitForLocationContains(driver, '/self-healing/module');
+        await waitForBodyText(driver, 'Self-Healing Module');
     });
 
     it(getSeleniumScenario('security-module-workflow').title, async () => {
@@ -256,5 +277,8 @@ describe('Research module browser coverage', function () {
 
         await openPlaywrightModule(driver, baseUrl);
         await waitForBodyText(driver, 'Generated Spec Preview');
+
+        await openSelfHealingModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Repair Candidates');
     });
 });

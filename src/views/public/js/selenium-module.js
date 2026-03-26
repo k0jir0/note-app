@@ -1,12 +1,10 @@
-const rootEl = document.getElementById('selenium-module-root');
-const overviewEndpoint = rootEl && rootEl.dataset
-    ? rootEl.dataset.seleniumOverviewEndpoint || '/api/selenium/overview'
-    : '/api/selenium/overview';
-const scriptEndpoint = rootEl && rootEl.dataset
-    ? rootEl.dataset.seleniumScriptEndpoint || '/api/selenium/script'
-    : '/api/selenium/script';
+const {
+    createModuleController,
+    escapeHtml,
+    formatDateTime,
+    getRunTone
+} = window.BrowserResearchModuleShared;
 
-const statusTarget = document.getElementById('selenium-status');
 const runtimeLabelEl = document.getElementById('selenium-runtime-label');
 const scenarioCountEl = document.getElementById('selenium-scenario-count');
 const authCountEl = document.getElementById('selenium-auth-count');
@@ -15,7 +13,6 @@ const controlsGuideEl = document.getElementById('selenium-controls-guide');
 const workflowGrid = document.getElementById('selenium-workflow-grid');
 const prerequisitesGrid = document.getElementById('selenium-prerequisites-grid');
 const scenariosGrid = document.getElementById('selenium-scenarios-grid');
-const scenarioSelect = document.getElementById('selenium-scenario-select');
 const suiteImplementedCountEl = document.getElementById('selenium-suite-implemented-count');
 const latestRunStatusEl = document.getElementById('selenium-latest-run-status');
 const latestRunGeneratedAtEl = document.getElementById('selenium-latest-run-generated-at');
@@ -24,55 +21,6 @@ const suiteFilesEl = document.getElementById('selenium-suite-files');
 const scriptSummaryEl = document.getElementById('selenium-script-summary');
 const scriptFileBadgeEl = document.getElementById('selenium-script-file-badge');
 const scriptCodeEl = document.getElementById('selenium-script-code');
-const refreshBtn = document.getElementById('selenium-refresh-btn');
-const loadScriptBtn = document.getElementById('selenium-load-script-btn');
-const copyScriptBtn = document.getElementById('selenium-copy-script-btn');
-
-let latestOverview = null;
-let latestScript = null;
-
-function escapeHtml(value = '') {
-    return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll('\'', '&#39;');
-}
-
-function renderStatus(message, tone = 'secondary') {
-    if (!statusTarget) {
-        return;
-    }
-
-    statusTarget.innerHTML = `<div class="alert alert-${escapeHtml(tone)} mb-0">${escapeHtml(message)}</div>`;
-}
-
-function formatDateTime(value) {
-    if (!value) {
-        return '';
-    }
-
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-        return String(value);
-    }
-
-    return parsed.toLocaleString();
-}
-
-function getRunTone(status) {
-    switch (status) {
-        case 'passed':
-            return 'success';
-        case 'failed':
-            return 'danger';
-        case 'skipped':
-            return 'secondary';
-        default:
-            return 'light';
-    }
-}
 
 function formatRunContext(scenario) {
     if (!scenario || scenario.latestRunStatus === 'unknown') {
@@ -87,35 +35,6 @@ function formatRunContext(scenario) {
         : 'browser unavailable';
 
     return `${durationText} via ${scenario.latestRunFile || 'unknown suite file'} on ${browserText}.`;
-}
-
-async function requestJson(url, fallbackMessage) {
-    try {
-        const response = await fetch(url, {
-            credentials: 'same-origin',
-            headers: {
-                Accept: 'application/json'
-            }
-        });
-
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-            throw new Error(fallbackMessage || 'The server returned an unexpected response.');
-        }
-
-        const payload = await response.json();
-        if (!response.ok || !payload.success) {
-            throw new Error(payload.message || fallbackMessage || 'The request could not be completed.');
-        }
-
-        return payload.data;
-    } catch (error) {
-        if (error instanceof TypeError) {
-            throw new Error('Could not reach the server. Refresh the page and confirm the app is still running on localhost:3000.');
-        }
-
-        throw error;
-    }
 }
 
 function renderWorkflow(items = []) {
@@ -247,20 +166,6 @@ function renderScenarioCards(items = []) {
             </div>
         </div>
     `).join('');
-}
-
-function populateScenarioSelect(items = [], defaultScenarioId = '') {
-    if (!scenarioSelect) {
-        return;
-    }
-
-    scenarioSelect.innerHTML = items.map((scenario) => `
-        <option value="${escapeHtml(scenario.id)}">${escapeHtml(scenario.title)}</option>
-    `).join('');
-
-    if (defaultScenarioId) {
-        scenarioSelect.value = defaultScenarioId;
-    }
 }
 
 function renderScenarioSummary(script) {
@@ -415,8 +320,7 @@ function renderLatestRunSummary(suite = {}) {
     `;
 }
 
-function renderOverview(overview) {
-    latestOverview = overview;
+function renderOverview(overview, helpers) {
     runtimeLabelEl.textContent = overview.module.runtime;
     scenarioCountEl.textContent = String(overview.coverage.scenarioCount || 0);
     authCountEl.textContent = String(overview.coverage.authenticatedScenarioCount || 0);
@@ -427,91 +331,42 @@ function renderOverview(overview) {
     renderWorkflow(Array.isArray(overview.workflow) ? overview.workflow : []);
     renderPrerequisites(Array.isArray(overview.prerequisites) ? overview.prerequisites : []);
     renderScenarioCards(Array.isArray(overview.scenarios) ? overview.scenarios : []);
-    populateScenarioSelect(Array.isArray(overview.scenarios) ? overview.scenarios : [], overview.defaultScenarioId);
+    helpers.populateScenarioSelect(Array.isArray(overview.scenarios) ? overview.scenarios : [], overview.defaultScenarioId);
 }
 
-async function loadScript() {
-    const scenarioId = scenarioSelect && scenarioSelect.value
-        ? scenarioSelect.value
-        : (latestOverview && latestOverview.defaultScenarioId ? latestOverview.defaultScenarioId : 'research-full-suite');
-
-    const url = `${scriptEndpoint}?scenarioId=${encodeURIComponent(scenarioId)}`;
-    const script = await requestJson(url, 'Unable to load the Selenium script template.');
-
-    latestScript = script;
+function renderScript(script) {
     scriptFileBadgeEl.textContent = script.fileName || 'Generated script';
     scriptCodeEl.textContent = script.content || '// No script content returned.';
     renderScenarioSummary(script);
-    return script;
 }
 
-async function refreshModule(showMessage = false) {
-    const overview = await requestJson(overviewEndpoint, 'Unable to load the Selenium module overview.');
-    renderOverview(overview);
-    await loadScript();
-    if (showMessage) {
-        renderStatus('Selenium module refreshed.', 'secondary');
-    }
-}
+const controller = createModuleController({
+    rootId: 'selenium-module-root',
+    datasetKeys: {
+        overview: 'seleniumOverviewEndpoint',
+        script: 'seleniumScriptEndpoint'
+    },
+    defaultEndpoints: {
+        overview: '/api/selenium/overview',
+        script: '/api/selenium/script'
+    },
+    statusTargetId: 'selenium-status',
+    scenarioSelectId: 'selenium-scenario-select',
+    refreshButtonId: 'selenium-refresh-btn',
+    loadButtonId: 'selenium-load-script-btn',
+    copyButtonId: 'selenium-copy-script-btn',
+    fallbackScenarioId: 'research-full-suite',
+    overviewErrorMessage: 'Unable to load the Selenium module overview.',
+    scriptErrorMessage: 'Unable to load the Selenium script template.',
+    readyMessage: 'Selenium module ready. Select a scenario to review the latest run and preview a starter WebDriver script.',
+    refreshSuccessMessage: 'Selenium module refreshed.',
+    loadSuccessMessage: 'Loaded the selected Selenium script template.',
+    changeSuccessMessage: 'Updated the Selenium script preview for the selected scenario.',
+    copyEmptyMessage: 'Load a Selenium script first before copying it.',
+    copyUnsupportedMessage: 'Clipboard access is not available in this browser. Copy the preview manually instead.',
+    buildCopySuccessMessage: (script) => `Copied ${script.fileName} to the clipboard.`,
+    renderOverview,
+    renderScript
+});
 
-async function copyCurrentScript() {
-    if (!latestScript || !latestScript.content) {
-        renderStatus('Load a Selenium script first before copying it.', 'warning');
-        return;
-    }
-
-    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
-        renderStatus('Clipboard access is not available in this browser. Copy the preview manually instead.', 'warning');
-        return;
-    }
-
-    await navigator.clipboard.writeText(latestScript.content);
-    renderStatus(`Copied ${latestScript.fileName} to the clipboard.`, 'success');
-}
-
-async function initializeSeleniumModule() {
-    try {
-        await refreshModule(false);
-        renderStatus('Selenium module ready. Select a scenario to review the latest run and preview a starter WebDriver script.', 'secondary');
-    } catch (error) {
-        renderStatus(error.message || 'Unable to load the Selenium module.', 'danger');
-    }
-}
-
-if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => {
-        refreshModule(true).catch((error) => {
-            renderStatus(error.message || 'Unable to refresh the Selenium module.', 'danger');
-        });
-    });
-}
-
-if (loadScriptBtn) {
-    loadScriptBtn.addEventListener('click', () => {
-        loadScript().then(() => {
-            renderStatus('Loaded the selected Selenium script template.', 'success');
-        }).catch((error) => {
-            renderStatus(error.message || 'Unable to load the selected Selenium script.', 'danger');
-        });
-    });
-}
-
-if (copyScriptBtn) {
-    copyScriptBtn.addEventListener('click', () => {
-        copyCurrentScript().catch((error) => {
-            renderStatus(error.message || 'Unable to copy the current Selenium script.', 'danger');
-        });
-    });
-}
-
-if (scenarioSelect) {
-    scenarioSelect.addEventListener('change', () => {
-        loadScript().then(() => {
-            renderStatus('Updated the Selenium script preview for the selected scenario.', 'secondary');
-        }).catch((error) => {
-            renderStatus(error.message || 'Unable to refresh the selected Selenium scenario.', 'danger');
-        });
-    });
-}
-
-initializeSeleniumModule();
+controller.initialize();

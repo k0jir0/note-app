@@ -868,6 +868,7 @@ describe('Application end-to-end flows', function () {
         expect(seleniumScriptPayload.data.content).to.include('/ml/module');
         expect(seleniumScriptPayload.data.content).to.include('/selenium/module');
         expect(seleniumScriptPayload.data.content).to.include('/playwright/module');
+        expect(seleniumScriptPayload.data.content).to.include('/self-healing/module');
 
         const playwrightPage = await client.request('/playwright/module', {
             headers: { 'x-test-auth': '1' }

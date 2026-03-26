@@ -73,7 +73,7 @@ const SELENIUM_SCENARIOS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, and Playwright entry points remain available.',
+        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, and Self-Healing entry points remain available.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Research Workspace heading is visible',
@@ -81,6 +81,7 @@ const SELENIUM_SCENARIOS = [
             'ML Module card is present',
             'Selenium Module card is present',
             'Playwright Module card is present',
+            'Self-Healing Module card is present',
             'Workspace navigation buttons open each module'
         ],
         tags: ['smoke', 'auth', 'navigation', 'research'],
@@ -181,15 +182,16 @@ const SELENIUM_SCENARIOS = [
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated Selenium path across Research, Security, ML, Selenium, and Playwright so the end-to-end browser workflow is covered by a single smoke scenario.',
-        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module'],
+        purpose: 'Run one authenticated Selenium path across Research, Security, ML, Selenium, Playwright, and Self-Healing so the end-to-end browser workflow is covered by a single smoke scenario.',
+        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/self-healing/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',
             'Research Workspace renders all module entry points',
             'Security Module renders its workflow controls',
             'ML Module renders its autonomy controls',
             'Selenium Module renders latest suite metadata',
-            'Playwright Module renders its starter spec preview'
+            'Playwright Module renders its starter spec preview',
+            'Self-Healing Module renders repair suggestions'
         ],
         tags: ['full-suite', 'research', 'smoke'],
         requiresLogin: true,

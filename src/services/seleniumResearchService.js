@@ -5,8 +5,18 @@ const {
     getSeleniumScenario,
     listSeleniumScenarios
 } = require('../lib/seleniumScenarioRegistry');
+const {
+    COMMON_ASSERTION_DESCRIPTIONS,
+    COMMON_ROUTE_DESCRIPTIONS,
+    COMMON_TAG_DESCRIPTIONS,
+    buildControlGuide,
+    buildCoverageSummary,
+    buildScenarioCatalog,
+    buildScriptMetadata,
+    collectSuiteFiles,
+    normalizeBaseUrl
+} = require('./browserResearchModuleShared');
 
-const DEFAULT_BASE_URL = 'http://localhost:3000';
 const DEFAULT_SCENARIO_ID = DEFAULT_SELENIUM_SCENARIO_ID;
 const SELENIUM_RESULTS_PATH = path.join(process.cwd(), 'artifacts', 'selenium-results.json');
 const DEFAULT_ROUTE_DESCRIPTION = 'Visits this route directly so the Selenium suite can verify the page without relying on brittle click paths.';
@@ -40,11 +50,7 @@ const CONTROL_DEFINITIONS = [
 ];
 
 const ROUTE_DESCRIPTIONS = {
-    '/auth/login': 'Starts at the login form so the suite can verify the authentication entry point or sign in before protected routes load.',
-    '/auth/signup': 'Opens the signup form so the suite can create a disposable account when a self-contained browser path is needed.',
-    '/notes': 'Loads the authenticated Notes home so the suite can verify the primary post-login workspace.',
-    '/notes/new': 'Opens the server-rendered note creation form for CRUD browser coverage.',
-    '/research': 'Opens the Research Workspace, the hub that links to the Security, ML, Selenium, and Playwright modules.',
+    ...COMMON_ROUTE_DESCRIPTIONS,
     '/security/module': 'Opens the Security Module so the suite can verify log analysis, scan import, and correlation controls.',
     '/ml/module': 'Opens the ML Module so the suite can verify training, autonomy, and recent scored-alert panels.',
     '/selenium/module': 'Opens the Selenium Module so the suite can verify exported WebDriver coverage and latest-run metadata.',
@@ -52,38 +58,8 @@ const ROUTE_DESCRIPTIONS = {
 };
 
 const ASSERTION_DESCRIPTIONS = {
-    'Login page heading is visible': 'Checks that the login screen still renders its main heading.',
-    'Login form is visible': 'Checks that the login form is present and ready for credential input.',
-    'Email and password inputs render': 'Checks that the expected credential fields are still available.',
-    'Login page links to sign up': 'Checks that a new user can still navigate from login to account creation.',
-    'Signup page heading is visible': 'Checks that the signup screen still renders its main heading.',
-    'Signup form is visible': 'Checks that the signup form is present and ready for account creation.',
-    'Password requirements guidance is visible': 'Checks that the signup page still explains the password rules to the user.',
-    'Signup page links back to login': 'Checks that a returning user can still navigate back to login.',
-    'Disposable signup succeeds': 'Checks that the suite can create a disposable account instead of relying on seeded credentials.',
-    'Login redirects to the notes home': 'Checks that authentication lands on the Notes home successfully.',
-    'Notes home welcomes the authenticated user': 'Checks that the Notes page reflects the signed-in user after login.',
-    'Research link is visible after login': 'Checks that the Notes home still exposes the Research entry point.',
-    'Create Note form is visible': 'Checks that the note creation form renders with its expected controls.',
-    'Note creation redirects to the notes home': 'Checks that creating a note returns the browser to the Notes list.',
-    'Saved note can be viewed and edited': 'Checks that a created note can be opened and updated through the HTML flow.',
-    'Delete action removes the note from the list': 'Checks that the browser delete action removes the saved note from the Notes list.',
-    'Research Workspace heading is visible': 'Confirms that navigation reached the Research Workspace.',
-    'Security Module card is present': 'Checks that the Research page still links to the Security Module.',
-    'ML Module card is present': 'Checks that the Research page still links to the ML Module.',
-    'Selenium Module card is present': 'Checks that the Research page still links to the Selenium Module.',
-    'Playwright Module card is present': 'Checks that the Research page still links to the Playwright Module.',
+    ...COMMON_ASSERTION_DESCRIPTIONS,
     'Workspace navigation buttons open each module': 'Checks that the Research Workspace buttons still reach the expected module pages.',
-    'Security Module heading is visible': 'Confirms that navigation reached the Security Module.',
-    'Sample log helper loads log input': 'Checks that the sample log helper populates the Security Module log input.',
-    'Log analysis creates persisted alerts': 'Checks that log analysis creates saved alerts and refreshes the findings view.',
-    'Sample scan helper loads scan input': 'Checks that the sample scan helper populates the scan importer input.',
-    'Scan importer creates persisted findings': 'Checks that scan import creates saved findings and refreshes the scans view.',
-    'Correlation demo refreshes the correlation view': 'Checks that the correlation demo creates saved matches and updates the correlation panel.',
-    'ML Module heading is visible': 'Confirms that navigation reached the ML Module.',
-    'Observed Autonomous Outcomes panel is visible': 'Checks that the autonomy outcomes panel is visible.',
-    'Learned Feature Influence panel is visible': 'Checks that the feature influence panel is visible.',
-    'Recent Scored Alerts panel is visible': 'Checks that the recent scored alerts panel is visible.',
     'Refresh Module button reloads the ML overview': 'Checks that the ML refresh control updates the module overview in place.',
     'Autonomy demo injects recent scored alerts': 'Checks that the autonomy demo creates browser-visible scored alerts.',
     'Selenium Module heading is visible': 'Confirms that navigation reached the Selenium Module.',
@@ -98,8 +74,6 @@ const ASSERTION_DESCRIPTIONS = {
     'Refresh Module button reloads the overview': 'Checks that the Selenium module refresh action reloads the latest overview data.',
     'Playwright Module navigation button remains available': 'Checks that the module still links back into the broader Research browser-testing workflow.',
     'Playwright Module heading loads from Selenium navigation': 'Checks that Selenium-to-Playwright navigation still lands on the expected destination.',
-    'Authentication succeeds with a disposable test user': 'Checks that the full suite can establish an authenticated browser session before protected routes load.',
-    'Research Workspace renders all module entry points': 'Checks that the workspace still exposes the expected module entry points.',
     'Security Module renders its workflow controls': 'Checks that the Security Module still renders the controls used by the Selenium workflow.',
     'ML Module renders its autonomy controls': 'Checks that the ML Module still renders its training and autonomy surfaces.',
     'Selenium Module renders latest suite metadata': 'Checks that the Selenium Module still renders latest-run and export metadata.',
@@ -107,28 +81,10 @@ const ASSERTION_DESCRIPTIONS = {
 };
 
 const TAG_DESCRIPTIONS = {
-    smoke: 'Fast regression check for route and page-shell stability.',
-    auth: 'Includes authentication entry points or protected-route setup.',
-    browser: 'Uses browser-visible checks such as headings, panels, and controls.',
-    navigation: 'Focuses on reaching the right pages through stable paths.',
-    notes: 'Covers the server-rendered Notes workspace and CRUD flow.',
-    research: 'Anchored in the product\'s cross-module research workflow.',
-    security: 'Covers the Security Module and related workflow surfaces.',
-    workspace: 'Targets a dedicated research workspace or module page.',
-    ml: 'Targets the ML-assisted triage and autonomy surfaces.',
-    triage: 'Focuses on scoring, review, or autonomy-related UI.',
+    ...COMMON_TAG_DESCRIPTIONS,
     selenium: 'Covers the Selenium export surface or Selenium-driven browser flow.',
-    export: 'Focuses on generated automation artifacts and their fidelity.',
-    'full-suite': 'Covers the broadest path across multiple product modules.'
+    playwright: 'Covers the Playwright export surface.'
 };
-
-function normalizeBaseUrl(baseUrl) {
-    const normalized = typeof baseUrl === 'string' && baseUrl.trim()
-        ? baseUrl.trim()
-        : DEFAULT_BASE_URL;
-
-    return normalized.replace(/\/+$/, '');
-}
 
 function describeRoutePath(routePath) {
     return ROUTE_DESCRIPTIONS[routePath] || DEFAULT_ROUTE_DESCRIPTION;
@@ -140,15 +96,6 @@ function describeAssertion(assertion) {
 
 function describeTag(tag) {
     return TAG_DESCRIPTIONS[tag] || 'Highlights the kind of Selenium browser check this scenario covers.';
-}
-
-function buildControlGuide() {
-    return CONTROL_DEFINITIONS.map((control) => ({
-        id: control.id,
-        label: control.label,
-        description: control.description,
-        interaction: control.interaction
-    }));
 }
 
 function buildScenarioFunctionDescription(scenario) {
@@ -166,38 +113,6 @@ function getScenarioDefinition(scenarioId = DEFAULT_SCENARIO_ID) {
         : DEFAULT_SCENARIO_ID;
 
     return getSeleniumScenario(normalizedId);
-}
-
-function buildScenarioCatalog(baseUrl) {
-    const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
-
-    return listSeleniumScenarios().map((scenario) => ({
-        id: scenario.id,
-        title: scenario.title,
-        purpose: scenario.purpose,
-        routePaths: [...scenario.routes],
-        routes: scenario.routes.map((routePath) => `${normalizedBaseUrl}${routePath}`),
-        assertions: [...scenario.assertions],
-        assertionDetails: scenario.assertions.map((assertion) => ({
-            label: assertion,
-            description: describeAssertion(assertion)
-        })),
-        tags: [...scenario.tags],
-        tagDetails: scenario.tags.map((tag) => ({
-            label: tag,
-            description: describeTag(tag)
-        })),
-        requiresLogin: scenario.requiresLogin,
-        optionalDependencies: [...scenario.optionalDependencies],
-        implementedInSuite: Boolean(scenario.implementedInSuite),
-        suiteFile: scenario.suiteFile || '',
-        routeTargets: scenario.routes.map((routePath) => ({
-            path: routePath,
-            url: `${normalizedBaseUrl}${routePath}`,
-            description: describeRoutePath(routePath)
-        })),
-        functionDescription: buildScenarioFunctionDescription(scenario)
-    }));
 }
 
 function buildPrerequisites(baseUrl) {
@@ -255,17 +170,6 @@ function buildWorkflow() {
     ];
 }
 
-function buildCoverageSummary(scenarios) {
-    return {
-        scenarioCount: scenarios.length,
-        authenticatedScenarioCount: scenarios.filter((scenario) => scenario.requiresLogin).length,
-        optionalDependencyCount: scenarios.reduce(
-            (count, scenario) => count + scenario.optionalDependencies.length,
-            0
-        )
-    };
-}
-
 function normalizeRunStatus(status) {
     switch (status) {
         case 'passed':
@@ -305,7 +209,7 @@ function buildLatestRunSummary(reportPath = SELENIUM_RESULTS_PATH) {
             sourcePath: 'artifacts/selenium-results.json',
             browserName: 'unknown',
             headless: true,
-            baseUrl: DEFAULT_BASE_URL,
+            baseUrl: normalizeBaseUrl(),
             files: [],
             scenarioResults: []
         };
@@ -332,7 +236,7 @@ function buildLatestRunSummary(reportPath = SELENIUM_RESULTS_PATH) {
             sourcePath: 'artifacts/selenium-results.json',
             browserName: report.runtime && report.runtime.browserName ? report.runtime.browserName : 'unknown',
             headless: report.runtime ? Boolean(report.runtime.headless) : true,
-            baseUrl: report.runtime && report.runtime.baseUrl ? report.runtime.baseUrl : DEFAULT_BASE_URL
+            baseUrl: report.runtime && report.runtime.baseUrl ? report.runtime.baseUrl : normalizeBaseUrl()
         };
         const scenarioResults = [];
 
@@ -403,7 +307,7 @@ function buildLatestRunSummary(reportPath = SELENIUM_RESULTS_PATH) {
             sourcePath: 'artifacts/selenium-results.json',
             browserName: 'unknown',
             headless: true,
-            baseUrl: DEFAULT_BASE_URL,
+            baseUrl: normalizeBaseUrl(),
             error: error.message,
             files: [],
             scenarioResults: []
@@ -446,7 +350,14 @@ function buildSeleniumModuleOverview({ baseUrl } = {}) {
     const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
     const latestRun = buildLatestRunSummary();
     const scenarioRunIndex = buildScenarioRunIndex(latestRun);
-    const scenarios = buildScenarioCatalog(normalizedBaseUrl).map((scenario) => {
+    const scenarios = buildScenarioCatalog({
+        baseUrl: normalizedBaseUrl,
+        listScenarios: listSeleniumScenarios,
+        describeRoutePath,
+        describeAssertion,
+        describeTag,
+        buildScenarioFunctionDescription
+    }).map((scenario) => {
         const latestScenarioRun = scenarioRunIndex.get(scenario.id);
 
         return {
@@ -458,11 +369,7 @@ function buildSeleniumModuleOverview({ baseUrl } = {}) {
             latestRunHeadless: latestScenarioRun ? latestScenarioRun.headless : false
         };
     });
-    const suiteFiles = Array.from(new Set(
-        listSeleniumScenarios()
-            .map((scenario) => scenario.suiteFile)
-            .filter((suiteFile) => typeof suiteFile === 'string' && suiteFile.trim())
-    ));
+    const suiteFiles = collectSuiteFiles(listSeleniumScenarios);
 
     return {
         module: {
@@ -478,7 +385,7 @@ function buildSeleniumModuleOverview({ baseUrl } = {}) {
             suiteFiles,
             latestRun
         },
-        controls: buildControlGuide(),
+        controls: buildControlGuide(CONTROL_DEFINITIONS),
         workflow: buildWorkflow(),
         prerequisites: buildPrerequisites(normalizedBaseUrl),
         scenarios,
@@ -526,7 +433,8 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(driver, \'Security Module\');',
         'await expectBodyText(driver, \'ML Module\');',
         'await expectBodyText(driver, \'Selenium Module\');',
-        'await expectBodyText(driver, \'Playwright Module\');'
+        'await expectBodyText(driver, \'Playwright Module\');',
+        'await expectBodyText(driver, \'Self-Healing Module\');'
     ].join('\n        '),
     'security-module-workflow': [
         'await createAuthenticatedSession(driver);',
@@ -583,6 +491,7 @@ const SCRIPT_STEP_MAP = {
         'await driver.get(`${baseUrl}/research`);',
         'await expectBodyText(driver, \'Research Workspace\');',
         'await expectBodyText(driver, \'Selenium Module\');',
+        'await expectBodyText(driver, \'Self-Healing Module\');',
         '',
         'await driver.get(`${baseUrl}/security/module`);',
         'await expectBodyText(driver, \'Security Module\');',
@@ -598,7 +507,11 @@ const SCRIPT_STEP_MAP = {
         '',
         'await driver.get(`${baseUrl}/playwright/module`);',
         'await expectBodyText(driver, \'Playwright Module\');',
-        'await expectBodyText(driver, \'Generated Spec Preview\');'
+        'await expectBodyText(driver, \'Generated Spec Preview\');',
+        '',
+        'await driver.get(`${baseUrl}/self-healing/module`);',
+        'await expectBodyText(driver, \'Self-Healing Module\');',
+        'await expectBodyText(driver, \'Repair Candidates\');'
     ].join('\n        ')
 };
 
@@ -806,38 +719,27 @@ function buildSeleniumScript({ baseUrl, scenarioId = DEFAULT_SCENARIO_ID } = {})
     const scenarioRunIndex = buildScenarioRunIndex(latestRun);
     const latestScenarioRun = scenarioRunIndex.get(scenario.id);
 
-    return {
-        scenarioId: scenario.id,
-        title: scenario.title,
-        purpose: scenario.purpose,
-        fileName: `selenium-${scenario.id}.js`,
-        language: 'javascript',
-        runtime: 'selenium-webdriver',
+    return buildScriptMetadata({
         baseUrl: normalizedBaseUrl,
-        requiresLogin: scenario.requiresLogin,
-        routePaths: [...scenario.routes],
-        routeTargets: scenario.routes.map((routePath) => ({
-            path: routePath,
-            url: `${normalizedBaseUrl}${routePath}`,
-            description: describeRoutePath(routePath)
-        })),
-        assertionDetails: scenario.assertions.map((assertion) => ({
-            label: assertion,
-            description: describeAssertion(assertion)
-        })),
-        tagDetails: scenario.tags.map((tag) => ({
-            label: tag,
-            description: describeTag(tag)
-        })),
+        scenario,
+        describeRoutePath,
+        describeAssertion,
+        describeTag,
+        buildScenarioFunctionDescription,
         usageNotes: buildScriptUsageNotes(`selenium-${scenario.id}.js`),
-        functionDescription: buildScenarioFunctionDescription(scenario),
-        latestRunStatus: latestScenarioRun ? latestScenarioRun.status : 'unknown',
-        latestRunDurationMs: latestScenarioRun ? latestScenarioRun.durationMs : 0,
-        latestRunFile: latestScenarioRun ? latestScenarioRun.file : '',
-        latestRunBrowserName: latestScenarioRun ? latestScenarioRun.browserName : '',
-        latestRunHeadless: latestScenarioRun ? latestScenarioRun.headless : false,
-        content: buildScriptTemplate(normalizedBaseUrl, scenario)
-    };
+        content: buildScriptTemplate(normalizedBaseUrl, scenario),
+        extra: {
+            fileName: `selenium-${scenario.id}.js`,
+            language: 'javascript',
+            runtime: 'selenium-webdriver',
+            baseUrl: normalizedBaseUrl,
+            latestRunStatus: latestScenarioRun ? latestScenarioRun.status : 'unknown',
+            latestRunDurationMs: latestScenarioRun ? latestScenarioRun.durationMs : 0,
+            latestRunFile: latestScenarioRun ? latestScenarioRun.file : '',
+            latestRunBrowserName: latestScenarioRun ? latestScenarioRun.browserName : '',
+            latestRunHeadless: latestScenarioRun ? latestScenarioRun.headless : false
+        }
+    });
 }
 
 module.exports = {
