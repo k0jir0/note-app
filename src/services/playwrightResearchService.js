@@ -626,13 +626,17 @@ function buildScriptTemplate(baseUrl, scenario) {
 
 const baseUrl = process.env.PLAYWRIGHT_BASE_URL || '${normalizedBaseUrl}';
 const email = process.env.PLAYWRIGHT_TEST_EMAIL || 'test@example.com';
-const password = process.env.PLAYWRIGHT_TEST_PASSWORD || 'password123';
+const password = process.env.PLAYWRIGHT_TEST_PASSWORD || process.env.DEV_SEED_PASSWORD || '';
 
 async function expectBodyText(page, text) {
     await expect(page.locator('body')).toContainText(text);
 }
 
 async function signIn(page) {
+    if (!password) {
+        throw new Error('Set PLAYWRIGHT_TEST_PASSWORD or DEV_SEED_PASSWORD before running protected-route Playwright specs.');
+    }
+
     await page.goto(\`\${baseUrl}/auth/login\`, { waitUntil: 'domcontentloaded' });
     await page.locator('#email').fill(email);
     await page.locator('#password').fill(password);

@@ -32,6 +32,7 @@ const { requireAuth } = require('./src/middleware/auth');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
+const { buildSeedResponseMessage, seedDevelopmentData } = require('./src/services/devSeedService');
 const { startApplication } = require('./src/utils/appStartup');
 
 const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
@@ -145,40 +146,13 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
                 const bcrypt = require('bcrypt');
 
                 try {
-                // Clear existing data
-                    await Notes.deleteMany({});
-                    await User.deleteMany({});
-
-                    // Create a test user
-                    const hashedPassword = await bcrypt.hash('password123', 10);
-                    const testUser = await User.create({
-                        email: 'test@example.com',
-                        password: hashedPassword
+                    const seedSummary = await seedDevelopmentData({
+                        User,
+                        Notes,
+                        bcryptLib: bcrypt
                     });
 
-                    // Create sample notes for the test user
-                    await Notes.create([
-                        {
-                            title: 'Meeting Notes',
-                            content: 'Discussed Q1 goals and upcoming project deadlines. Action items: Review budget, Schedule team meeting.',
-                            image: 'https://images.unsplash.com/photo-1517842645767-c639042777db?w=600',
-                            user: testUser._id
-                        },
-                        {
-                            title: 'Shopping List',
-                            content: 'Milk, Eggs, Bread, Butter, Coffee, Fresh vegetables',
-                            image: '',
-                            user: testUser._id
-                        },
-                        {
-                            title: 'Book Ideas',
-                            content: 'Research topics for new project: Machine Learning basics, Web Development trends, Design patterns',
-                            image: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600',
-                            user: testUser._id
-                        }
-                    ]);
-
-                    res.send('Database seeded! Test user created: test@example.com / password123');
+                    res.type('text/plain').send(buildSeedResponseMessage(seedSummary));
                 } catch (error) {
                     res.status(500).send('Error seeding database: ' + error.message);
                 }
