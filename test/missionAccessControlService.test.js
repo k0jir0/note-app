@@ -85,7 +85,7 @@ describe('Mission access control service', () => {
         });
         const matrix = buildDecisionMatrix(persona);
 
-        expect(matrix.entries).to.have.length(6);
+        expect(matrix.entries).to.have.length(7);
         expect(matrix.allowedCount).to.be.at.least(1);
         expect(matrix.deniedCount).to.be.at.least(1);
     });

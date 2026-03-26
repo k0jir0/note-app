@@ -25,6 +25,7 @@ describe('Selenium research service', () => {
         expect(overview.prerequisites).to.have.length(5);
         expect(overview.suite.implementedScenarioCount).to.equal(scenarioCount);
         expect(overview.suite.latestRun).to.have.property('available');
+        expect(overview.scenarios.find((scenario) => scenario.id === 'injection-prevention-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'session-management-module-smoke')).to.exist;
         expect(overview.scenarios[0].routes[0]).to.match(/^http:\/\/127\.0\.0\.1:3000\//);
         expect(overview.scenarios[0].routeTargets[0].description).to.be.a('string').and.not.equal('');
@@ -50,10 +51,24 @@ describe('Selenium research service', () => {
         expect(script.content).to.include('/security/module');
         expect(script.content).to.include('/selenium/module');
         expect(script.content).to.include('/playwright/module');
+        expect(script.content).to.include('/injection-prevention/module');
         expect(script.content).to.include('/self-healing/module');
         expect(script.content).to.include('/session-management/module');
         expect(script.content).to.include('/mission-assurance/module');
         expect(script.content).to.include('/hardware-mfa/module');
+    });
+
+    it('builds a selenium script template for the injection-prevention scenario', () => {
+        const script = seleniumResearchService.buildSeleniumScript({
+            baseUrl: 'http://localhost:3000',
+            scenarioId: 'injection-prevention-module-smoke'
+        });
+
+        expect(script.fileName).to.equal('selenium-injection-prevention-module-smoke.js');
+        expect(script.routePaths).to.include('/injection-prevention/module');
+        expect(script.content).to.include('/injection-prevention/module');
+        expect(script.content).to.include('injection-prevention-scenario-select');
+        expect(script.content).to.include('Prevention Decision');
     });
 
     it('throws when an unknown scenario is requested', () => {

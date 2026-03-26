@@ -7,6 +7,7 @@ const { redis, publisher } = require('../lib/redisClient');
 const { workerPendingGauge } = require('../routes/metrics');
 const { validateRuntimeConfig } = require('../config/runtimeConfig');
 const { startAutomation } = require('../services/automationService');
+const { applyMongooseInjectionDefaults } = require('../services/injectionPreventionService');
 const { persistLogAnalysis } = require('../services/securityIngestService');
 
 const STREAM_KEY = 'security:ingest';
@@ -379,6 +380,7 @@ async function startBackgroundServices(options = {}) {
         };
     }
 
+    applyMongooseInjectionDefaults(mongooseLib);
     await mongooseLib.connect(mongoUri, options.mongooseConnectOptions || {});
     logInfo(logger, '[background-worker] connected to mongo');
 

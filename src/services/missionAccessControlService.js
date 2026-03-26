@@ -160,9 +160,31 @@ const ACTION_CATALOG = [
         sensitivity: 'moderate'
     },
     {
+        id: 'view_injection_prevention_module',
+        label: 'View Injection Prevention Module',
+        description: 'Inspect the application injection-hardening posture and safe query patterns.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        sensitivity: 'moderate'
+    },
+    {
         id: 'evaluate_session_lockdown_controls',
         label: 'Evaluate Session Lockdown Controls',
         description: 'Simulate whether an abandoned or superseded session should be locked immediately.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        sensitivity: 'moderate'
+    },
+    {
+        id: 'evaluate_injection_prevention_controls',
+        label: 'Evaluate Injection Prevention Controls',
+        description: 'Simulate whether a request payload should be rejected before it reaches the data layer.',
         allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
         requiresMfa: false,
         requiredMfaMethod: 'none',
@@ -228,6 +250,19 @@ const RESOURCE_CATALOG = [
         classification: 'protected_b',
         missionId: 'research-workspace',
         allowedActions: ['view_session_management_module', 'evaluate_session_lockdown_controls'],
+        allowedUnits: [],
+        requiredDeviceTier: 'managed',
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none'
+    },
+    {
+        id: 'injection-prevention-lab',
+        title: 'Injection Prevention Lab',
+        summary: 'A research surface for structured query builders, operator-key blocking, and Mongoose filter hardening.',
+        classification: 'protected_b',
+        missionId: 'research-workspace',
+        allowedActions: ['view_injection_prevention_module', 'evaluate_injection_prevention_controls'],
         allowedUnits: [],
         requiredDeviceTier: 'managed',
         allowedNetworkZones: ['public', 'corp', 'mission'],
@@ -443,6 +478,7 @@ const SAMPLE_PERSONAS = [
 
 const MATRIX_COMBINATIONS = [
     { actionId: 'view_security_alerts', resourceId: 'security-alert-feed' },
+    { actionId: 'evaluate_injection_prevention_controls', resourceId: 'injection-prevention-lab' },
     { actionId: 'evaluate_session_lockdown_controls', resourceId: 'session-management-lab' },
     { actionId: 'train_ml_model', resourceId: 'triage-model-training' },
     { actionId: 'export_incident_report', resourceId: 'incident-report-export' },

@@ -298,6 +298,7 @@ describe('Application end-to-end flows', function () {
         expect(researchHtml).to.include('ML Module');
         expect(researchHtml).to.include('Selenium Module');
         expect(researchHtml).to.include('Playwright Module');
+        expect(researchHtml).to.include('Injection Prevention Module');
         expect(researchHtml).to.include('Self-Healing Module');
         expect(researchHtml).to.include('Session Management Module');
         expect(researchHtml).to.include('Hardware-First MFA Module');
@@ -305,6 +306,7 @@ describe('Application end-to-end flows', function () {
         expect(researchHtml).to.include('/ml/module');
         expect(researchHtml).to.include('/selenium/module');
         expect(researchHtml).to.include('/playwright/module');
+        expect(researchHtml).to.include('/injection-prevention/module');
         expect(researchHtml).to.include('/self-healing/module');
         expect(researchHtml).to.include('/session-management/module');
         expect(researchHtml).to.include('/hardware-mfa/module');
@@ -465,6 +467,7 @@ describe('Application end-to-end flows', function () {
         expect(seleniumScriptPayload.data.content).to.include('/ml/module');
         expect(seleniumScriptPayload.data.content).to.include('/selenium/module');
         expect(seleniumScriptPayload.data.content).to.include('/playwright/module');
+        expect(seleniumScriptPayload.data.content).to.include('/injection-prevention/module');
         expect(seleniumScriptPayload.data.content).to.include('/self-healing/module');
         expect(seleniumScriptPayload.data.content).to.include('/session-management/module');
         expect(seleniumScriptPayload.data.content).to.include('/hardware-mfa/module');
@@ -506,10 +509,78 @@ describe('Application end-to-end flows', function () {
         expect(playwrightScriptPayload.data.content).to.include('/ml/module');
         expect(playwrightScriptPayload.data.content).to.include('/selenium/module');
         expect(playwrightScriptPayload.data.content).to.include('/playwright/module');
+        expect(playwrightScriptPayload.data.content).to.include('/injection-prevention/module');
         expect(playwrightScriptPayload.data.content).to.include('/self-healing/module');
         expect(playwrightScriptPayload.data.content).to.include('/session-management/module');
         expect(playwrightScriptPayload.data.content).to.include('/hardware-mfa/module');
         expect(playwrightScriptPayload.data.content).to.include('/mission-assurance/module');
+
+        const injectionPreventionPage = await client.request('/injection-prevention/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const injectionPreventionHtml = await injectionPreventionPage.text();
+
+        expect(injectionPreventionPage.status).to.equal(200);
+        expect(injectionPreventionHtml).to.include('Injection Prevention Module');
+        expect(injectionPreventionHtml).to.include('/api/injection-prevention/overview');
+        expect(injectionPreventionHtml).to.include('/api/injection-prevention/evaluate');
+        expect(injectionPreventionHtml).to.include('Structured Query Templates');
+        expect(injectionPreventionHtml).to.include('Prevention Decision');
+
+        const injectionPreventionOverviewResponse = await client.request('/api/injection-prevention/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const injectionPreventionOverviewPayload = await injectionPreventionOverviewResponse.json();
+
+        expect(injectionPreventionOverviewResponse.status).to.equal(200);
+        expect(injectionPreventionOverviewPayload.success).to.equal(true);
+        expect(injectionPreventionOverviewPayload.data.module.name).to.equal('Injection Prevention Module');
+        expect(injectionPreventionOverviewPayload.data.database.posture.sanitizeFilter).to.equal(true);
+        expect(injectionPreventionOverviewPayload.data.database.posture.strictQuery).to.equal(true);
+        expect(injectionPreventionOverviewPayload.data.controls).to.have.length(5);
+        expect(injectionPreventionOverviewPayload.data.queryPatterns).to.have.length(2);
+
+        const injectionPreventionCsrfToken = await client.getCsrfToken();
+        const injectionPreventionEvaluateResponse = await client.request('/api/injection-prevention/evaluate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': injectionPreventionCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                scenarioId: 'nosql-operator-body'
+            })
+        });
+        const injectionPreventionEvaluatePayload = await injectionPreventionEvaluateResponse.json();
+
+        expect(injectionPreventionEvaluateResponse.status).to.equal(200);
+        expect(injectionPreventionEvaluatePayload.success).to.equal(true);
+        expect(injectionPreventionEvaluatePayload.data.blocked).to.equal(true);
+        expect(injectionPreventionEvaluatePayload.data.decision).to.equal('reject');
+        expect(injectionPreventionEvaluatePayload.data.findings).to.be.an('array').that.is.not.empty;
+
+        const injectionBlockedResponse = await client.request('/api/notes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': injectionPreventionCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                title: 'Blocked injection probe',
+                content: 'This request should never reach the note controller.',
+                probe: {
+                    $ne: null
+                }
+            })
+        });
+        const injectionBlockedPayload = await injectionBlockedResponse.json();
+
+        expect(injectionBlockedResponse.status).to.equal(400);
+        expect(injectionBlockedPayload.success).to.equal(false);
+        expect(injectionBlockedPayload.message).to.equal('Rejected potentially unsafe request input');
+        expect(injectionBlockedPayload.errors[0]).to.include('body.probe.$ne');
 
         const legacyLocatorRepairPage = await client.request('/locator-repair/module', {
             headers: { 'x-test-auth': '1' }

@@ -12,6 +12,8 @@ const mlApiRoutes = require('../../src/routes/mlApiRoutes');
 const mlPageRoutes = require('../../src/routes/mlPageRoutes');
 const playwrightApiRoutes = require('../../src/routes/playwrightApiRoutes');
 const playwrightPageRoutes = require('../../src/routes/playwrightPageRoutes');
+const injectionPreventionApiRoutes = require('../../src/routes/injectionPreventionApiRoutes');
+const injectionPreventionPageRoutes = require('../../src/routes/injectionPreventionPageRoutes');
 const locatorRepairApiRoutes = require('../../src/routes/locatorRepairApiRoutes');
 const locatorRepairPageRoutes = require('../../src/routes/locatorRepairPageRoutes');
 const hardwareFirstMfaApiRoutes = require('../../src/routes/hardwareFirstMfaApiRoutes');
@@ -22,9 +24,11 @@ const sessionManagementApiRoutes = require('../../src/routes/sessionManagementAp
 const sessionManagementPageRoutes = require('../../src/routes/sessionManagementPageRoutes');
 const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
 const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
+const { enforceInjectionPrevention } = require('../../src/middleware/injectionPrevention');
 const { attachSessionAuthAssurance } = require('../../src/middleware/sessionAuthAssurance');
 const { enforceStrictSessionManagement } = require('../../src/middleware/sessionManagement');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
+const { applyMongooseInjectionDefaults } = require('../../src/services/injectionPreventionService');
 const Notes = require('../../src/models/Notes');
 const SecurityAlert = require('../../src/models/SecurityAlert');
 const ScanResult = require('../../src/models/ScanResult');
@@ -296,9 +300,11 @@ function stubSecurityModels(sandbox, stores) {
 
 function createApp() {
     const app = express();
+    const mongoosePosture = applyMongooseInjectionDefaults(mongoose);
 
     app.set('view engine', 'ejs');
     app.set('views', path.join(__dirname, '../../src/views'));
+    app.locals.mongooseLib = mongoose;
     app.locals.runtimeConfig = {
         sessionManagement: {
             idleTimeoutMs: 15 * 60 * 1000,
@@ -328,11 +334,16 @@ function createApp() {
             }
         }
     };
+    app.locals.injectionPrevention = {
+        requestGuardEnabled: true,
+        ...mongoosePosture
+    };
     app.locals.realtimeAvailable = true;
     app.locals.realtimeEnabled = true;
 
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
+    app.use(enforceInjectionPrevention);
     app.use(session({
         secret: 'test-session-secret-that-is-long-enough',
         resave: false,
@@ -395,6 +406,8 @@ function createApp() {
     app.use(mlPageRoutes);
     app.use(playwrightApiRoutes);
     app.use(playwrightPageRoutes);
+    app.use(injectionPreventionApiRoutes);
+    app.use(injectionPreventionPageRoutes);
     app.use(locatorRepairApiRoutes);
     app.use(locatorRepairPageRoutes);
     app.use(hardwareFirstMfaApiRoutes);

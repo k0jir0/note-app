@@ -35,10 +35,14 @@ const { loadRuntimeEnvironment, reapplyLocalEnvOverrides } = require('./src/conf
 const { requireAuth } = require('./src/middleware/auth');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { attachSessionAuthAssurance } = require('./src/middleware/sessionAuthAssurance');
+const { enforceInjectionPrevention } = require('./src/middleware/injectionPrevention');
 const { enforceStrictSessionManagement } = require('./src/middleware/sessionManagement');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 const { buildSeedResponseMessage, seedDevelopmentData } = require('./src/services/devSeedService');
+const injectionPreventionApiRoute = require('./src/routes/injectionPreventionApiRoutes');
+const injectionPreventionPageRoute = require('./src/routes/injectionPreventionPageRoutes');
+const { applyMongooseInjectionDefaults } = require('./src/services/injectionPreventionService');
 const { startApplication } = require('./src/utils/appStartup');
 const { createServerFactory } = require('./src/utils/serverTransport');
 
@@ -55,6 +59,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         reapplyLocalEnvOverrides(localEnvOverrides);
 
         const runtimeConfig = validateRuntimeConfig();
+        const mongooseSecurity = applyMongooseInjectionDefaults(mongoose);
         require('./src/config/passport')(passport);
         const app = express();
         const isProduction = process.env.NODE_ENV === 'production';
@@ -64,6 +69,11 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.locals.runtimeConfig = runtimeConfig;
         app.locals.appBaseUrl = runtimeConfig.appBaseUrl;
         app.locals.realtimeAvailable = realtimeAvailable;
+        app.locals.mongooseLib = mongoose;
+        app.locals.injectionPrevention = {
+            requestGuardEnabled: true,
+            ...mongooseSecurity
+        };
         // runtime toggle for realtime (can be changed without restarting when Redis is configured)
         app.locals.realtimeEnabled = realtimeAvailable && process.env.ENABLE_REALTIME === '1';
         app.locals.transportSecurity = runtimeConfig.transport;
@@ -96,6 +106,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
 
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
+        app.use(enforceInjectionPrevention);
         app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
         // Public fallback image for notes without an image URL.
@@ -182,6 +193,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.use(mlPageRoute);
         app.use(playwrightApiRoute);
         app.use(playwrightPageRoute);
+        app.use(injectionPreventionApiRoute);
+        app.use(injectionPreventionPageRoute);
         app.use(locatorRepairApiRoute);
         app.use(locatorRepairPageRoute);
         app.use(hardwareFirstMfaApiRoute);

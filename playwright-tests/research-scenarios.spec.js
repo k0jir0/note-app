@@ -18,6 +18,7 @@ async function expectResearchWorkspace(page) {
     await expect(page.locator('body')).toContainText('ML Module');
     await expect(page.locator('body')).toContainText('Selenium Module');
     await expect(page.locator('body')).toContainText('Playwright Module');
+    await expect(page.locator('body')).toContainText('Injection Prevention Module');
     await expect(page.locator('body')).toContainText('Self-Healing Module');
     await expect(page.locator('body')).toContainText('Session Management Module');
     await expect(page.locator('body')).toContainText('Hardware-First MFA Module');
@@ -58,6 +59,16 @@ async function expectPlaywrightModule(page) {
     await expect(page.locator('body')).toContainText('Scenario Catalog');
     await expect(page.locator('body')).toContainText('Generated Spec Preview');
     await expect(page.locator('body')).toContainText('Playwright Prerequisites');
+}
+
+async function expectInjectionPreventionModule(page) {
+    await expect(page).toHaveURL(/\/injection-prevention\/module$/);
+    await expect(page.getByRole('heading', { name: 'Injection Prevention Module', exact: true })).toBeVisible();
+    await expect(page.locator('#injection-prevention-scenario-select')).toBeVisible();
+    await expect(page.locator('#injection-prevention-evaluate-btn')).toBeVisible();
+    await expect(page.locator('body')).toContainText('Architectural Controls');
+    await expect(page.locator('body')).toContainText('Structured Query Templates');
+    await expect(page.locator('body')).toContainText('Prevention Decision');
 }
 
 async function expectSelfHealingModule(page) {
@@ -145,6 +156,16 @@ test.describe('Research workspace scenario coverage', () => {
         await expect(page.locator('#playwright-script-code')).toContainText('@playwright/test');
     });
 
+    test(getPlaywrightScenario('injection-prevention-module-smoke').title, async ({ page }, testInfo) => {
+        const scenario = getPlaywrightScenario('injection-prevention-module-smoke');
+        annotateScenario(testInfo, scenario);
+
+        await createAuthenticatedSession(page, testInfo);
+        await page.goto('/injection-prevention/module');
+        await expectInjectionPreventionModule(page);
+        await expect(page.locator('#injection-prevention-status')).toContainText('Injection Prevention Module ready.');
+    });
+
     test(getPlaywrightScenario('self-healing-module-smoke').title, async ({ page }, testInfo) => {
         const scenario = getPlaywrightScenario('self-healing-module-smoke');
         annotateScenario(testInfo, scenario);
@@ -195,6 +216,9 @@ test.describe('Research workspace scenario coverage', () => {
 
         await page.goto('/playwright/module');
         await expectPlaywrightModule(page);
+
+        await page.goto('/injection-prevention/module');
+        await expectInjectionPreventionModule(page);
 
         await page.goto('/self-healing/module');
         await expectSelfHealingModule(page);

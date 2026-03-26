@@ -55,6 +55,8 @@ const ROUTE_DESCRIPTIONS = {
     '/ml/module': 'Opens the ML Module so the suite can verify training, autonomy, and recent scored-alert panels.',
     '/selenium/module': 'Opens the Selenium Module so the suite can verify exported WebDriver coverage and latest-run metadata.',
     '/playwright/module': 'Opens the Playwright Module so cross-module Selenium navigation can confirm the broader browser-testing workflow.',
+    '/injection-prevention/module': 'Opens the Injection Prevention Module so the suite can verify architectural injection hardening and safe query templates.',
+    '/self-healing/module': 'Opens the Self-Healing Module so the suite can verify that repair suggestions still render in the research workflow.',
     '/session-management/module': 'Opens the Session Management Module so the suite can verify strict timeout posture, live session state, and lockdown-evaluation controls.',
     '/hardware-mfa/module': 'Opens the Hardware-First MFA Module so the suite can verify strong-factor step-up controls and current session assurance.',
     '/mission-assurance/module': 'Opens the Mission Assurance Module so the suite can verify tactical access-policy evaluation and current-user security context.'
@@ -77,6 +79,13 @@ const ASSERTION_DESCRIPTIONS = {
     'Refresh Module button reloads the overview': 'Checks that the Selenium module refresh action reloads the latest overview data.',
     'Playwright Module navigation button remains available': 'Checks that the module still links back into the broader Research browser-testing workflow.',
     'Playwright Module heading loads from Selenium navigation': 'Checks that Selenium-to-Playwright navigation still lands on the expected destination.',
+    'Injection Prevention Module card is present': 'Checks that the Research Workspace still exposes the Injection Prevention entry point.',
+    'Injection Prevention Module heading is visible': 'Confirms that navigation reached the Injection Prevention module.',
+    'Architectural controls are visible': 'Checks that the request guard, sanitizeFilter, and strictQuery posture render in the module UI.',
+    'Structured query templates are visible': 'Confirms that the module still shows safe query-builder examples.',
+    'Prevention decision panel is visible': 'Checks that the module renders a prevention decision summary.',
+    'Injection Prevention Module renders hardening controls': 'Confirms that the Injection Prevention page still renders hardening posture and safe query templates.',
+    'Self-Healing Module renders repair suggestions': 'Confirms that the Self-Healing page still renders ranked repair suggestions.',
     'Mission Assurance Module card is present': 'Checks that the Research Workspace still exposes the Mission Assurance entry point.',
     'Hardware-First MFA Module card is present': 'Checks that the Research Workspace still exposes the Hardware-First MFA entry point.',
     'Session Management Module card is present': 'Checks that the Research Workspace still exposes the Session Management entry point.',
@@ -469,8 +478,11 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(driver, \'ML Module\');',
         'await expectBodyText(driver, \'Selenium Module\');',
         'await expectBodyText(driver, \'Playwright Module\');',
+        'await expectBodyText(driver, \'Injection Prevention Module\');',
         'await expectBodyText(driver, \'Self-Healing Module\');',
-        'await expectBodyText(driver, \'Session Management Module\');'
+        'await expectBodyText(driver, \'Session Management Module\');',
+        'await expectBodyText(driver, \'Hardware-First MFA Module\');',
+        'await expectBodyText(driver, \'Mission Assurance Module\');'
     ].join('\n        '),
     'security-module-workflow': [
         'await createAuthenticatedSession(driver);',
@@ -522,6 +534,15 @@ const SCRIPT_STEP_MAP = {
         'await waitForLocationContains(driver, \'/playwright/module\');',
         'await expectBodyText(driver, \'Playwright Module\');'
     ].join('\n        '),
+    'injection-prevention-module-smoke': [
+        'await createAuthenticatedSession(driver);',
+        'await driver.get(`${baseUrl}/injection-prevention/module`);',
+        'await expectBodyText(driver, \'Injection Prevention Module\');',
+        'await expectBodyText(driver, \'Architectural Controls\');',
+        'await expectBodyText(driver, \'Structured Query Templates\');',
+        'await driver.findElement(By.id(\'injection-prevention-scenario-select\'));',
+        'await expectBodyText(driver, \'Prevention Decision\');'
+    ].join('\n        '),
     'session-management-module-smoke': [
         'await createAuthenticatedSession(driver);',
         'await driver.get(`${baseUrl}/session-management/module`);',
@@ -536,6 +557,7 @@ const SCRIPT_STEP_MAP = {
         'await driver.get(`${baseUrl}/research`);',
         'await expectBodyText(driver, \'Research Workspace\');',
         'await expectBodyText(driver, \'Selenium Module\');',
+        'await expectBodyText(driver, \'Injection Prevention Module\');',
         'await expectBodyText(driver, \'Self-Healing Module\');',
         'await expectBodyText(driver, \'Session Management Module\');',
         'await expectBodyText(driver, \'Hardware-First MFA Module\');',
@@ -556,6 +578,10 @@ const SCRIPT_STEP_MAP = {
         'await driver.get(`${baseUrl}/playwright/module`);',
         'await expectBodyText(driver, \'Playwright Module\');',
         'await expectBodyText(driver, \'Generated Spec Preview\');',
+        '',
+        'await driver.get(`${baseUrl}/injection-prevention/module`);',
+        'await expectBodyText(driver, \'Injection Prevention Module\');',
+        'await expectBodyText(driver, \'Prevention Decision\');',
         '',
         'await driver.get(`${baseUrl}/self-healing/module`);',
         'await expectBodyText(driver, \'Self-Healing Module\');',

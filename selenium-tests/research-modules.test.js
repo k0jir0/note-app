@@ -70,6 +70,19 @@ async function openPlaywrightModule(driver, baseUrl) {
     );
 }
 
+async function openInjectionPreventionModule(driver, baseUrl) {
+    await driver.get(`${baseUrl}/injection-prevention/module`);
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await waitForBodyText(driver, 'Injection Prevention Module');
+    await waitForElementText(
+        driver,
+        By.id('injection-prevention-status'),
+        (text) => text.includes('Injection Prevention Module ready.'),
+        20000,
+        'Expected the Injection Prevention Module to finish loading.'
+    );
+}
+
 async function openSelfHealingModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/self-healing/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
@@ -150,6 +163,7 @@ describe('Research module browser coverage', function () {
         await waitForBodyText(driver, 'ML Module');
         await waitForBodyText(driver, 'Selenium Module');
         await waitForBodyText(driver, 'Playwright Module');
+        await waitForBodyText(driver, 'Injection Prevention Module');
         await waitForBodyText(driver, 'Self-Healing Module');
         await waitForBodyText(driver, 'Session Management Module');
         await waitForBodyText(driver, 'Hardware-First MFA Module');
@@ -179,6 +193,13 @@ describe('Research module browser coverage', function () {
         await clickElement(driver, By.linkText('Open Playwright Module'));
         await waitForLocationContains(driver, '/playwright/module');
         await waitForBodyText(driver, 'Playwright Module');
+
+        await clickElement(driver, By.css('a[href="/research"]'));
+        await waitForLocationContains(driver, '/research');
+
+        await clickElement(driver, By.linkText('Open Injection Prevention Module'));
+        await waitForLocationContains(driver, '/injection-prevention/module');
+        await waitForBodyText(driver, 'Injection Prevention Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
@@ -324,6 +345,15 @@ describe('Research module browser coverage', function () {
         }, 15000, 'Expected recent scored alerts to render after the autonomy demo.');
     });
 
+    it(getSeleniumScenario('injection-prevention-module-smoke').title, async () => {
+        await openInjectionPreventionModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Architectural Controls');
+        await waitForBodyText(driver, 'Structured Query Templates');
+        await driver.findElement(By.id('injection-prevention-scenario-select'));
+        await driver.findElement(By.id('injection-prevention-evaluate-btn'));
+        await waitForBodyText(driver, 'Prevention Decision');
+    });
+
     it(getSeleniumScenario('research-full-suite').title, async () => {
         await openResearchWorkspace(driver, baseUrl);
         await waitForBodyText(driver, 'Security Module');
@@ -340,6 +370,9 @@ describe('Research module browser coverage', function () {
 
         await openPlaywrightModule(driver, baseUrl);
         await waitForBodyText(driver, 'Generated Spec Preview');
+
+        await openInjectionPreventionModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Prevention Decision');
 
         await openSessionManagementModule(driver, baseUrl);
         await waitForBodyText(driver, 'Lockdown Decision');
