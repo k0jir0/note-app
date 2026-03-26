@@ -21,7 +21,7 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 - Dedicated ML Module for alert-triage model training, runtime inspection, explainable score analysis, feedback-aware supervision, and autonomy proof workflows
 - Dedicated Playwright Module for browser-automation coverage planning, scenario inspection, latest-run artifact reporting, and generated Playwright spec templates
 - Dedicated Selenium Module for browser-automation coverage planning, scenario inspection, latest-run artifact reporting, and generated Selenium WebDriver script templates
-- Dedicated Self-Healing Module for ranking Playwright and Selenium locator repairs from a broken locator, a step goal, and a current DOM snippet
+- Dedicated Self-Healing Module for ranking Playwright and Selenium locator repairs from a broken locator, a step goal, and a current DOM snippet, now exposed at `/self-healing/module` with legacy locator-repair redirects
 - ML-driven autonomous response policy that can notify operators or trigger a block webhook for high-risk ingested alerts
 - Optional scheduled ingestion for logs, scans, and intrusion events (Falco JSON ingestion helper + Trivy runner support)
 - Optional Redis-backed realtime ingest endpoint and live alert stream, with separate server and browser connection status in the Security Module UI
@@ -233,6 +233,8 @@ The Research Workspace also links to a dedicated Self-Healing Module page at `/s
 - It accepts a failing locator, a short step-goal description, and the current HTML snippet around the intended element, then ranks likely repairs for both browser stacks.
 - The current engine is ML-assisted and verification-gated: deterministic candidate generation feeds a trained logistic reranker, and a suggested heal is only considered safe after a deterministic follow-up check.
 - The module includes app-shaped sample cases grounded in the Research Workspace, Playwright Module, and auth flows so repair strategies can be explored without leaving the app.
+- The canonical browser route is `/self-healing/module`; the older `/locator-repair` and `/locator-repair/module` paths remain in place as legacy redirects so existing bookmarks and notes still work.
+- The page route was renamed for clarity, but the underlying compatibility-oriented API surface still uses `/api/locator-repair/*` and the current training command remains `npm run locator-repair:train`.
 - In practice, the Self-Healing Module gives the project a place to reason about selector drift explicitly instead of hiding repair logic inside failing browser suites.
 
 ### Selenium Module Overview
