@@ -25,6 +25,7 @@
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:all": "playwright test",
     "test:e2e:headed": "playwright test --project=chromium --headed",
+    "test:e2e:theme": "playwright test playwright-tests/theme.spec.js --project=chromium",
     "test:e2e:report": "playwright show-report",
     "lint": "eslint . --ext .js"
   },

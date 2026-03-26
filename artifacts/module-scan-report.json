@@ -1,0 +1,68 @@
+{
+  "/research": {
+    "screenshot": "test-results/scan-_research.png",
+    "issues": []
+  },
+  "/ml/module": {
+    "screenshot": "test-results/scan-_ml_module.png",
+    "issues": []
+  },
+  "/playwright/module": {
+    "screenshot": "test-results/scan-_playwright_module.png",
+    "issues": []
+  },
+  "/hardware-mfa/module": {
+    "screenshot": "test-results/scan-_hardware-mfa_module.png",
+    "issues": []
+  },
+  "/mission-assurance/module": {
+    "screenshot": "test-results/scan-_mission-assurance_module.png",
+    "issues": []
+  },
+  "/injection-prevention/module": {
+    "screenshot": "test-results/scan-_injection-prevention_module.png",
+    "issues": []
+  },
+  "/access-control/module": {
+    "screenshot": "test-results/scan-_access-control_module.png",
+    "issues": []
+  },
+  "/locator-repair/module": {
+    "screenshot": "test-results/scan-_locator-repair_module.png",
+    "issues": []
+  },
+  "/security/module": {
+    "screenshot": "test-results/scan-_security_module.png",
+    "issues": [
+      {
+        "tag": "div",
+        "classes": "card border-0 bg-light-subtle mb-4",
+        "id": "",
+        "background": "rgba(255, 255, 255, 0.02)",
+        "luminance": 1,
+        "outerHTML": "<div class=\"card border-0 bg-light-subtle mb-4\">\n                    <div class=\"card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3\">\n                        <div>\n                            <h3 class=\"h6 mb-1\">Automation Demo Action</h3>\n                  "
+      }
+    ]
+  },
+  "/selenium/module": {
+    "screenshot": "test-results/scan-_selenium_module.png",
+    "issues": []
+  },
+  "/session-management/module": {
+    "screenshot": "test-results/scan-_session-management_module.png",
+    "issues": [
+      {
+        "tag": "input",
+        "classes": "form-check-input",
+        "id": "session-management-concurrent-toggle",
+        "background": "rgb(255, 255, 255)",
+        "luminance": 1,
+        "outerHTML": "<input class=\"form-check-input\" type=\"checkbox\" value=\"1\" id=\"session-management-concurrent-toggle\" style=\"\">"
+      }
+    ]
+  },
+  "/xss-defense/module": {
+    "screenshot": "test-results/scan-_xss-defense_module.png",
+    "issues": []
+  }
+}

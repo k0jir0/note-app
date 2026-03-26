@@ -1,3 +1,65 @@
+/* Global dark mode overrides for selenium module cards on all pages */
+body.dark-mode .selenium-prereq-card,
+body.dark-mode .selenium-workflow-step,
+body.dark-mode .selenium-scenario-card {
+  background: #181d23 !important;
+  color: #e0e6ef !important;
+  border: 1px solid #444 !important;
+  box-shadow: none !important;
+}
+body.dark-mode .selenium-scenario-card {
+  background: #181d23 !important;
+  color: #e0e6ef !important;
+  border: 1px solid #444 !important;
+  box-shadow: none !important;
+}
+body.dark-mode .selenium-workflow-step {
+  background: #181d23 !important;
+  color: #e0e6ef !important;
+  border: 1px solid #444 !important;
+  box-shadow: none !important;
+}
+body.dark-mode .selenium-prereq-card {
+  background: #181d23 !important;
+  color: #e0e6ef !important;
+  border: 1px solid #444 !important;
+  box-shadow: none !important;
+}
+/* Global dark mode override for all cards, boxes, and containers */
+body.dark-mode .card,
+body.dark-mode .box,
+body.dark-mode .container,
+body.dark-mode .panel,
+body.dark-mode .module-card,
+body.dark-mode .research-summary-card,
+body.dark-mode .automation-card,
+body.dark-mode .research-panel,
+body.dark-mode .border,
+body.dark-mode .border-0,
+body.dark-mode .bg-light,
+body.dark-mode .bg-white,
+body.dark-mode .bg-light-subtle,
+body.dark-mode .text-bg-light,
+body.dark-mode .text-bg-white {
+  background: #181d23 !important;
+  color: #e0e6ef !important;
+  border: 1px solid #444 !important;
+  box-shadow: none !important;
+}
+/* Global dark mode override for selenium-tag */
+body.dark-mode .selenium-tag,
+body.dark-mode span.selenium-tag,
+body.dark-mode div.selenium-tag,
+body.dark-mode .card .selenium-tag,
+body.dark-mode .mb-2 .selenium-tag,
+body.dark-mode .mb-3 .selenium-tag,
+body.dark-mode .d-flex .selenium-tag {
+  background: #23272e !important;
+  color: #e0e6ef !important;
+  border: 1px solid #444 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
 .note-img {
   height: 200px;
   object-fit: cover;
@@ -10,3 +72,379 @@
 .inline-form {
   display: inline;
 }
+
+.settings-menu {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+}
+
+.settings-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 104px;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  list-style: none;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  user-select: none;
+}
+
+.settings-menu__trigger::-webkit-details-marker {
+  display: none;
+}
+
+.settings-menu__trigger::after {
+  content: "▾";
+  margin-left: 0.55rem;
+  font-size: 0.78rem;
+}
+
+.settings-menu[open] .settings-menu__trigger::after {
+  content: "▴";
+}
+
+.settings-menu__panel {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  width: 220px;
+  padding: 0.95rem 1rem;
+  border: 1px solid #dbeafe;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
+}
+
+.settings-menu__title {
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.settings-menu__option {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: #0f172a;
+}
+
+.settings-menu__option .form-check-input {
+  margin: 0;
+}
+
+.settings-menu__option .form-check-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Dark theme overrides */
+body.dark-mode {
+  background: #0b1220;
+  color: #e6eef8;
+}
+
+body.dark-mode a {
+  color: #7dd3fc;
+}
+
+body.dark-mode .card {
+  background: #0f1724;
+  border: 1px solid #1f2a36;
+    /* Fix progress bars in ML module */
+    .ml-progress,
+    .ml-progress.tone-positive,
+    .ml-progress.tone-negative {
+        background: #23272e !important;
+        color: #e0e6ef !important;
+        border-radius: 4px;
+        box-shadow: none;
+    }
+
+    /* Fix Playwright tags */
+    .playwright-tag {
+        background: #23272e !important;
+        color: #e0e6ef !important;
+        border: 1px solid #444 !important;
+    }
+
+    /* Fix Selenium tags */
+    .selenium-tag {
+        background: #23272e !important;
+        color: #e0e6ef !important;
+        border: 1px solid #444 !important;
+      }
+    
+    body.dark-mode span.selenium-tag,
+    body.dark-mode .selenium-tag {
+      background: #23272e !important;
+      color: #e0e6ef !important;
+      border: 1px solid #444 !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+    }
+
+    /* Fix card with bg-light-subtle */
+    .card.bg-light-subtle,
+    .card.border-0.bg-light-subtle {
+        background: #23272e !important;
+        color: #e0e6ef !important;
+        border: 1px solid #444 !important;
+    }
+}
+
+body.dark-mode .note-card:hover {
+  background: #08121a;
+}
+
+body.dark-mode .settings-menu__trigger {
+  background: rgba(15, 23, 36, 0.94);
+  color: #e6eef8;
+  border-color: #233044;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+}
+
+body.dark-mode .settings-menu__panel {
+  background: rgba(15, 23, 36, 0.98);
+  color: #e6eef8;
+  border-color: #233044;
+}
+
+body.dark-mode .settings-menu__title {
+  color: #9fb1c7;
+}
+
+body.dark-mode .settings-menu__option,
+body.dark-mode .settings-menu__option .form-check-label {
+  color: #e6eef8;
+}
+
+body.dark-mode .btn-dark {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+body.dark-mode .btn-outline-dark {
+  color: #c7d2fe;
+  border-color: #334155;
+}
+
+body.dark-mode .btn-outline-primary {
+  color: #bfdbfe;
+  border-color: #0ea5e9;
+}
+
+body.dark-mode .btn-outline-secondary,
+body.dark-mode .btn-secondary {
+  background: transparent;
+  color: #cbd5e1;
+  border-color: #344054;
+}
+
+body.dark-mode .alert-danger {
+  background: #2b0f12;
+  border-color: #5b0f14;
+  color: #fca5a5;
+}
+
+/* Accessibility-focused dark-mode rules (expanded) */
+body.dark-mode * {
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6 {
+  color: #e6eef8;
+}
+
+body.dark-mode .card,
+body.dark-mode .card .card-body,
+body.dark-mode .research-card,
+body.dark-mode .research-summary-card,
+body.dark-mode .automation-card {
+  background: #0f1724;
+  color: #e6eef8;
+  border-color: #1f2a36;
+}
+
+body.dark-mode .card .card-body { color: #e6eef8; }
+
+body.dark-mode a { color: #7dd3fc; }
+
+body.dark-mode .text-muted { color: #9fb1c7 !important; }
+
+/* Form controls */
+body.dark-mode .form-control,
+body.dark-mode .form-select,
+body.dark-mode textarea {
+  background: #07121a;
+  border: 1px solid #233044;
+  color: #e6eef8;
+}
+
+body.dark-mode ::placeholder { color: #7b8b99; }
+
+/* Buttons and outlines */
+body.dark-mode .btn { color: #fff; }
+body.dark-mode .btn-outline-dark { color: #cbd5e1; border-color: #334155; }
+body.dark-mode .btn-outline-secondary { color: #cbd5e1; border-color: #374151; }
+body.dark-mode .btn-outline-primary { color: #bfdbfe; border-color: #0ea5e9; }
+body.dark-mode .btn-outline-danger { color: #fca5a5; border-color: #7f1d1d; }
+body.dark-mode .btn-secondary { background-color: #374151; border-color: #374151; }
+
+/* Badges and chips */
+body.dark-mode .badge,
+body.dark-mode .correlation-chip {
+  background: #183041;
+  color: #cfe7ff;
+  border: 1px solid #2b4b63;
+}
+
+/* Tables, lists */
+body.dark-mode table,
+body.dark-mode .table thead th,
+body.dark-mode .table tbody td {
+  color: #e6eef8;
+  border-color: #1f2a36;
+}
+
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+  background: #07131b;
+}
+
+body.dark-mode .list-group-item {
+  background: transparent;
+  color: #dbe7f5;
+  border-color: #233044;
+}
+
+/* Alerts, modals, dropdowns */
+body.dark-mode .alert { background: #0f1418; color: #f8fafc; border-color: #233044; }
+body.dark-mode .alert-secondary { background: #0f1418; color: #cbd5e1; border-color: #2b3742; }
+body.dark-mode .alert-danger { background: #2b0f12; color: #fca5a5; border-color: #5b0f14; }
+body.dark-mode .modal-content,
+body.dark-mode .dropdown-menu { background: #0f1724; color: #e6eef8; border-color: #233044; }
+
+/* Code blocks */
+body.dark-mode pre,
+body.dark-mode code {
+  background: #07121a;
+  color: #e6eef8;
+  border: 1px solid #233044;
+}
+
+/* Misc readability */
+body.dark-mode .small,
+body.dark-mode small { color: #a9bdcf; }
+
+body.dark-mode .note-card:hover { background: #08121a; }
+
+/* Override Bootstrap light utility classes in dark mode */
+body.dark-mode .bg-light,
+body.dark-mode .bg-white,
+body.dark-mode .bg-body,
+body.dark-mode .bg-light-subtle,
+body.dark-mode .text-bg-light,
+body.dark-mode .text-bg-white {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: #e6eef8 !important;
+  border-color: #17242f !important;
+}
+
+/* Specific subtle backgrounds used in templates */
+body.dark-mode .border-0.bg-light-subtle {
+  background: rgba(255,255,255,0.02) !important;
+  border-color: rgba(255,255,255,0.03) !important;
+}
+
+/* Ensure badge variants using bootstrap utilities are dark */
+body.dark-mode .badge.bg-light,
+body.dark-mode .badge.bg-white,
+body.dark-mode .badge.text-bg-light,
+body.dark-mode .badge.text-bg-white {
+  background: #16252c !important;
+  color: #e6eef8 !important;
+  border: 1px solid #22313a !important;
+}
+
+/* Ensure module panels, summary cards, and automation cards are dark and readable */
+body.dark-mode .research-summary-card,
+body.dark-mode .research-panel,
+body.dark-mode .automation-card,
+body.dark-mode .playwright-prereq-card,
+body.dark-mode .playwright-workflow-step,
+body.dark-mode .playwright-scenario-card,
+body.dark-mode .research-card,
+body.dark-mode .research-panel .card,
+body.dark-mode .card.research-summary-card,
+body.dark-mode .card.automation-card {
+  background: #0f1724 !important;
+  color: #e6eef8 !important;
+  border: 1px solid #17242f !important;
+  box-shadow: none !important;
+}
+
+/* Override lighter badges used in modules */
+body.dark-mode .badge.text-bg-light,
+body.dark-mode .badge.bg-light,
+body.dark-mode .badge.text-bg-white {
+  background: #16252c !important;
+  color: #e6eef8 !important;
+  border: 1px solid #22313a !important;
+}
+
+/* Cards with explicit shadow should still be subtle in dark mode */
+body.dark-mode .card.shadow {
+  background: #0f1724 !important;
+  border-color: #17242f !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
+}
+
+/* Small kicker text and metadata contrast */
+body.dark-mode .research-kicker,
+body.dark-mode .notes-description,
+body.dark-mode .notes-title,
+body.dark-mode .research-kicker + h2,
+body.dark-mode .research-kicker + h1 {
+  color: #cfe7ff !important;
+}
+
+/* Ensure pre/code inside panels remain readable */
+body.dark-mode .research-panel pre,
+body.dark-mode .automation-card pre,
+body.dark-mode pre code { background: #07121a !important; color: #e6eef8 !important; }
+
+/* Ensure ML module detail rows do not stay white in dark mode */
+body.dark-mode .ml-distribution-row,
+body.dark-mode .ml-feature-card,
+body.dark-mode .ml-type-row {
+  background: #0f1724 !important;
+  color: #e6eef8 !important;
+  border: 1px solid #17242f !important;
+  box-shadow: none !important;
+}
+
+body.dark-mode .ml-progress,
+body.dark-mode .ml-progress::-webkit-progress-bar {
+  background: #16212d !important;
+}
+
+

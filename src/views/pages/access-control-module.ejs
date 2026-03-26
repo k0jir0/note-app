@@ -8,9 +8,11 @@
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/custom.css">
     <script src="/js/access-control-module.js" defer></script>
+    <script src="/js/theme-toggle.js" defer></script>
 </head>
 
-<body>
+<body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
+    <%- include('../partials/theme-toggle') %>
     <div class="container mt-5 mb-5"
         id="access-control-module-root"
         data-access-control-overview-endpoint="/api/access-control/overview"

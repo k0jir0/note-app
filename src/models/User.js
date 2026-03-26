@@ -161,6 +161,13 @@ const userSchema = new mongoose.Schema({
             default: null
         }
     }
+    ,
+    preferences: {
+        nightMode: {
+            type: Boolean,
+            default: false
+        }
+    }
 }, {
     timestamps: true
 });

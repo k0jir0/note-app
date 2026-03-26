@@ -8,9 +8,11 @@
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/custom.css">
     <script src="/js/xss-defense-module.js" defer></script>
+    <script src="/js/theme-toggle.js" defer></script>
 </head>
 
-<body>
+<body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
+    <%- include('../partials/theme-toggle') %>
     <div class="container mt-5 mb-5"
         id="xss-defense-module-root"
         data-xss-defense-overview-endpoint="/api/xss-defense/overview"

@@ -33,6 +33,7 @@ const scanApiRoute = require('./src/routes/scanApiRoutes');
 const scanPageRoute = require('./src/routes/scanPageRoutes');
 const devRuntimeRoute = require('./src/routes/devRuntimeRoutes');
 const authRoutes = require('./src/routes/authRoutes');
+const settingsApiRoute = require('./src/routes/settingsApiRoutes');
 const metricsRoute = require('./src/routes/metrics');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { loadRuntimeEnvironment, reapplyLocalEnvOverrides } = require('./src/config/runtimeEnv');
@@ -149,6 +150,9 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
 
         // Authentication routes (must be before requireAuth middleware)
         app.use('/auth', authRoutes);
+
+        // Settings API (persist user preferences)
+        app.use(settingsApiRoute);
 
         // Metrics endpoint (Prometheus)
         app.use(metricsRoute.router);
