@@ -30,6 +30,9 @@ test('signup -> login -> toggle theme -> server persists dark-mode', async ({ pa
     expect(csrf).toBeTruthy();
 
     // Click the UI toggle and wait for the settings API response to ensure persistence
+    await page.locator('#settings-menu summary').click();
+    await expect(page.locator('#theme-toggle')).toBeVisible();
+
     const [resp] = await Promise.all([
         page.waitForResponse((response) => response.url().includes('/api/settings/theme') && response.status() === 200),
         page.click('#theme-toggle')
