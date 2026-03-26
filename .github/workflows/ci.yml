@@ -9,6 +9,16 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval \"db.adminCommand('ping')\" || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -16,20 +26,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.8.0
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Write .env from secrets
+      - name: Write CI .env
         run: |
           cat > .env <<'EOF'
-          MONGODB_URI=${{ secrets.MONGODB_URI }}
-          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-          NOTE_ENCRYPTION_KEY=${{ secrets.NOTE_ENCRYPTION_KEY }}
-          LEGACY_NOTE_ENCRYPTION_KEY=${{ secrets.LEGACY_NOTE_ENCRYPTION_KEY }}
-          ALLOW_LEGACY_SESSION_SECRET_FALLBACK=${{ secrets.ALLOW_LEGACY_SESSION_SECRET_FALLBACK }}
-          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          MONGODB_URI=mongodb://127.0.0.1:27017/noteAppCi
+          SESSION_SECRET=ci-session-secret-0123456789abcdef0123456789abcdef
+          NOTE_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          ALLOW_LEGACY_SESSION_SECRET_FALLBACK=false
+          APP_BASE_URL=http://localhost:3000
+          DISABLE_REDIS=1
           EOF
 
       - name: Run tests
