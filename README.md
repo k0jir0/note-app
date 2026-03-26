@@ -9,7 +9,7 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 - Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security architecture, automation, and browser-testing tools.
 - ML and response: an ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
 - Mission-grade assurance: dedicated modules for RBAC-plus-ABAC mission access decisions, hardware-first MFA and PKI step-up, strict session timeout and concurrent-login control, and server-side access-control verification for protected APIs.
-- Browser automation: Playwright and Selenium modules for scenario planning, latest-run artifact reporting, and generated test templates, plus a Self-Healing Module at `/self-healing/module` that ranks locator repairs from a broken selector, a step goal, and a DOM snippet while preserving legacy locator-repair redirects.
+- Browser automation: Playwright and Selenium modules for scenario planning, latest-run artifact reporting, and generated test templates, plus a Self-Healing Module at `/self-healing/module` that ranks locator repairs from a broken selector, a step goal, and a DOM snippet.
 - Optional automation and realtime: scheduled ingestion for logs, scans, and intrusion events; Falco and Trivy runners; Redis-backed live ingest and streaming; Slack or SMTP notifications; and `/metrics` instrumentation for automation and scan activity.
 - Delivery and quality: a REST API, responsive Bootstrap UI, CI-friendly smoke and integration coverage, report-only Trivy CI artifacts for triage, and end-to-end testing with Mocha, Chai, Sinon, Playwright, and Selenium across notes, auth, security, ML, mission assurance, MFA, session management, the web-security modules, browser modules, self-healing, and autonomy-demo flows.
 
@@ -215,7 +215,6 @@ The Research Workspace also links to a dedicated Self-Healing Module page at `/s
 - It accepts a failing locator, a short step-goal description, and the current HTML snippet around the intended element, then ranks likely repairs for both browser stacks.
 - The current engine is ML-assisted and verification-gated: deterministic candidate generation feeds a trained logistic reranker, and a suggested heal is only considered safe after a deterministic follow-up check.
 - The module includes app-shaped sample cases grounded in the Research Workspace, Playwright Module, and auth flows so repair strategies can be explored without leaving the app.
-- The canonical browser route is `/self-healing/module`; the older `/locator-repair` and `/locator-repair/module` paths remain in place as legacy redirects so existing bookmarks and notes still work.
 - The page route was renamed for clarity, but the underlying compatibility-oriented API surface still uses `/api/locator-repair/*` and the current training command remains `npm run locator-repair:train`.
 - In practice, the Self-Healing Module gives the project a place to reason about selector drift explicitly instead of hiding repair logic inside failing browser suites.
 
@@ -414,8 +413,6 @@ PUT /api/notes/:id
 | `GET /playwright/module` | Dedicated Playwright Module page | Yes |
 | `GET /self-healing` | Redirects to the dedicated Self-Healing Module page | Yes |
 | `GET /self-healing/module` | Dedicated Self-Healing Module page | Yes |
-| `GET /locator-repair` | Legacy redirect to `/self-healing/module` | Yes |
-| `GET /locator-repair/module` | Legacy redirect to `/self-healing/module` | Yes |
 | `GET /selenium` | Redirects to the dedicated Selenium Module page | Yes |
 | `GET /selenium/module` | Dedicated Selenium Module page | Yes |
 | `GET /auth/login` | Login page | - |
