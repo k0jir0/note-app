@@ -96,6 +96,19 @@ async function openXssDefenseModule(driver, baseUrl) {
     );
 }
 
+async function openAccessControlModule(driver, baseUrl) {
+    await driver.get(`${baseUrl}/access-control/module`);
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await waitForBodyText(driver, 'Access Control Module');
+    await waitForElementText(
+        driver,
+        By.id('access-control-status'),
+        (text) => text.includes('Access Control Module ready.'),
+        20000,
+        'Expected the Access Control Module to finish loading.'
+    );
+}
+
 async function openSelfHealingModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/self-healing/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
@@ -178,6 +191,7 @@ describe('Research module browser coverage', function () {
         await waitForBodyText(driver, 'Playwright Module');
         await waitForBodyText(driver, 'Injection Prevention Module');
         await waitForBodyText(driver, 'XSS Defense Module');
+        await waitForBodyText(driver, 'Access Control Module');
         await waitForBodyText(driver, 'Self-Healing Module');
         await waitForBodyText(driver, 'Session Management Module');
         await waitForBodyText(driver, 'Hardware-First MFA Module');
@@ -221,6 +235,13 @@ describe('Research module browser coverage', function () {
         await clickElement(driver, By.linkText('Open XSS Defense Module'));
         await waitForLocationContains(driver, '/xss-defense/module');
         await waitForBodyText(driver, 'XSS Defense Module');
+
+        await clickElement(driver, By.css('a[href="/research"]'));
+        await waitForLocationContains(driver, '/research');
+
+        await clickElement(driver, By.linkText('Open Access Control Module'));
+        await waitForLocationContains(driver, '/access-control/module');
+        await waitForBodyText(driver, 'Access Control Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
@@ -384,6 +405,15 @@ describe('Research module browser coverage', function () {
         await waitForBodyText(driver, 'Escaping And CSP Outcome');
     });
 
+    it(getSeleniumScenario('access-control-module-smoke').title, async () => {
+        await openAccessControlModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Protected API Catalog');
+        await waitForBodyText(driver, 'Verified Server Context');
+        await driver.findElement(By.id('access-control-scenario-select'));
+        await driver.findElement(By.id('access-control-evaluate-btn'));
+        await waitForBodyText(driver, 'Server Decision');
+    });
+
     it(getSeleniumScenario('research-full-suite').title, async () => {
         await openResearchWorkspace(driver, baseUrl);
         await waitForBodyText(driver, 'Security Module');
@@ -406,6 +436,9 @@ describe('Research module browser coverage', function () {
 
         await openXssDefenseModule(driver, baseUrl);
         await waitForBodyText(driver, 'Escaping And CSP Outcome');
+
+        await openAccessControlModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Server Decision');
 
         await openSessionManagementModule(driver, baseUrl);
         await waitForBodyText(driver, 'Lockdown Decision');

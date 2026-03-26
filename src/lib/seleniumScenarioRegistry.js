@@ -73,7 +73,7 @@ const SELENIUM_SCENARIOS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Self-Healing, Mission Assurance, Hardware-First MFA, and Session Management entry points remain available.',
+        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Access Control, Self-Healing, Mission Assurance, Hardware-First MFA, and Session Management entry points remain available.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Research Workspace heading is visible',
@@ -83,6 +83,7 @@ const SELENIUM_SCENARIOS = [
             'Playwright Module card is present',
             'Injection Prevention Module card is present',
             'XSS Defense Module card is present',
+            'Access Control Module card is present',
             'Self-Healing Module card is present',
             'Mission Assurance Module card is present',
             'Hardware-First MFA Module card is present',
@@ -221,6 +222,24 @@ const SELENIUM_SCENARIOS = [
         suiteFile: 'selenium-tests/research-modules.test.js'
     },
     {
+        id: 'access-control-module-smoke',
+        title: 'Access Control Module Smoke',
+        purpose: 'Open the Access Control Module and confirm that protected API coverage, identity posture, and access-decision controls are visible.',
+        routes: ['/access-control/module'],
+        assertions: [
+            'Access Control Module heading is visible',
+            'Protected API catalog is visible',
+            'Current identity summary is visible',
+            'Scenario selector is present',
+            'Server decision panel is visible'
+        ],
+        tags: ['access-control', 'research', 'browser'],
+        requiresLogin: true,
+        optionalDependencies: [],
+        implementedInSuite: true,
+        suiteFile: 'selenium-tests/research-modules.test.js'
+    },
+    {
         id: 'session-management-module-smoke',
         title: 'Session Management Module Smoke',
         purpose: 'Open the Session Management Module and confirm that the live session summary, timeout policy, and lockdown-evaluation controls are visible.',
@@ -241,8 +260,8 @@ const SELENIUM_SCENARIOS = [
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated Selenium path across Research, Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Self-Healing, Session Management, Mission Assurance, and Hardware-First MFA so the end-to-end browser workflow is covered by a single smoke scenario.',
-        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/injection-prevention/module', '/xss-defense/module', '/self-healing/module', '/session-management/module', '/hardware-mfa/module', '/mission-assurance/module'],
+        purpose: 'Run one authenticated Selenium path across Research, Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Access Control, Self-Healing, Session Management, Mission Assurance, and Hardware-First MFA so the end-to-end browser workflow is covered by a single smoke scenario.',
+        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/injection-prevention/module', '/xss-defense/module', '/access-control/module', '/self-healing/module', '/session-management/module', '/hardware-mfa/module', '/mission-assurance/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',
             'Research Workspace renders all module entry points',
@@ -252,6 +271,7 @@ const SELENIUM_SCENARIOS = [
             'Playwright Module renders its starter spec preview',
             'Injection Prevention Module renders hardening controls',
             'XSS Defense Module renders CSP controls',
+            'Access Control Module renders protected API coverage',
             'Self-Healing Module renders repair suggestions',
             'Session Management Module renders lockdown controls',
             'Hardware-First MFA Module renders step-up controls',

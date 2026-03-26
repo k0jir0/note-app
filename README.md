@@ -1,16 +1,17 @@
 # Note App
 
-A full-stack note-taking, applied security-research, and browser-automation application built with Node.js, Express, MongoDB, and EJS. Alongside encrypted notes, it includes a Security Module for log and scan analysis, an ML Module for trainable alert triage and audited autonomy, plus dedicated Playwright, Selenium, and Self-Healing modules for inspecting browser coverage, surfacing the latest run status, exporting reusable browser suites, and repairing broken selectors across the Research Workspace.
+A full-stack note-taking, applied security-research, and browser-automation application built with Node.js, Express, MongoDB, and EJS. Alongside encrypted notes, it includes dedicated Security, ML, Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, Playwright, Selenium, and Self-Healing modules across a unified Research Workspace.
 
 ## Features
 
 - Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, and per-user authorization.
-- Core web security: input validation, XSS protection, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers with CSP, and route-specific rate limiting.
-- Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security, automation, and browser-testing tools.
+- Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, and route-specific rate limiting.
+- Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security architecture, automation, and browser-testing tools.
 - ML and response: an ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
+- Mission-grade assurance: dedicated modules for RBAC-plus-ABAC mission access decisions, hardware-first MFA and PKI step-up, strict session timeout and concurrent-login control, and server-side access-control verification for protected APIs.
 - Browser automation: Playwright and Selenium modules for scenario planning, latest-run artifact reporting, and generated test templates, plus a Self-Healing Module at `/self-healing/module` that ranks locator repairs from a broken selector, a step goal, and a DOM snippet while preserving legacy locator-repair redirects.
 - Optional automation and realtime: scheduled ingestion for logs, scans, and intrusion events; Falco and Trivy runners; Redis-backed live ingest and streaming; Slack or SMTP notifications; and `/metrics` instrumentation for automation and scan activity.
-- Delivery and quality: a REST API, responsive Bootstrap UI, CI-friendly smoke and integration coverage, report-only Trivy CI artifacts for triage, and end-to-end testing with Mocha, Chai, Sinon, Playwright, and Selenium across notes, auth, security, ML, browser modules, self-healing, and autonomy-demo flows.
+- Delivery and quality: a REST API, responsive Bootstrap UI, CI-friendly smoke and integration coverage, report-only Trivy CI artifacts for triage, and end-to-end testing with Mocha, Chai, Sinon, Playwright, and Selenium across notes, auth, security, ML, mission assurance, MFA, session management, the web-security modules, browser modules, self-healing, and autonomy-demo flows.
 
 ## Tech Stack
 
@@ -67,7 +68,7 @@ node -e "const crypto=require('crypto'); console.log('SESSION_SECRET=' + crypto.
 
 3. **Run**
 ```bash
-npm run start-dev  # Development (auto-reload)
+npm run start-dev  # Development
 npm start          # Production
 npm test           # Run tests
 npm run test:selenium # Run Selenium browser tests against a live local app
@@ -101,18 +102,21 @@ Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
 
-Current local verification (March 25, 2026):
-- `npm test` passes with 320 tests
+Current local verification (March 26, 2026):
+- `npm test` passes with 461 tests
 - `npm run lint` passes with 0 errors
-- Latest `artifacts/playwright-results.json` shows 13 expected / 0 unexpected in Chromium
-- Latest `artifacts/selenium-results.json` shows 11 passing / 0 failing
+- Live app checks on `http://localhost:3000` confirm the current protected module routes are mounted
+- Latest `artifacts/playwright-results.json` on disk shows 13 expected / 0 unexpected in Chromium
+- Latest `artifacts/selenium-results.json` on disk shows 11 passing / 0 failing
 
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account
 - Login and start creating notes
-- Use `/research` to access the unified Research Workspace
+- Use `/research` to access the unified Research Workspace for Security, ML, Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, Playwright, Selenium, and Self-Healing
 - Use the Security Module link inside `/research` to run `Inject Automation Sample` and populate Alerts, Scans, and Correlations with demo data for the signed-in account
 - Use `/ml/module` to inspect the active alert-triage model, compare score provenance and score distributions, review learned feature influence, train either a bootstrap or hybrid model, and verify autonomous-response behavior with the built-in demo flow
+- Use `/mission-assurance/module`, `/hardware-mfa/module`, and `/session-management/module` to inspect mission-role policy decisions, strong-factor step-up posture, and abandoned-terminal lockdown behavior
+- Use `/injection-prevention/module`, `/xss-defense/module`, and `/access-control/module` to inspect the app's architectural handling of injection prevention, XSS defense, and server-side access verification
 - Use `/playwright/module` to inspect browser-test scenarios, review the latest annotated Playwright run, and export Playwright specs for the auth, notes, research, security, Playwright, and Selenium flows
 - Use `/selenium/module` to inspect browser-test scenarios, review Selenium prerequisites, and export WebDriver smoke templates for the Research, Security, ML, and Selenium module flows
 - Use `/self-healing/module` to open the Self-Healing Module, analyze broken Playwright and Selenium locators, load sample failure cases, and compare ranked repair suggestions before editing the test
@@ -214,6 +218,17 @@ The Research Workspace also links to a dedicated Self-Healing Module page at `/s
 - The canonical browser route is `/self-healing/module`; the older `/locator-repair` and `/locator-repair/module` paths remain in place as legacy redirects so existing bookmarks and notes still work.
 - The page route was renamed for clarity, but the underlying compatibility-oriented API surface still uses `/api/locator-repair/*` and the current training command remains `npm run locator-repair:train`.
 - In practice, the Self-Healing Module gives the project a place to reason about selector drift explicitly instead of hiding repair logic inside failing browser suites.
+
+### Security Architecture Modules Overview
+
+The Research Workspace now includes a set of focused security-architecture modules for the access, assurance, and browser-hardening layers:
+
+- `/mission-assurance/module` models RBAC-plus-ABAC decisions using mission role, clearance, assigned mission, device trust, network zone, and break-glass state.
+- `/hardware-mfa/module` inspects hardware-token and PKI posture, supports WebAuthn-backed enrollment and assertion flows, and exposes whether strong-factor step-up is currently satisfied.
+- `/session-management/module` shows strict idle and absolute timeout policy, concurrent-login prevention, and abandoned-terminal lockdown scenarios.
+- `/injection-prevention/module` explains the request guard, Mongo operator-key blocking, and safe query posture enforced through Mongoose defaults.
+- `/xss-defense/module` surfaces escaped rendering, strict CSP behavior, and how suspicious payloads are handled before they become script execution.
+- `/access-control/module` catalogs protected API routes and demonstrates that the server re-verifies identity, ownership, and policy even when a frontend control is visible or hidden.
 
 ### Selenium Module Overview
 
@@ -383,6 +398,18 @@ PUT /api/notes/:id
 | `GET /research` | Unified Research Workspace | Yes |
 | `GET /ml` | Redirects to the dedicated ML Module page | Yes |
 | `GET /ml/module` | Dedicated ML Module page | Yes |
+| `GET /mission-assurance` | Redirects to the dedicated Mission Assurance Module page | Yes |
+| `GET /mission-assurance/module` | Dedicated Mission Assurance Module page | Yes |
+| `GET /hardware-mfa` | Redirects to the dedicated Hardware-First MFA Module page | Yes |
+| `GET /hardware-mfa/module` | Dedicated Hardware-First MFA Module page | Yes |
+| `GET /session-management` | Redirects to the dedicated Session Management Module page | Yes |
+| `GET /session-management/module` | Dedicated Session Management Module page | Yes |
+| `GET /injection-prevention` | Redirects to the dedicated Injection Prevention Module page | Yes |
+| `GET /injection-prevention/module` | Dedicated Injection Prevention Module page | Yes |
+| `GET /xss-defense` | Redirects to the dedicated XSS Defense Module page | Yes |
+| `GET /xss-defense/module` | Dedicated XSS Defense Module page | Yes |
+| `GET /access-control` | Redirects to the dedicated Access Control Module page | Yes |
+| `GET /access-control/module` | Dedicated Access Control Module page | Yes |
 | `GET /playwright` | Redirects to the dedicated Playwright Module page | Yes |
 | `GET /playwright/module` | Dedicated Playwright Module page | Yes |
 | `GET /self-healing` | Redirects to the dedicated Self-Healing Module page | Yes |
@@ -423,6 +450,53 @@ PUT /api/notes/:id
 | `POST /api/ml/train` | POST | Train a bootstrap or hybrid alert-triage model and rescore stored alerts |
 | `POST /api/ml/autonomy-demo` | POST | Inject a dry-run autonomy demo so the ML Module can show stored notify-block outcomes |
 
+### Mission Assurance API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/mission-assurance/overview` | GET | Get the Mission Assurance Module overview, current mission profile, and policy matrix summary |
+| `POST /api/mission-assurance/evaluate` | POST | Evaluate a mission access decision across role, clearance, mission, device, network, and break-glass context |
+
+### Hardware-First MFA API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/hardware-mfa/overview` | GET | Get current hardware-token, PKI, and strong-factor session-assurance posture |
+| `POST /api/hardware-mfa/register/options` | POST | Issue WebAuthn registration options for a hardware-token enrollment |
+| `POST /api/hardware-mfa/register/verify` | POST | Verify and store a completed WebAuthn hardware-token enrollment |
+| `POST /api/hardware-mfa/pki/register-current` | POST | Register the currently trusted PKI certificate context for the signed-in user |
+| `POST /api/hardware-mfa/challenge` | POST | Start a hardware-token or PKI step-up challenge |
+| `POST /api/hardware-mfa/verify` | POST | Verify a challenge response and mark the session as hardware-first assured |
+| `POST /api/hardware-mfa/revoke` | POST | Revoke the current session's strong-factor assurance |
+
+### Session Management API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/session-management/overview` | GET | Get the current session-management policy, tracked session state, and lockdown posture |
+| `POST /api/session-management/evaluate` | POST | Evaluate timeout and concurrent-login scenarios such as abandoned terminals and superseded sessions |
+
+### Injection Prevention API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/injection-prevention/overview` | GET | Get request-guard posture, Mongo query-hardening details, and sample injection-prevention guidance |
+| `POST /api/injection-prevention/evaluate` | POST | Evaluate whether a sample payload would be rejected or allowed by the server-side injection-prevention layer |
+
+### XSS Defense API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/xss-defense/overview` | GET | Get escaped-rendering and CSP posture for the XSS Defense Module |
+| `POST /api/xss-defense/evaluate` | POST | Evaluate a sample payload against the app's escaping and CSP-based XSS defenses |
+
+### Access Control API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/access-control/overview` | GET | Get the protected-route catalog and server-side access-control coverage summary |
+| `POST /api/access-control/evaluate` | POST | Evaluate whether the server would allow or deny a scenario based on identity, ownership, and mission policy |
+
 ### Playwright API Endpoints
 
 | Endpoint | Method | Description |
@@ -448,6 +522,8 @@ PUT /api/notes/:id
 | `GET /api/selenium/script` | GET | Generate a Selenium WebDriver script template for the selected scenario |
 
 ## Project Structure
+
+Abbreviated high-level view; the Research Workspace now includes additional module files for Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, and Access Control alongside the browser-automation modules shown below.
 
 ```text
 notes-app/
@@ -545,7 +621,7 @@ notes-app/
 **NPM Scripts:**
 ```bash
 npm start          # Production
-npm run start-dev  # Development (nodemon auto-reload)
+npm run start-dev  # Development
 npm run local:run  # Windows launcher in a dedicated shell
 npm run local:run:worker  # Launcher + realtime worker
 npm run pm2:start  # Start the web app under PM2
@@ -563,7 +639,7 @@ npm run lint       # ESLint code quality check
 
 **Testing Notes:**
 - `npm test` now loads `test/testSetup.js` before the suite so tests run in `NODE_ENV=test` with Redis-backed realtime disabled by default.
-- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, the Security Module workflow, the ML Module overview path, the Self-Healing Module overview/suggestion flow, and the Selenium Module overview/script flow.
+- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, the Security Module workflow, the ML Module overview path, Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, the Self-Healing Module overview/suggestion flow, and the Selenium Module overview/script flow.
 - The dedicated Playwright browser suite lives under `playwright-tests/` and exercises auth, notes, research, security, Selenium, and Playwright module flows. Its latest JSON report is written to `artifacts/playwright-results.json`, which drives `/playwright/module`.
 - `npm run test:selenium` runs through `scripts/run-selenium-suite.js`, and the dedicated Selenium browser suite under `selenium-tests/` exercises the live app through `selenium-webdriver`, including the dedicated `/selenium/module` page, its latest-run summary, and its generated script controls.
 
@@ -714,8 +790,13 @@ git push
 - Dedicated encryption key for notes at rest
 - Optional compatibility support for note-encryption key rotation
 - Generic authentication responses for login/signup enumeration resistance
-- Input validation & XSS sanitization
+- Input validation plus request-level Mongo injection blocking
+- Escaped rendering backed by strict Content Security Policy
 - User-specific authorization checks
+- Global server-side API access-control enforcement for protected endpoints
+- Mission-role and attribute-aware authorization checks for sensitive research actions
+- Hardware-first MFA with WebAuthn-backed enrollment/assertion flows and PKI-aware session assurance
+- Strict session timeouts, absolute session limits, and concurrent-login invalidation
 - MongoDB ObjectId validation
 - Authentication, destructive action, and security-analysis route rate limiting
 - Clean production dependency audit after upgrading to EJS 5

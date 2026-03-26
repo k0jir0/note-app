@@ -19,6 +19,8 @@ const xssDefenseApiRoutes = require('../../src/routes/xssDefenseApiRoutes');
 const xssDefensePageRoutes = require('../../src/routes/xssDefensePageRoutes');
 const locatorRepairApiRoutes = require('../../src/routes/locatorRepairApiRoutes');
 const locatorRepairPageRoutes = require('../../src/routes/locatorRepairPageRoutes');
+const accessControlApiRoutes = require('../../src/routes/accessControlApiRoutes');
+const accessControlPageRoutes = require('../../src/routes/accessControlPageRoutes');
 const hardwareFirstMfaApiRoutes = require('../../src/routes/hardwareFirstMfaApiRoutes');
 const hardwareFirstMfaPageRoutes = require('../../src/routes/hardwareFirstMfaPageRoutes');
 const missionAssuranceApiRoutes = require('../../src/routes/missionAssuranceApiRoutes');
@@ -29,6 +31,7 @@ const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
 const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
 const { enforceInjectionPrevention } = require('../../src/middleware/injectionPrevention');
 const { attachSessionAuthAssurance } = require('../../src/middleware/sessionAuthAssurance');
+const { enforceServerSideApiAccessControl } = require('../../src/middleware/apiAccessControl');
 const { enforceStrictSessionManagement } = require('../../src/middleware/sessionManagement');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
 const { buildContentSecurityPolicyDirectives, buildHelmetProtectionOptions } = require('../../src/config/xssDefense');
@@ -395,6 +398,7 @@ function createApp() {
 
     app.use(enforceStrictSessionManagement);
     app.use(attachSessionAuthAssurance);
+    app.use(enforceServerSideApiAccessControl);
 
     app.use((req, res, next) => {
         res.locals.user = req.user || null;
@@ -420,6 +424,8 @@ function createApp() {
     app.use(injectionPreventionPageRoutes);
     app.use(xssDefenseApiRoutes);
     app.use(xssDefensePageRoutes);
+    app.use(accessControlApiRoutes);
+    app.use(accessControlPageRoutes);
     app.use(locatorRepairApiRoutes);
     app.use(locatorRepairPageRoutes);
     app.use(hardwareFirstMfaApiRoutes);

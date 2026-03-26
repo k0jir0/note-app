@@ -27,6 +27,7 @@ describe('Selenium research service', () => {
         expect(overview.suite.latestRun).to.have.property('available');
         expect(overview.scenarios.find((scenario) => scenario.id === 'injection-prevention-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'xss-defense-module-smoke')).to.exist;
+        expect(overview.scenarios.find((scenario) => scenario.id === 'access-control-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'session-management-module-smoke')).to.exist;
         expect(overview.scenarios[0].routes[0]).to.match(/^http:\/\/127\.0\.0\.1:3000\//);
         expect(overview.scenarios[0].routeTargets[0].description).to.be.a('string').and.not.equal('');
@@ -54,6 +55,7 @@ describe('Selenium research service', () => {
         expect(script.content).to.include('/playwright/module');
         expect(script.content).to.include('/injection-prevention/module');
         expect(script.content).to.include('/xss-defense/module');
+        expect(script.content).to.include('/access-control/module');
         expect(script.content).to.include('/self-healing/module');
         expect(script.content).to.include('/session-management/module');
         expect(script.content).to.include('/mission-assurance/module');
@@ -84,6 +86,19 @@ describe('Selenium research service', () => {
         expect(script.content).to.include('/xss-defense/module');
         expect(script.content).to.include('xss-defense-scenario-select');
         expect(script.content).to.include('Escaping And CSP Outcome');
+    });
+
+    it('builds a selenium script template for the access-control scenario', () => {
+        const script = seleniumResearchService.buildSeleniumScript({
+            baseUrl: 'http://localhost:3000',
+            scenarioId: 'access-control-module-smoke'
+        });
+
+        expect(script.fileName).to.equal('selenium-access-control-module-smoke.js');
+        expect(script.routePaths).to.include('/access-control/module');
+        expect(script.content).to.include('/access-control/module');
+        expect(script.content).to.include('access-control-scenario-select');
+        expect(script.content).to.include('Server Decision');
     });
 
     it('throws when an unknown scenario is requested', () => {

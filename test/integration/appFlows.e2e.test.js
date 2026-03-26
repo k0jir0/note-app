@@ -302,6 +302,7 @@ describe('Application end-to-end flows', function () {
         expect(researchHtml).to.include('Playwright Module');
         expect(researchHtml).to.include('Injection Prevention Module');
         expect(researchHtml).to.include('XSS Defense Module');
+        expect(researchHtml).to.include('Access Control Module');
         expect(researchHtml).to.include('Self-Healing Module');
         expect(researchHtml).to.include('Session Management Module');
         expect(researchHtml).to.include('Hardware-First MFA Module');
@@ -311,6 +312,7 @@ describe('Application end-to-end flows', function () {
         expect(researchHtml).to.include('/playwright/module');
         expect(researchHtml).to.include('/injection-prevention/module');
         expect(researchHtml).to.include('/xss-defense/module');
+        expect(researchHtml).to.include('/access-control/module');
         expect(researchHtml).to.include('/self-healing/module');
         expect(researchHtml).to.include('/session-management/module');
         expect(researchHtml).to.include('/hardware-mfa/module');
@@ -473,6 +475,7 @@ describe('Application end-to-end flows', function () {
         expect(seleniumScriptPayload.data.content).to.include('/playwright/module');
         expect(seleniumScriptPayload.data.content).to.include('/injection-prevention/module');
         expect(seleniumScriptPayload.data.content).to.include('/xss-defense/module');
+        expect(seleniumScriptPayload.data.content).to.include('/access-control/module');
         expect(seleniumScriptPayload.data.content).to.include('/self-healing/module');
         expect(seleniumScriptPayload.data.content).to.include('/session-management/module');
         expect(seleniumScriptPayload.data.content).to.include('/hardware-mfa/module');
@@ -516,6 +519,7 @@ describe('Application end-to-end flows', function () {
         expect(playwrightScriptPayload.data.content).to.include('/playwright/module');
         expect(playwrightScriptPayload.data.content).to.include('/injection-prevention/module');
         expect(playwrightScriptPayload.data.content).to.include('/xss-defense/module');
+        expect(playwrightScriptPayload.data.content).to.include('/access-control/module');
         expect(playwrightScriptPayload.data.content).to.include('/self-healing/module');
         expect(playwrightScriptPayload.data.content).to.include('/session-management/module');
         expect(playwrightScriptPayload.data.content).to.include('/hardware-mfa/module');
@@ -632,6 +636,52 @@ describe('Application end-to-end flows', function () {
         expect(xssDefenseEvaluatePayload.data.decision).to.equal('escape-and-restrict');
         expect(xssDefenseEvaluatePayload.data.dangerSignals).to.be.an('array').that.is.not.empty;
         expect(xssDefenseEvaluatePayload.data.escapedPreview).to.include('&lt;script&gt;');
+
+        const accessControlPage = await client.request('/access-control/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const accessControlHtml = await accessControlPage.text();
+
+        expect(accessControlPage.status).to.equal(200);
+        expect(accessControlHtml).to.include('Access Control Module');
+        expect(accessControlHtml).to.include('/api/access-control/overview');
+        expect(accessControlHtml).to.include('/api/access-control/evaluate');
+        expect(accessControlHtml).to.include('Protected API Catalog');
+        expect(accessControlHtml).to.include('Server Decision');
+
+        const accessControlOverviewResponse = await client.request('/api/access-control/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const accessControlOverviewPayload = await accessControlOverviewResponse.json();
+
+        expect(accessControlOverviewResponse.status).to.equal(200);
+        expect(accessControlOverviewPayload.success).to.equal(true);
+        expect(accessControlOverviewPayload.data.module.name).to.equal('Access Control Module');
+        expect(accessControlOverviewPayload.data.coverage.protectedRouteCount).to.be.greaterThan(0);
+        expect(accessControlOverviewPayload.data.guard.protectedPrefixes).to.include('/api/');
+        expect(accessControlOverviewPayload.data.routeCatalog.some((route) => route.path === '/api/notes')).to.equal(true);
+
+        const accessControlCsrfToken = await client.getCsrfToken();
+        const accessControlEvaluateResponse = await client.request('/api/access-control/evaluate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': accessControlCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                scenarioId: 'unauthenticated-notes-api',
+                authenticated: false,
+                serverIdentityVerified: false
+            })
+        });
+        const accessControlEvaluatePayload = await accessControlEvaluateResponse.json();
+
+        expect(accessControlEvaluateResponse.status).to.equal(200);
+        expect(accessControlEvaluatePayload.success).to.equal(true);
+        expect(accessControlEvaluatePayload.data.allowed).to.equal(false);
+        expect(accessControlEvaluatePayload.data.httpStatus).to.equal(401);
+        expect(accessControlEvaluatePayload.data.failedChecks).to.include('server-identity');
 
         const legacyLocatorRepairPage = await client.request('/locator-repair/module', {
             headers: { 'x-test-auth': '1' }

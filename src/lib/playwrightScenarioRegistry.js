@@ -70,7 +70,7 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Self-Healing, Mission Assurance, Hardware-First MFA, and Session Management entry points are visible.',
+        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Access Control, Self-Healing, Mission Assurance, Hardware-First MFA, and Session Management entry points are visible.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Login form is reachable',
@@ -81,6 +81,7 @@ const PLAYWRIGHT_SCENARIOS = [
             'Playwright Module card is present',
             'Injection Prevention Module card is present',
             'XSS Defense Module card is present',
+            'Access Control Module card is present',
             'Self-Healing Module card is present',
             'Mission Assurance Module card is present',
             'Hardware-First MFA Module card is present',
@@ -201,6 +202,24 @@ const PLAYWRIGHT_SCENARIOS = [
         suiteFile: 'playwright-tests/research-scenarios.spec.js'
     },
     {
+        id: 'access-control-module-smoke',
+        title: 'Access Control Module Smoke',
+        purpose: 'Open the Access Control Module and confirm that protected API coverage, identity posture, and access-decision controls are visible.',
+        routes: ['/access-control/module'],
+        assertions: [
+            'Access Control Module heading is visible',
+            'Protected API catalog is visible',
+            'Current identity summary is visible',
+            'Scenario selector is present',
+            'Server decision panel is visible'
+        ],
+        tags: ['access-control', 'browser', 'workspace'],
+        requiresLogin: true,
+        optionalDependencies: ['The module uses registered route metadata and current session state and does not require extra infrastructure.'],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/research-scenarios.spec.js'
+    },
+    {
         id: 'self-healing-module-smoke',
         title: 'Self-Healing Module Smoke',
         purpose: 'Open the legacy locator-repair entry point, confirm it redirects to the canonical Self-Healing page, and verify that a loaded sample produces ranked repair suggestions.',
@@ -292,8 +311,8 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Self-Healing, Session Management, Mission Assurance, and Hardware-First MFA to validate the end-to-end workspace flow.',
-        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/injection-prevention/module', '/xss-defense/module', '/self-healing/module', '/session-management/module', '/hardware-mfa/module', '/mission-assurance/module'],
+        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Access Control, Self-Healing, Session Management, Mission Assurance, and Hardware-First MFA to validate the end-to-end workspace flow.',
+        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/injection-prevention/module', '/xss-defense/module', '/access-control/module', '/self-healing/module', '/session-management/module', '/hardware-mfa/module', '/mission-assurance/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',
             'Research Workspace renders all module entry points',
@@ -303,6 +322,7 @@ const PLAYWRIGHT_SCENARIOS = [
             'Playwright Module renders a spec preview',
             'Injection Prevention Module renders hardening controls',
             'XSS Defense Module renders CSP controls',
+            'Access Control Module renders protected API coverage',
             'Self-Healing Module renders repair suggestions',
             'Session Management Module renders lockdown controls',
             'Hardware-First MFA Module renders step-up controls',

@@ -27,6 +27,7 @@ describe('Playwright research service', () => {
         expect(overview.suite.latestRun).to.have.property('available');
         expect(overview.scenarios.find((scenario) => scenario.id === 'injection-prevention-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'xss-defense-module-smoke')).to.exist;
+        expect(overview.scenarios.find((scenario) => scenario.id === 'access-control-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'self-healing-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'session-management-module-smoke')).to.exist;
         expect(overview.scenarios[0].routes[0]).to.match(/^http:\/\/127\.0\.0\.1:3000\//);
@@ -55,6 +56,7 @@ describe('Playwright research service', () => {
         expect(script.content).to.include('/playwright/module');
         expect(script.content).to.include('/injection-prevention/module');
         expect(script.content).to.include('/xss-defense/module');
+        expect(script.content).to.include('/access-control/module');
         expect(script.content).to.include('/self-healing/module');
         expect(script.content).to.include('/session-management/module');
         expect(script.content).to.include('/mission-assurance/module');
@@ -85,6 +87,19 @@ describe('Playwright research service', () => {
         expect(script.content).to.include('/xss-defense/module');
         expect(script.content).to.include('#xss-defense-scenario-select');
         expect(script.content).to.include('#xss-defense-evaluation');
+    });
+
+    it('builds a playwright spec template for the access-control scenario', () => {
+        const script = playwrightResearchService.buildPlaywrightScript({
+            baseUrl: 'http://localhost:3000',
+            scenarioId: 'access-control-module-smoke'
+        });
+
+        expect(script.fileName).to.equal('playwright-access-control-module-smoke.spec.js');
+        expect(script.routePaths).to.include('/access-control/module');
+        expect(script.content).to.include('/access-control/module');
+        expect(script.content).to.include('#access-control-scenario-select');
+        expect(script.content).to.include('#access-control-evaluation');
     });
 
     it('builds a playwright spec template for the self-healing scenario', () => {

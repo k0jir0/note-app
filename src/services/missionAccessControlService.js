@@ -215,6 +215,28 @@ const ACTION_CATALOG = [
         sensitivity: 'moderate'
     },
     {
+        id: 'view_access_control_module',
+        label: 'View Access Control Module',
+        description: 'Inspect server-side API identity coverage and the current access-control posture.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        sensitivity: 'moderate'
+    },
+    {
+        id: 'evaluate_access_control_controls',
+        label: 'Evaluate Access Control Controls',
+        description: 'Simulate whether a direct API call is blocked or allowed by the server-side access-control layers.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        sensitivity: 'moderate'
+    },
+    {
         id: 'perform_hardware_mfa_step_up',
         label: 'Perform Hardware-First Step-Up',
         description: 'Request and verify a hardware-token or PKI-backed step-up challenge.',
@@ -298,6 +320,19 @@ const RESOURCE_CATALOG = [
         classification: 'protected_b',
         missionId: 'research-workspace',
         allowedActions: ['view_xss_defense_module', 'evaluate_xss_defense_controls'],
+        allowedUnits: [],
+        requiredDeviceTier: 'managed',
+        allowedNetworkZones: ['public', 'corp', 'mission'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none'
+    },
+    {
+        id: 'access-control-lab',
+        title: 'Access Control Lab',
+        summary: 'A research surface for protected-by-default API coverage, ownership scoping, and server-side access decisions.',
+        classification: 'protected_b',
+        missionId: 'research-workspace',
+        allowedActions: ['view_access_control_module', 'evaluate_access_control_controls'],
         allowedUnits: [],
         requiredDeviceTier: 'managed',
         allowedNetworkZones: ['public', 'corp', 'mission'],
@@ -515,6 +550,7 @@ const MATRIX_COMBINATIONS = [
     { actionId: 'view_security_alerts', resourceId: 'security-alert-feed' },
     { actionId: 'evaluate_injection_prevention_controls', resourceId: 'injection-prevention-lab' },
     { actionId: 'evaluate_xss_defense_controls', resourceId: 'xss-defense-lab' },
+    { actionId: 'evaluate_access_control_controls', resourceId: 'access-control-lab' },
     { actionId: 'evaluate_session_lockdown_controls', resourceId: 'session-management-lab' },
     { actionId: 'train_ml_model', resourceId: 'triage-model-training' },
     { actionId: 'export_incident_report', resourceId: 'incident-report-export' },

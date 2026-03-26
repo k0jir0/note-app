@@ -1,6 +1,8 @@
+const { hasVerifiedRequestIdentity } = require('../services/apiAccessControlService');
+
 // Middleware to check if user is authenticated
 function requireAuth(req, res, next) {
-    if (req.isAuthenticated()) {
+    if (hasVerifiedRequestIdentity(req)) {
         return next();
     }
     res.redirect('/auth/login');
@@ -8,7 +10,7 @@ function requireAuth(req, res, next) {
 
 // Middleware to check if user is authenticated for API routes
 function requireAuthAPI(req, res, next) {
-    if (req.isAuthenticated()) {
+    if (hasVerifiedRequestIdentity(req)) {
         return next();
     }
     res.status(401).json({
