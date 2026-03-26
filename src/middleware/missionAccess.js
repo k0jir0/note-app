@@ -55,6 +55,41 @@ function requireMissionAccessAPI({ actionId, resourceId, contextResolver } = {})
     };
 }
 
+function requireMissionAccessPage({ actionId, resourceId, contextResolver, failureRedirect = '/notes' } = {}) {
+    return function missionAccessPageMiddleware(req, res, next) {
+        try {
+            const resolvedActionId = resolveValue(actionId, req);
+            const resolvedResourceId = resolveValue(resourceId, req);
+            const resolvedContext = typeof contextResolver === 'function'
+                ? (contextResolver(req) || {})
+                : {};
+
+            const decision = evaluateMissionAccess({
+                user: req.user,
+                actionId: resolvedActionId,
+                resourceId: resolvedResourceId,
+                contextOverrides: resolvedContext
+            });
+
+            req.missionAccessDecision = decision;
+            res.locals.missionAccessDecision = decision;
+
+            if (decision.allowed) {
+                return next();
+            }
+
+            return res.status(403).redirect(failureRedirect);
+        } catch (error) {
+            if (error && (error.code === 'UNKNOWN_ACTION' || error.code === 'UNKNOWN_RESOURCE')) {
+                return res.status(400).send(error.message);
+            }
+
+            return next(error);
+        }
+    };
+}
+
 module.exports = {
-    requireMissionAccessAPI
+    requireMissionAccessAPI,
+    requireMissionAccessPage
 };

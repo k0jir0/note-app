@@ -16,6 +16,36 @@ router.get(
 );
 
 router.post(
+    '/api/hardware-mfa/register/options',
+    requireAuthAPI,
+    requireMissionAccessAPI({
+        actionId: 'perform_hardware_mfa_step_up',
+        resourceId: 'hardware-mfa-lab'
+    }),
+    hardwareFirstMfaApiController.issueRegistrationOptions
+);
+
+router.post(
+    '/api/hardware-mfa/register/verify',
+    requireAuthAPI,
+    requireMissionAccessAPI({
+        actionId: 'perform_hardware_mfa_step_up',
+        resourceId: 'hardware-mfa-lab'
+    }),
+    hardwareFirstMfaApiController.verifyRegistration
+);
+
+router.post(
+    '/api/hardware-mfa/pki/register-current',
+    requireAuthAPI,
+    requireMissionAccessAPI({
+        actionId: 'perform_hardware_mfa_step_up',
+        resourceId: 'hardware-mfa-lab'
+    }),
+    hardwareFirstMfaApiController.registerCurrentPkiCertificate
+);
+
+router.post(
     '/api/hardware-mfa/challenge',
     requireAuthAPI,
     requireMissionAccessAPI({

@@ -1,5 +1,6 @@
 const { handleApiError } = require('../utils/errorHandler');
 const hardwareFirstMfaResearchService = require('../services/hardwareFirstMfaResearchService');
+const { extractClientCertificateEvidence } = require('../services/hardwareFirstMfaService');
 
 const VALIDATION_ERROR_CODES = new Set([
     'UNKNOWN_MFA_METHOD',
@@ -7,10 +8,28 @@ const VALIDATION_ERROR_CODES = new Set([
     'CHALLENGE_REQUIRED',
     'CHALLENGE_EXPIRED',
     'CHALLENGE_MISMATCH',
+    'REGISTRATION_REQUIRED',
+    'REGISTRATION_EXPIRED',
     'VERIFICATION_REQUIRED',
     'INVALID_HARDWARE_PROOF',
     'INVALID_CERTIFICATE_ASSERTION',
-    'SESSION_UNAVAILABLE'
+    'SESSION_UNAVAILABLE',
+    'WEBAUTHN_REQUIRED',
+    'WEBAUTHN_INVALID_CLIENT_DATA',
+    'WEBAUTHN_CHALLENGE_MISMATCH',
+    'WEBAUTHN_INVALID_TYPE',
+    'WEBAUTHN_ORIGIN_MISMATCH',
+    'WEBAUTHN_INVALID_AUTH_DATA',
+    'WEBAUTHN_RP_MISMATCH',
+    'WEBAUTHN_USER_PRESENCE_REQUIRED',
+    'WEBAUTHN_CREDENTIAL_REQUIRED',
+    'WEBAUTHN_REGISTRATION_INCOMPLETE',
+    'WEBAUTHN_NO_CREDENTIALS',
+    'WEBAUTHN_UNKNOWN_CREDENTIAL',
+    'WEBAUTHN_ASSERTION_INCOMPLETE',
+    'WEBAUTHN_INVALID_SIGNATURE',
+    'WEBAUTHN_COUNTER_REGRESSION',
+    'PKI_CLIENT_CERT_REQUIRED'
 ]);
 
 function resolveBaseUrl(req) {
@@ -37,7 +56,8 @@ exports.getOverview = async (req, res) => {
         const overview = hardwareFirstMfaResearchService.buildHardwareFirstMfaModuleOverview({
             user: req.user,
             session: req.session,
-            baseUrl: resolveBaseUrl(req)
+            baseUrl: resolveBaseUrl(req),
+            transportSecurity: req.app && req.app.locals ? req.app.locals.transportSecurity : null
         });
 
         return res.status(200).json({
@@ -69,7 +89,8 @@ exports.issueChallenge = async (req, res) => {
         const challenge = hardwareFirstMfaResearchService.startHardwareFirstMfaChallenge({
             user: req.user,
             session: req.session,
-            method
+            method,
+            baseUrl: resolveBaseUrl(req)
         });
 
         return res.status(200).json({
@@ -94,6 +115,7 @@ exports.verifyChallenge = async (req, res) => {
         const method = trimBodyString(req, 'method');
         const challengeId = trimBodyString(req, 'challengeId');
         const responseValue = trimBodyString(req, 'responseValue');
+        const assertion = req.body?.assertion || null;
         const errors = [];
 
         if (!method) {
@@ -104,7 +126,7 @@ exports.verifyChallenge = async (req, res) => {
             errors.push('challengeId is required');
         }
 
-        if (!responseValue) {
+        if (!responseValue && !assertion && method !== 'pki_certificate') {
             errors.push('responseValue is required');
         }
 
@@ -116,12 +138,14 @@ exports.verifyChallenge = async (req, res) => {
             });
         }
 
-        const sessionAssurance = hardwareFirstMfaResearchService.verifyHardwareFirstMfaStepUp({
+        const sessionAssurance = await hardwareFirstMfaResearchService.verifyHardwareFirstMfaStepUp({
             user: req.user,
             session: req.session,
             method,
             challengeId,
-            responseValue
+            responseValue,
+            assertion,
+            requestEvidence: extractClientCertificateEvidence(req)
         });
 
         return res.status(200).json({
@@ -138,6 +162,89 @@ exports.verifyChallenge = async (req, res) => {
         }
 
         return handleApiError(res, error, 'Verify hardware-first MFA challenge');
+    }
+};
+
+exports.issueRegistrationOptions = async (req, res) => {
+    try {
+        const registration = hardwareFirstMfaResearchService.startHardwareTokenRegistration({
+            user: req.user,
+            session: req.session,
+            baseUrl: resolveBaseUrl(req)
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: registration
+        });
+    } catch (error) {
+        if (error && VALIDATION_ERROR_CODES.has(error.code)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: [error.message]
+            });
+        }
+
+        return handleApiError(res, error, 'Issue hardware-token registration options');
+    }
+};
+
+exports.verifyRegistration = async (req, res) => {
+    try {
+        const registrationResponse = req.body?.registrationResponse || null;
+        if (!registrationResponse) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: ['registrationResponse is required']
+            });
+        }
+
+        const result = await hardwareFirstMfaResearchService.verifyHardwareTokenRegistrationFlow({
+            user: req.user,
+            session: req.session,
+            registrationResponse
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        if (error && VALIDATION_ERROR_CODES.has(error.code)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: [error.message]
+            });
+        }
+
+        return handleApiError(res, error, 'Verify hardware-token registration');
+    }
+};
+
+exports.registerCurrentPkiCertificate = async (req, res) => {
+    try {
+        const result = await hardwareFirstMfaResearchService.registerCurrentPkiCertificateForUser({
+            user: req.user,
+            requestEvidence: extractClientCertificateEvidence(req)
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        if (error && VALIDATION_ERROR_CODES.has(error.code)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: [error.message]
+            });
+        }
+
+        return handleApiError(res, error, 'Register current PKI certificate');
     }
 };
 

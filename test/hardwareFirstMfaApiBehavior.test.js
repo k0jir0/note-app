@@ -110,4 +110,41 @@ describe('Hardware-first MFA API controller behavior', () => {
             data: fakeSessionAssurance
         });
     });
+
+    it('returns WebAuthn registration options for a security-key enrollment request', async () => {
+        const req = {
+            user: { email: 'tester@example.com' },
+            session: {},
+            app: { locals: { appBaseUrl: 'http://localhost:3000' } }
+        };
+        const res = makeRes();
+        const fakeRegistration = {
+            challengeId: 'mfa-reg-123',
+            publicKey: {
+                challenge: 'abc'
+            }
+        };
+
+        sandbox.stub(hardwareFirstMfaResearchService, 'startHardwareTokenRegistration').returns(fakeRegistration);
+
+        await hardwareFirstMfaApiController.issueRegistrationOptions(req, res);
+
+        expect(res.status.calledWith(200)).to.equal(true);
+        expect(res._jsonSpy.firstCall.args[0]).to.deep.equal({
+            success: true,
+            data: fakeRegistration
+        });
+    });
+
+    it('validates registration verification input', async () => {
+        const req = {
+            body: {}
+        };
+        const res = makeRes();
+
+        await hardwareFirstMfaApiController.verifyRegistration(req, res);
+
+        expect(res.status.calledWith(400)).to.equal(true);
+        expect(res._jsonSpy.firstCall.args[0].errors).to.deep.equal(['registrationResponse is required']);
+    });
 });

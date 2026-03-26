@@ -22,9 +22,9 @@ describe('Security API Routes', () => {
         const layer = findRouteLayer('get', '/api/security/alerts');
 
         expect(layer).to.exist;
-        expect(layer.route.stack).to.have.length(2);
+        expect(layer.route.stack).to.have.length(3);
         expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
-        expect(layer.route.stack[1].handle).to.equal(securityApiController.getAlerts);
+        expect(layer.route.stack[2].handle).to.equal(securityApiController.getAlerts);
     });
 
     it('maps POST /api/security/alerts/:id/feedback to updateAlertFeedback with auth middleware', () => {
@@ -41,9 +41,9 @@ describe('Security API Routes', () => {
         const layer = findRouteLayer('get', '/api/security/correlations');
 
         expect(layer).to.exist;
-        expect(layer.route.stack).to.have.length(2);
+        expect(layer.route.stack).to.have.length(3);
         expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
-        expect(layer.route.stack[1].handle).to.equal(securityApiController.getCorrelations);
+        expect(layer.route.stack[2].handle).to.equal(securityApiController.getCorrelations);
     });
 
     it('maps POST /api/security/automation/sample to injectAutomationSample with auth middleware', () => {
@@ -90,8 +90,8 @@ describe('Security API Routes', () => {
         const layer = findRouteLayer('get', '/api/security/stream');
 
         expect(layer).to.exist;
-        expect(layer.route.stack).to.have.length(2);
+        expect(layer.route.stack).to.have.length(3);
         expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
-        expect(layer.route.stack[1].handle).to.equal(securityApiController.streamEvents);
+        expect(layer.route.stack[2].handle).to.equal(securityApiController.streamEvents);
     });
 });

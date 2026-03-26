@@ -89,6 +89,39 @@ const userSchema = new mongoose.Schema({
             type: String,
             default: ''
         },
+        webauthnCredentials: {
+            type: [{
+                credentialId: {
+                    type: String,
+                    required: true
+                },
+                publicKey: {
+                    type: String,
+                    required: true
+                },
+                counter: {
+                    type: Number,
+                    default: 0
+                },
+                transports: {
+                    type: [String],
+                    default: []
+                },
+                label: {
+                    type: String,
+                    default: 'Registered security key'
+                },
+                algorithm: {
+                    type: Number,
+                    default: null
+                },
+                addedAt: {
+                    type: Date,
+                    default: Date.now
+                }
+            }],
+            default: []
+        },
         registeredPkiCertificate: {
             type: Boolean,
             default: false

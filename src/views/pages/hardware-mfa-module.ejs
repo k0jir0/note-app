@@ -14,6 +14,9 @@
         class="container mt-5 mb-5"
         id="hardware-mfa-module-root"
         data-hardware-mfa-overview-endpoint="/api/hardware-mfa/overview"
+        data-hardware-mfa-register-options-endpoint="/api/hardware-mfa/register/options"
+        data-hardware-mfa-register-verify-endpoint="/api/hardware-mfa/register/verify"
+        data-hardware-mfa-pki-register-endpoint="/api/hardware-mfa/pki/register-current"
         data-hardware-mfa-challenge-endpoint="/api/hardware-mfa/challenge"
         data-hardware-mfa-verify-endpoint="/api/hardware-mfa/verify"
         data-hardware-mfa-revoke-endpoint="/api/hardware-mfa/revoke">
@@ -21,7 +24,7 @@
             <div>
                 <h1 class="notes-title mb-1">Hardware-First MFA Module</h1>
                 <p class="text-muted mb-2">A research workspace for strong-factor step-up assurance that prefers hardware tokens and PKI certificates over weaker software-only second factors.</p>
-                <p class="text-muted mb-0">Inspect the current session assurance, review registered authenticators, and simulate a challenge so sensitive actions can require hardware-backed evidence before execution.</p>
+                <p class="text-muted mb-0">Inspect the current session assurance, review registered authenticators, and perform real hardware-backed step-up flows so sensitive actions can require strong evidence before execution.</p>
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 <a href="/research" class="btn btn-outline-dark">Back to Research</a>
@@ -78,12 +81,15 @@
                     <p class="text-muted small mb-0">The goal is to make high-risk approval flows depend on something physically possessed or certificate-bound, not just a password or an SMS code.</p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" id="hardware-mfa-register-btn" class="btn btn-outline-primary">Register Security Key</button>
+                    <button type="button" id="hardware-mfa-register-pki-btn" class="btn btn-outline-primary">Register Current PKI Cert</button>
                     <button type="button" id="hardware-mfa-refresh-btn" class="btn btn-outline-secondary">Refresh Module</button>
                     <button type="button" id="hardware-mfa-revoke-btn" class="btn btn-outline-dark">Revoke Step-Up</button>
                 </div>
             </div>
             <div class="card-body pt-0">
                 <div id="hardware-mfa-status"></div>
+                <p class="text-muted small mt-3 mb-0" id="hardware-mfa-transport-status">Loading transport security posture...</p>
             </div>
         </div>
 
@@ -116,8 +122,12 @@
                     <div class="card-body">
                         <span class="research-kicker">Challenge</span>
                         <h2 class="h4 mt-2 mb-1">Challenge And Verify</h2>
-                        <p class="text-muted small mb-3">Start a hardware-backed challenge, then verify it with a Hardware token touch or presence assertion or a PKI certificate subject match.</p>
+                        <p class="text-muted small mb-3">Start a hardware-backed challenge, then verify it with a browser WebAuthn security-key assertion or a verified PKI client certificate.</p>
                         <form id="hardware-mfa-form" class="row g-3">
+                            <div class="col-12">
+                                <label for="hardware-mfa-register-label" class="form-label">Security key label</label>
+                                <input type="text" class="form-control" id="hardware-mfa-register-label" placeholder="Example: YubiKey 5 NFC">
+                            </div>
                             <div class="col-md-6">
                                 <label for="hardware-mfa-method-select" class="form-label">Method</label>
                                 <select id="hardware-mfa-method-select" class="form-select">
@@ -133,7 +143,7 @@
                             </div>
                             <div class="col-12">
                                 <label for="hardware-mfa-response" class="form-label">Verification response</label>
-                                <input type="text" class="form-control" id="hardware-mfa-response" placeholder="Examples: touch, present, MissionLeadKey, or a certificate subject">
+                                <input type="text" class="form-control" id="hardware-mfa-response" placeholder="Used only for development simulation or manual PKI fallback flows.">
                             </div>
                             <div class="col-12">
                                 <button type="button" id="hardware-mfa-verify-btn" class="btn btn-outline-primary">Verify Challenge</button>

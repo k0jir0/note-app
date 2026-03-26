@@ -76,6 +76,52 @@ describe('Runtime Config Validation', () => {
 
         expect(config.automation.logBatch.enabled).to.equal(false);
         expect(config.automation.scanBatch.enabled).to.equal(false);
+        expect(config.transport).to.deep.equal({
+            protocol: 'http',
+            httpsEnabled: false,
+            requestClientCertificate: false,
+            requireClientCertificate: false,
+            trustProxyClientCertHeaders: false,
+            keyPath: '',
+            certPath: '',
+            caPath: ''
+        });
+    });
+
+    it('accepts valid HTTPS and mTLS transport settings', () => {
+        const env = createValidEnv();
+        env.HTTPS_ENABLED = 'true';
+        env.HTTPS_KEY_PATH = 'C:\\tls\\server.key';
+        env.HTTPS_CERT_PATH = 'C:\\tls\\server.crt';
+        env.HTTPS_REQUEST_CLIENT_CERT = 'true';
+        env.HTTPS_REQUIRE_CLIENT_CERT = 'true';
+        env.HTTPS_CA_PATH = 'C:\\tls\\ca.crt';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.transport).to.deep.equal({
+            protocol: 'https',
+            httpsEnabled: true,
+            requestClientCertificate: true,
+            requireClientCertificate: true,
+            trustProxyClientCertHeaders: false,
+            keyPath: 'C:\\tls\\server.key',
+            certPath: 'C:\\tls\\server.crt',
+            caPath: 'C:\\tls\\ca.crt'
+        });
+    });
+
+    it('rejects invalid HTTPS and mTLS transport combinations', () => {
+        const env = createValidEnv();
+        env.HTTPS_REQUEST_CLIENT_CERT = 'true';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('HTTPS_REQUEST_CLIENT_CERT and HTTPS_REQUIRE_CLIENT_CERT require HTTPS_ENABLED=true');
+
+        env.HTTPS_ENABLED = 'true';
+        env.HTTPS_KEY_PATH = 'C:\\tls\\server.key';
+        env.HTTPS_CERT_PATH = 'C:\\tls\\server.crt';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('HTTPS_CA_PATH is required when HTTPS_REQUEST_CLIENT_CERT=true');
     });
 
     it('requires file path and user id when log batch automation is enabled', () => {
@@ -121,6 +167,12 @@ describe('Runtime Config Validation', () => {
             noteEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true,
+            transport: {
+                httpsEnabled: true,
+                requestClientCertificate: true,
+                requireClientCertificate: false,
+                trustProxyClientCertHeaders: true
+            },
             automation: {
                 logBatch: {
                     enabled: true,
@@ -140,6 +192,13 @@ describe('Runtime Config Validation', () => {
             noteEncryptionConfigured: true,
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true
+        });
+        expect(diagnostics.transport).to.deep.equal({
+            protocol: 'https',
+            httpsEnabled: true,
+            requestClientCertificate: true,
+            requireClientCertificate: false,
+            trustProxyClientCertHeaders: true
         });
         expect(diagnostics).to.not.have.property('dbURI');
         expect(diagnostics).to.not.have.property('sessionSecret');

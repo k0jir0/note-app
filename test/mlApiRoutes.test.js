@@ -31,10 +31,10 @@ describe('ML API Routes', () => {
         const layer = findRouteLayer('post', '/api/ml/train');
 
         expect(layer).to.exist;
-        expect(layer.route.stack).to.have.length(3);
+        expect(layer.route.stack).to.have.length(4);
         expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
-        expect(layer.route.stack[1].handle).to.equal(securityAnalysisRateLimiter);
-        expect(layer.route.stack[2].handle).to.equal(mlApiController.trainModel);
+        expect(layer.route.stack[2].handle).to.equal(securityAnalysisRateLimiter);
+        expect(layer.route.stack[3].handle).to.equal(mlApiController.trainModel);
     });
 
     it('maps POST /api/ml/autonomy-demo to injectAutonomyDemo with auth middleware', () => {

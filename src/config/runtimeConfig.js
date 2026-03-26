@@ -241,6 +241,50 @@ function buildAutomationDiagnostics(config = {}) {
     };
 }
 
+function buildTransportConfig(env, errors) {
+    const httpsEnabled = parseBooleanEnv('HTTPS_ENABLED', env, errors);
+    const requestClientCertificate = parseBooleanEnv('HTTPS_REQUEST_CLIENT_CERT', env, errors);
+    const requireClientCertificate = parseBooleanEnv('HTTPS_REQUIRE_CLIENT_CERT', env, errors);
+    const trustProxyClientCertHeaders = parseBooleanEnv('TRUST_PROXY_CLIENT_CERT_HEADERS', env, errors);
+
+    const keyPath = isNonEmptyString(env.HTTPS_KEY_PATH) ? env.HTTPS_KEY_PATH.trim() : '';
+    const certPath = isNonEmptyString(env.HTTPS_CERT_PATH) ? env.HTTPS_CERT_PATH.trim() : '';
+    const caPath = isNonEmptyString(env.HTTPS_CA_PATH) ? env.HTTPS_CA_PATH.trim() : '';
+
+    if (requireClientCertificate && !requestClientCertificate) {
+        errors.push('HTTPS_REQUIRE_CLIENT_CERT=true also requires HTTPS_REQUEST_CLIENT_CERT=true');
+    }
+
+    if ((requestClientCertificate || requireClientCertificate) && !httpsEnabled) {
+        errors.push('HTTPS_REQUEST_CLIENT_CERT and HTTPS_REQUIRE_CLIENT_CERT require HTTPS_ENABLED=true');
+    }
+
+    if (httpsEnabled) {
+        if (!keyPath) {
+            errors.push('HTTPS_KEY_PATH is required when HTTPS_ENABLED=true');
+        }
+
+        if (!certPath) {
+            errors.push('HTTPS_CERT_PATH is required when HTTPS_ENABLED=true');
+        }
+    }
+
+    if (requestClientCertificate && !caPath) {
+        errors.push('HTTPS_CA_PATH is required when HTTPS_REQUEST_CLIENT_CERT=true');
+    }
+
+    return {
+        protocol: httpsEnabled ? 'https' : 'http',
+        httpsEnabled,
+        requestClientCertificate,
+        requireClientCertificate,
+        trustProxyClientCertHeaders,
+        keyPath,
+        certPath,
+        caPath
+    };
+}
+
 function toDiagnosticRuntimeConfig(runtimeConfig) {
     if (!runtimeConfig || typeof runtimeConfig !== 'object') {
         return null;
@@ -254,6 +298,13 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
         noteEncryptionConfigured: isNonEmptyString(runtimeConfig.noteEncryptionKey),
         appBaseUrl: isNonEmptyString(runtimeConfig.appBaseUrl) ? runtimeConfig.appBaseUrl.trim() : '',
         googleAuthEnabled: Boolean(runtimeConfig.googleAuthEnabled),
+        transport: {
+            protocol: runtimeConfig.transport && runtimeConfig.transport.httpsEnabled ? 'https' : 'http',
+            httpsEnabled: Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled),
+            requestClientCertificate: Boolean(runtimeConfig.transport && runtimeConfig.transport.requestClientCertificate),
+            requireClientCertificate: Boolean(runtimeConfig.transport && runtimeConfig.transport.requireClientCertificate),
+            trustProxyClientCertHeaders: Boolean(runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders)
+        },
         automation: {
             logBatch: buildAutomationDiagnostics(automation.logBatch),
             scanBatch: buildAutomationDiagnostics(automation.scanBatch),
@@ -324,6 +375,7 @@ function validateRuntimeConfig(env = process.env) {
     const logBatch = buildLogBatchConfig(env, errors);
     const scanBatch = buildScanBatchConfig(env, errors);
     const intrusionBatch = buildIntrusionBatchConfig(env, errors);
+    const transport = buildTransportConfig(env, errors);
 
     if (errors.length > 0) {
         throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
@@ -335,6 +387,7 @@ function validateRuntimeConfig(env = process.env) {
         noteEncryptionKey: env.NOTE_ENCRYPTION_KEY.trim(),
         appBaseUrl: getConfiguredAppBaseUrl(env),
         googleAuthEnabled: hasGoogleAuthCredentials(env),
+        transport,
         automation: {
             logBatch,
             scanBatch,

@@ -37,6 +37,7 @@ const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 const { buildSeedResponseMessage, seedDevelopmentData } = require('./src/services/devSeedService');
 const { startApplication } = require('./src/utils/appStartup');
+const { createServerFactory } = require('./src/utils/serverTransport');
 
 const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
 
@@ -54,6 +55,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         require('./src/config/passport')(passport);
         const app = express();
         const isProduction = process.env.NODE_ENV === 'production';
+        const useSecureCookies = isProduction || Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled);
         const realtimeAvailable = Boolean(process.env.REDIS_URL) && process.env.DISABLE_REDIS !== '1';
 
         app.locals.runtimeConfig = runtimeConfig;
@@ -61,6 +63,11 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.locals.realtimeAvailable = realtimeAvailable;
         // runtime toggle for realtime (can be changed without restarting when Redis is configured)
         app.locals.realtimeEnabled = realtimeAvailable && process.env.ENABLE_REALTIME === '1';
+        app.locals.transportSecurity = runtimeConfig.transport;
+
+        if (runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders) {
+            app.set('trust proxy', 1);
+        }
 
         app.set('view engine', 'ejs');
         app.set('views', path.join(__dirname, 'src', 'views'));
@@ -110,7 +117,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
             saveUninitialized: false,
             cookie: {
                 maxAge: SESSION_COOKIE_MAX_AGE,
-                secure: isProduction, // HTTPS only in production
+                secure: useSecureCookies,
                 httpOnly: true, // Prevents client-side JavaScript access
                 sameSite: 'lax' // CSRF protection
             }
@@ -187,12 +194,17 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         }
 
         const PORT = process.env.PORT || 3000;
+        const serverFactory = createServerFactory({
+            transport: runtimeConfig.transport
+        });
+
         await startApplication({
             app,
             mongooseLib: mongoose,
             dbURI,
             port: PORT,
-            logger: console
+            logger: console,
+            serverFactory
         });
     } catch (error) {
         console.error(error && error.message ? error.message : error);

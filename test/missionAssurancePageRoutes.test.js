@@ -9,7 +9,12 @@ function getHandler(method, path, stackIndex = 1) {
         (entry) => entry.route && entry.route.path === path && entry.route.methods[method]
     );
 
-    return layer ? layer.route.stack[stackIndex].handle : null;
+    if (!layer) {
+        return null;
+    }
+
+    const resolvedIndex = stackIndex < 0 ? layer.route.stack.length + stackIndex : stackIndex;
+    return layer.route.stack[resolvedIndex].handle;
 }
 
 function buildRes() {
@@ -42,7 +47,7 @@ describe('Mission assurance page routes', () => {
     });
 
     it('renders the mission assurance module page', async () => {
-        const handler = getHandler('get', '/mission-assurance/module');
+        const handler = getHandler('get', '/mission-assurance/module', -1);
         const req = {
             user: { _id: new mongoose.Types.ObjectId() }
         };

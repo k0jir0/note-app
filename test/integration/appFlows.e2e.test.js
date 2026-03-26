@@ -367,6 +367,23 @@ describe('Application end-to-end flows', function () {
         expect(overviewPayload.data.autonomy.levelCounts[0].label).to.equal('notify');
 
         const csrfToken = await client.getCsrfToken();
+        const mlTrainDeniedResponse = await client.request('/api/ml/train', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': csrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                mode: 'bootstrap'
+            })
+        });
+        const mlTrainDeniedPayload = await mlTrainDeniedResponse.json();
+
+        expect(mlTrainDeniedResponse.status).to.equal(403);
+        expect(mlTrainDeniedPayload.success).to.equal(false);
+        expect(mlTrainDeniedPayload.errors[0]).to.include('approved role');
+
         const demoResponse = await client.request('/api/ml/autonomy-demo', {
             method: 'POST',
             headers: {

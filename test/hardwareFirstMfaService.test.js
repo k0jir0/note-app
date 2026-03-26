@@ -26,7 +26,7 @@ describe('Hardware-first MFA service', () => {
         expect(authenticators[1].method).to.equal('pki_certificate');
     });
 
-    it('issues and verifies a hardware-token challenge', () => {
+    it('issues and verifies a hardware-token challenge', async () => {
         const session = {};
         const user = {
             accessProfile: {
@@ -40,7 +40,7 @@ describe('Hardware-first MFA service', () => {
             session,
             method: 'hardware_token'
         });
-        const assurance = verifyHardwareFirstMfaChallenge({
+        const assurance = await verifyHardwareFirstMfaChallenge({
             user,
             session,
             method: 'hardware_token',
@@ -54,7 +54,7 @@ describe('Hardware-first MFA service', () => {
         expect(assurance.method).to.equal('hardware_token');
     });
 
-    it('rejects a PKI verification response when the certificate subject does not match', () => {
+    it('rejects a PKI verification response when the certificate subject does not match', async () => {
         const session = {};
         const user = {
             accessProfile: {
@@ -70,16 +70,25 @@ describe('Hardware-first MFA service', () => {
             method: 'pki_certificate'
         });
 
-        expect(() => verifyHardwareFirstMfaChallenge({
-            user,
-            session,
-            method: 'pki_certificate',
-            challengeId: challenge.challengeId,
-            responseValue: 'CN=someone-else@example.com, OU=CAF Research'
-        })).to.throw().with.property('code', 'INVALID_CERTIFICATE_ASSERTION');
+        try {
+            await verifyHardwareFirstMfaChallenge({
+                user,
+                session,
+                method: 'pki_certificate',
+                challengeId: challenge.challengeId,
+                requestEvidence: {
+                    verified: true,
+                    subject: 'CN=someone-else@example.com, OU=CAF Research',
+                    issuer: 'CN=CAF Root CA'
+                }
+            });
+            throw new Error('Expected PKI verification to fail');
+        } catch (error) {
+            expect(error.code).to.equal('INVALID_CERTIFICATE_ASSERTION');
+        }
     });
 
-    it('revokes the active hardware-first session assurance', () => {
+    it('revokes the active hardware-first session assurance', async () => {
         const session = {};
         const user = {
             accessProfile: {
@@ -94,7 +103,7 @@ describe('Hardware-first MFA service', () => {
             method: 'hardware_token'
         });
 
-        verifyHardwareFirstMfaChallenge({
+        await verifyHardwareFirstMfaChallenge({
             user,
             session,
             method: 'hardware_token',

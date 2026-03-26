@@ -34,9 +34,13 @@ async function connectDatabase({ mongooseLib, dbURI, logger = console } = {}) {
     }
 }
 
-async function listenAsync({ app, port } = {}) {
+async function listenAsync({ app, port, serverFactory } = {}) {
     if (!app || typeof app.listen !== 'function') {
         throw new TypeError('A valid Express app is required to start the server.');
+    }
+
+    if (serverFactory !== undefined && typeof serverFactory !== 'function') {
+        throw new TypeError('serverFactory must be a function when provided.');
     }
 
     return new Promise((resolve, reject) => {
@@ -52,23 +56,52 @@ async function listenAsync({ app, port } = {}) {
             reject(error);
         };
 
-        server = app.listen(port, () => {
-            if (settled) {
-                return;
+        try {
+            if (serverFactory) {
+                server = serverFactory(app);
+
+                if (!server || typeof server.listen !== 'function') {
+                    throw new TypeError('serverFactory must return a server with a listen method.');
+                }
+
+                if (typeof server.once === 'function') {
+                    server.once('error', onError);
+                }
+
+                server.listen(port, () => {
+                    if (settled) {
+                        return;
+                    }
+
+                    settled = true;
+                    removeErrorListener(server, onError);
+                    resolve(server);
+                });
+            } else {
+                server = app.listen(port, () => {
+                    if (settled) {
+                        return;
+                    }
+
+                    settled = true;
+                    removeErrorListener(server, onError);
+                    resolve(server);
+                });
+
+                if (server && typeof server.once === 'function') {
+                    server.once('error', onError);
+                }
             }
-
-            settled = true;
-            removeErrorListener(server, onError);
-            resolve(server);
-        });
-
-        if (server && typeof server.once === 'function') {
-            server.once('error', onError);
+        } catch (error) {
+            if (!settled) {
+                settled = true;
+                reject(error);
+            }
         }
     });
 }
 
-async function startApplication({ app, mongooseLib, dbURI, port, logger = console } = {}) {
+async function startApplication({ app, mongooseLib, dbURI, port, logger = console, serverFactory } = {}) {
     await connectDatabase({
         mongooseLib,
         dbURI,
@@ -77,7 +110,8 @@ async function startApplication({ app, mongooseLib, dbURI, port, logger = consol
 
     const server = await listenAsync({
         app,
-        port
+        port,
+        serverFactory
     });
 
     if (logger && typeof logger.log === 'function') {

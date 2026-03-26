@@ -14,7 +14,34 @@ describe('Hardware-first MFA API routes', () => {
     it('registers all hardware-first MFA API routes', () => {
         const routeLayers = router.stack.filter((layer) => layer.route);
 
-        expect(routeLayers).to.have.length(4);
+        expect(routeLayers).to.have.length(7);
+    });
+
+    it('maps POST /api/hardware-mfa/register/options with auth and controller middleware', () => {
+        const layer = findRouteLayer('post', '/api/hardware-mfa/register/options');
+
+        expect(layer).to.exist;
+        expect(layer.route.stack).to.have.length(3);
+        expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
+        expect(layer.route.stack[2].handle).to.equal(hardwareFirstMfaApiController.issueRegistrationOptions);
+    });
+
+    it('maps POST /api/hardware-mfa/register/verify with auth and controller middleware', () => {
+        const layer = findRouteLayer('post', '/api/hardware-mfa/register/verify');
+
+        expect(layer).to.exist;
+        expect(layer.route.stack).to.have.length(3);
+        expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
+        expect(layer.route.stack[2].handle).to.equal(hardwareFirstMfaApiController.verifyRegistration);
+    });
+
+    it('maps POST /api/hardware-mfa/pki/register-current with auth and controller middleware', () => {
+        const layer = findRouteLayer('post', '/api/hardware-mfa/pki/register-current');
+
+        expect(layer).to.exist;
+        expect(layer.route.stack).to.have.length(3);
+        expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
+        expect(layer.route.stack[2].handle).to.equal(hardwareFirstMfaApiController.registerCurrentPkiCertificate);
     });
 
     it('maps GET /api/hardware-mfa/overview with auth and controller middleware', () => {
