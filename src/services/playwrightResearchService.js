@@ -55,6 +55,7 @@ const ROUTE_DESCRIPTIONS = {
     '/ml/module': 'Opens the ML Module so the spec can verify training, scoring, explainability, and autonomy panels.',
     '/playwright/module': 'Opens the Playwright Module so the suite can verify the Playwright export surface.',
     '/self-healing/module': 'Opens the Self-Healing Module so the suite can verify redirect handling, sample loading, and repair suggestion output.',
+    '/mission-assurance/module': 'Opens the Mission Assurance Module so the suite can verify RBAC plus ABAC policy evaluation and current-user access context.',
     '/locator-repair/module': 'Legacy entry point that should redirect to the canonical Self-Healing Module route before browser checks continue.'
 };
 
@@ -78,6 +79,8 @@ const ASSERTION_DESCRIPTIONS = {
     'Repair Candidates panel is visible': 'Confirms that ranked repair suggestions render in the module UI.',
     'Generated self-healing suggestions render': 'Checks that loading a sample and re-running analysis produces ranked repair output.',
     'Self-Healing Module renders repair suggestions': 'Confirms that the Self-Healing page still renders sample-driven repair suggestions.',
+    'Mission Assurance Module card is present': 'Checks that the Research Workspace still exposes the Mission Assurance entry point.',
+    'Mission Assurance Module renders policy evaluator': 'Confirms that the Mission Assurance page renders its policy-decision controls and current session context.',
     'Scenario selector updates the generated spec': 'Checks that changing the selected scenario refreshes the generated Playwright preview.',
     'Load Spec button refreshes the preview': 'Checks that the explicit Load Spec control reloads the selected template.',
     'Refresh Module button reloads the overview': 'Checks that the module refresh action reloads metadata and leaves the page ready to use.',
@@ -581,6 +584,7 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(page, \'Selenium Module\');',
         'await expectBodyText(page, \'Playwright Module\');',
         'await expectBodyText(page, \'Self-Healing Module\');',
+        'await expectBodyText(page, \'Mission Assurance Module\');',
         '',
         'await page.goto(`${baseUrl}/security/module`, { waitUntil: \'domcontentloaded\' });',
         'await expectBodyText(page, \'Security Module\');',
@@ -601,7 +605,12 @@ const SCRIPT_STEP_MAP = {
         'await page.goto(`${baseUrl}/self-healing/module`, { waitUntil: \'domcontentloaded\' });',
         'await expectBodyText(page, \'Self-Healing Module\');',
         'await expect(page.locator(\'#locator-repair-analyze-btn\')).toBeVisible();',
-        'await expectBodyText(page, \'Repair Candidates\');'
+        'await expectBodyText(page, \'Repair Candidates\');',
+        '',
+        'await page.goto(`${baseUrl}/mission-assurance/module`, { waitUntil: \'domcontentloaded\' });',
+        'await expectBodyText(page, \'Mission Assurance Module\');',
+        'await expect(page.locator(\'#mission-assurance-evaluate-btn\')).toBeVisible();',
+        'await expectBodyText(page, \'Policy Decision\');'
     ].join('\n    ')
 };
 

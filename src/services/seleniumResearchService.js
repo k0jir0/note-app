@@ -54,7 +54,8 @@ const ROUTE_DESCRIPTIONS = {
     '/security/module': 'Opens the Security Module so the suite can verify log analysis, scan import, and correlation controls.',
     '/ml/module': 'Opens the ML Module so the suite can verify training, autonomy, and recent scored-alert panels.',
     '/selenium/module': 'Opens the Selenium Module so the suite can verify exported WebDriver coverage and latest-run metadata.',
-    '/playwright/module': 'Opens the Playwright Module so cross-module Selenium navigation can confirm the broader browser-testing workflow.'
+    '/playwright/module': 'Opens the Playwright Module so cross-module Selenium navigation can confirm the broader browser-testing workflow.',
+    '/mission-assurance/module': 'Opens the Mission Assurance Module so the suite can verify tactical access-policy evaluation and current-user security context.'
 };
 
 const ASSERTION_DESCRIPTIONS = {
@@ -74,10 +75,12 @@ const ASSERTION_DESCRIPTIONS = {
     'Refresh Module button reloads the overview': 'Checks that the Selenium module refresh action reloads the latest overview data.',
     'Playwright Module navigation button remains available': 'Checks that the module still links back into the broader Research browser-testing workflow.',
     'Playwright Module heading loads from Selenium navigation': 'Checks that Selenium-to-Playwright navigation still lands on the expected destination.',
+    'Mission Assurance Module card is present': 'Checks that the Research Workspace still exposes the Mission Assurance entry point.',
     'Security Module renders its workflow controls': 'Checks that the Security Module still renders the controls used by the Selenium workflow.',
     'ML Module renders its autonomy controls': 'Checks that the ML Module still renders its training and autonomy surfaces.',
     'Selenium Module renders latest suite metadata': 'Checks that the Selenium Module still renders latest-run and export metadata.',
-    'Playwright Module renders its starter spec preview': 'Checks that the Playwright Module still renders its generated starter spec preview.'
+    'Playwright Module renders its starter spec preview': 'Checks that the Playwright Module still renders its generated starter spec preview.',
+    'Mission Assurance Module renders policy evaluator': 'Confirms that the Mission Assurance page renders its policy evaluator and current profile summary.'
 };
 
 const TAG_DESCRIPTIONS = {
@@ -514,6 +517,7 @@ const SCRIPT_STEP_MAP = {
         'await expectBodyText(driver, \'Research Workspace\');',
         'await expectBodyText(driver, \'Selenium Module\');',
         'await expectBodyText(driver, \'Self-Healing Module\');',
+        'await expectBodyText(driver, \'Mission Assurance Module\');',
         '',
         'await driver.get(`${baseUrl}/security/module`);',
         'await expectBodyText(driver, \'Security Module\');',
@@ -533,7 +537,11 @@ const SCRIPT_STEP_MAP = {
         '',
         'await driver.get(`${baseUrl}/self-healing/module`);',
         'await expectBodyText(driver, \'Self-Healing Module\');',
-        'await expectBodyText(driver, \'Repair Candidates\');'
+        'await expectBodyText(driver, \'Repair Candidates\');',
+        '',
+        'await driver.get(`${baseUrl}/mission-assurance/module`);',
+        'await expectBodyText(driver, \'Mission Assurance Module\');',
+        'await expectBodyText(driver, \'Policy Decision\');'
     ].join('\n        ')
 };
 

@@ -83,6 +83,19 @@ async function openSelfHealingModule(driver, baseUrl) {
     );
 }
 
+async function openMissionAssuranceModule(driver, baseUrl) {
+    await driver.get(`${baseUrl}/mission-assurance/module`);
+    await driver.wait(until.elementLocated(By.css('h1')), 15000);
+    await waitForBodyText(driver, 'Mission Assurance Module');
+    await waitForElementText(
+        driver,
+        By.id('mission-assurance-status'),
+        (text) => text.includes('Mission Assurance Module ready.'),
+        20000,
+        'Expected the Mission Assurance Module to finish loading.'
+    );
+}
+
 describe('Research module browser coverage', function () {
     this.timeout(120000);
 
@@ -112,6 +125,7 @@ describe('Research module browser coverage', function () {
         await waitForBodyText(driver, 'Selenium Module');
         await waitForBodyText(driver, 'Playwright Module');
         await waitForBodyText(driver, 'Self-Healing Module');
+        await waitForBodyText(driver, 'Mission Assurance Module');
 
         await clickElement(driver, By.linkText('Open Security Module'));
         await waitForLocationContains(driver, '/security/module');
@@ -144,6 +158,13 @@ describe('Research module browser coverage', function () {
         await clickElement(driver, By.linkText('Open Self-Healing Module'));
         await waitForLocationContains(driver, '/self-healing/module');
         await waitForBodyText(driver, 'Self-Healing Module');
+
+        await clickElement(driver, By.css('a[href="/research"]'));
+        await waitForLocationContains(driver, '/research');
+
+        await clickElement(driver, By.linkText('Open Mission Assurance Module'));
+        await waitForLocationContains(driver, '/mission-assurance/module');
+        await waitForBodyText(driver, 'Mission Assurance Module');
     });
 
     it(getSeleniumScenario('security-module-workflow').title, async () => {
@@ -280,5 +301,8 @@ describe('Research module browser coverage', function () {
 
         await openSelfHealingModule(driver, baseUrl);
         await waitForBodyText(driver, 'Repair Candidates');
+
+        await openMissionAssuranceModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Policy Decision');
     });
 });

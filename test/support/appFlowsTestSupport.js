@@ -14,6 +14,8 @@ const playwrightApiRoutes = require('../../src/routes/playwrightApiRoutes');
 const playwrightPageRoutes = require('../../src/routes/playwrightPageRoutes');
 const locatorRepairApiRoutes = require('../../src/routes/locatorRepairApiRoutes');
 const locatorRepairPageRoutes = require('../../src/routes/locatorRepairPageRoutes');
+const missionAssuranceApiRoutes = require('../../src/routes/missionAssuranceApiRoutes');
+const missionAssurancePageRoutes = require('../../src/routes/missionAssurancePageRoutes');
 const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
 const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
@@ -358,6 +360,8 @@ function createApp() {
     app.use(playwrightPageRoutes);
     app.use(locatorRepairApiRoutes);
     app.use(locatorRepairPageRoutes);
+    app.use(missionAssuranceApiRoutes);
+    app.use(missionAssurancePageRoutes);
     app.use(seleniumApiRoutes);
     app.use(seleniumPageRoutes);
     app.use(scanApiRoutes);

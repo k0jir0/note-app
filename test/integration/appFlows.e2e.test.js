@@ -299,10 +299,12 @@ describe('Application end-to-end flows', function () {
         expect(researchHtml).to.include('Selenium Module');
         expect(researchHtml).to.include('Playwright Module');
         expect(researchHtml).to.include('Self-Healing Module');
+        expect(researchHtml).to.include('Mission Assurance Module');
         expect(researchHtml).to.include('/ml/module');
         expect(researchHtml).to.include('/selenium/module');
         expect(researchHtml).to.include('/playwright/module');
         expect(researchHtml).to.include('/self-healing/module');
+        expect(researchHtml).to.include('/mission-assurance/module');
 
         stores.alerts.push({
             _id: new mongoose.Types.ObjectId(),
@@ -443,6 +445,7 @@ describe('Application end-to-end flows', function () {
         expect(seleniumScriptPayload.data.content).to.include('/selenium/module');
         expect(seleniumScriptPayload.data.content).to.include('/playwright/module');
         expect(seleniumScriptPayload.data.content).to.include('/self-healing/module');
+        expect(seleniumScriptPayload.data.content).to.include('/mission-assurance/module');
 
         const playwrightPage = await client.request('/playwright/module', {
             headers: { 'x-test-auth': '1' }
@@ -480,6 +483,7 @@ describe('Application end-to-end flows', function () {
         expect(playwrightScriptPayload.data.content).to.include('/ml/module');
         expect(playwrightScriptPayload.data.content).to.include('/selenium/module');
         expect(playwrightScriptPayload.data.content).to.include('/playwright/module');
+        expect(playwrightScriptPayload.data.content).to.include('/mission-assurance/module');
 
         const legacyLocatorRepairPage = await client.request('/locator-repair/module', {
             headers: { 'x-test-auth': '1' }
@@ -584,5 +588,56 @@ describe('Application end-to-end flows', function () {
         expect(locatorRepairTrainResponse.status).to.equal(200);
         expect(locatorRepairTrainPayload.success).to.equal(true);
         expect(locatorRepairTrainPayload.data.model.available).to.equal(true);
+
+        const missionAssurancePage = await client.request('/mission-assurance/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const missionAssuranceHtml = await missionAssurancePage.text();
+
+        expect(missionAssurancePage.status).to.equal(200);
+        expect(missionAssuranceHtml).to.include('Mission Assurance Module');
+        expect(missionAssuranceHtml).to.include('/api/mission-assurance/overview');
+        expect(missionAssuranceHtml).to.include('/api/mission-assurance/evaluate');
+        expect(missionAssuranceHtml).to.include('Policy Decision');
+        expect(missionAssuranceHtml).to.include('RBAC');
+        expect(missionAssuranceHtml).to.include('ABAC');
+
+        const missionAssuranceOverviewResponse = await client.request('/api/mission-assurance/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const missionAssuranceOverviewPayload = await missionAssuranceOverviewResponse.json();
+
+        expect(missionAssuranceOverviewResponse.status).to.equal(200);
+        expect(missionAssuranceOverviewPayload.success).to.equal(true);
+        expect(missionAssuranceOverviewPayload.data.module.name).to.equal('Mission Assurance Module');
+        expect(missionAssuranceOverviewPayload.data.currentProfile.missionRole).to.equal('analyst');
+        expect(missionAssuranceOverviewPayload.data.actions).to.be.an('array').that.is.not.empty;
+        expect(missionAssuranceOverviewPayload.data.resources).to.be.an('array').that.is.not.empty;
+        expect(missionAssuranceOverviewPayload.data.personas).to.be.an('array').that.is.not.empty;
+
+        const missionAssuranceCsrfToken = await client.getCsrfToken();
+        const missionAssuranceEvaluateResponse = await client.request('/api/mission-assurance/evaluate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': missionAssuranceCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                personaId: 'mission-lead',
+                actionId: 'approve_block_action',
+                resourceId: 'autonomy-block-policy',
+                context: {
+                    networkZone: 'mission'
+                }
+            })
+        });
+        const missionAssuranceEvaluatePayload = await missionAssuranceEvaluateResponse.json();
+
+        expect(missionAssuranceEvaluateResponse.status).to.equal(200);
+        expect(missionAssuranceEvaluatePayload.success).to.equal(true);
+        expect(missionAssuranceEvaluatePayload.data.allowed).to.equal(true);
+        expect(missionAssuranceEvaluatePayload.data.decision).to.equal('allow');
+        expect(missionAssuranceEvaluatePayload.data.failedChecks).to.have.length(0);
     });
 });

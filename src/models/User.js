@@ -1,5 +1,28 @@
 const mongoose = require('mongoose');
 
+const MISSION_ROLES = [
+    'operator',
+    'analyst',
+    'mission_lead',
+    'auditor',
+    'admin',
+    'break_glass'
+];
+
+const CLEARANCE_LEVELS = [
+    'unclassified',
+    'protected_a',
+    'protected_b',
+    'secret',
+    'top_secret'
+];
+
+const DEVICE_TIERS = [
+    'unknown',
+    'managed',
+    'hardened'
+];
+
 const userSchema = new mongoose.Schema({
     email: {
         type: String,
@@ -21,6 +44,47 @@ const userSchema = new mongoose.Schema({
     },
     name: {
         type: String
+    },
+    accessProfile: {
+        missionRole: {
+            type: String,
+            enum: MISSION_ROLES,
+            default: 'analyst'
+        },
+        clearance: {
+            type: String,
+            enum: CLEARANCE_LEVELS,
+            default: 'protected_b'
+        },
+        unit: {
+            type: String,
+            default: 'cyber-task-force'
+        },
+        assignedMissions: {
+            type: [String],
+            default: () => ['research-workspace', 'browser-assurance']
+        },
+        deviceTier: {
+            type: String,
+            enum: DEVICE_TIERS,
+            default: 'managed'
+        },
+        networkZones: {
+            type: [String],
+            default: () => ['corp']
+        },
+        mfaVerifiedAt: {
+            type: Date,
+            default: null
+        },
+        breakGlassApproved: {
+            type: Boolean,
+            default: false
+        },
+        breakGlassReason: {
+            type: String,
+            default: ''
+        }
     }
 }, {
     timestamps: true

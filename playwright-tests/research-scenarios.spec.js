@@ -19,6 +19,7 @@ async function expectResearchWorkspace(page) {
     await expect(page.locator('body')).toContainText('Selenium Module');
     await expect(page.locator('body')).toContainText('Playwright Module');
     await expect(page.locator('body')).toContainText('Self-Healing Module');
+    await expect(page.locator('body')).toContainText('Mission Assurance Module');
 }
 
 async function expectSecurityModule(page) {
@@ -64,6 +65,15 @@ async function expectSelfHealingModule(page) {
     await expect(page.locator('#locator-repair-analyze-btn')).toBeVisible();
     await expect(page.locator('body')).toContainText('Repair Candidates');
     await expect(page.locator('#locator-repair-output-targets')).toContainText(/Playwright (?:and|\+) Selenium/);
+}
+
+async function expectMissionAssuranceModule(page) {
+    await expect(page).toHaveURL(/\/mission-assurance\/module$/);
+    await expect(page.getByRole('heading', { name: 'Mission Assurance Module', exact: true })).toBeVisible();
+    await expect(page.locator('#mission-assurance-evaluate-btn')).toBeVisible();
+    await expect(page.locator('body')).toContainText('Policy Decision');
+    await expect(page.locator('body')).toContainText('RBAC');
+    await expect(page.locator('body')).toContainText('ABAC');
 }
 
 test.describe('Research workspace scenario coverage', () => {
@@ -157,5 +167,8 @@ test.describe('Research workspace scenario coverage', () => {
 
         await page.goto('/self-healing/module');
         await expectSelfHealingModule(page);
+
+        await page.goto('/mission-assurance/module');
+        await expectMissionAssuranceModule(page);
     });
 });

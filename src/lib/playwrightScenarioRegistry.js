@@ -70,7 +70,7 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, and Self-Healing entry points are visible.',
+        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Self-Healing, and Mission Assurance entry points are visible.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Login form is reachable',
@@ -79,7 +79,8 @@ const PLAYWRIGHT_SCENARIOS = [
             'ML Module card is present',
             'Selenium Module card is present',
             'Playwright Module card is present',
-            'Self-Healing Module card is present'
+            'Self-Healing Module card is present',
+            'Mission Assurance Module card is present'
         ],
         tags: ['smoke', 'auth', 'navigation'],
         requiresLogin: true,
@@ -233,8 +234,8 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, Playwright, and Self-Healing to validate the end-to-end workspace flow.',
-        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/self-healing/module'],
+        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, Playwright, Self-Healing, and Mission Assurance to validate the end-to-end workspace flow.',
+        routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/self-healing/module', '/mission-assurance/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',
             'Research Workspace renders all module entry points',
@@ -242,7 +243,8 @@ const PLAYWRIGHT_SCENARIOS = [
             'ML Module renders training and autonomy panels',
             'Selenium Module renders a script preview',
             'Playwright Module renders a spec preview',
-            'Self-Healing Module renders repair suggestions'
+            'Self-Healing Module renders repair suggestions',
+            'Mission Assurance Module renders policy evaluator'
         ],
         tags: ['full-suite', 'research', 'smoke'],
         requiresLogin: true,
