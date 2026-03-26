@@ -239,6 +239,42 @@ const PLAYWRIGHT_SCENARIOS = [
         suiteFile: 'playwright-tests/research-scenarios.spec.js'
     },
     {
+        id: 'mission-assurance-module-smoke',
+        title: 'Mission Assurance Module Smoke',
+        purpose: 'Open the Mission Assurance Module and confirm that the current profile, RBAC plus ABAC policy context, and decision evaluator controls are visible.',
+        routes: ['/mission-assurance/module'],
+        assertions: [
+            'Mission Assurance Module heading is visible',
+            'Policy Decision is visible',
+            'RBAC is visible',
+            'ABAC is visible',
+            'Evaluate Decision button is present'
+        ],
+        tags: ['mission-assurance', 'browser', 'workspace'],
+        requiresLogin: true,
+        optionalDependencies: ['The module uses current session context and built-in policy definitions and does not require extra infrastructure.'],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/research-scenarios.spec.js'
+    },
+    {
+        id: 'hardware-mfa-module-smoke',
+        title: 'Hardware-First MFA Module Smoke',
+        purpose: 'Open the Hardware-First MFA Module and confirm that the session assurance, challenge workflow, and PKI-aware controls are visible.',
+        routes: ['/hardware-mfa/module'],
+        assertions: [
+            'Hardware-First MFA Module heading is visible',
+            'Challenge And Verify is visible',
+            'Hardware token is visible',
+            'PKI is visible',
+            'Start Challenge button is present'
+        ],
+        tags: ['hardware-mfa', 'browser', 'workspace'],
+        requiresLogin: true,
+        optionalDependencies: ['WebAuthn hardware verification and live PKI registration need browser and transport support, but the module UI should still render without them.'],
+        implementedInSuite: true,
+        suiteFile: 'playwright-tests/research-scenarios.spec.js'
+    },
+    {
         id: 'session-management-module-smoke',
         title: 'Session Management Module Smoke',
         purpose: 'Open the Session Management Module and confirm that the live session summary, timeout policy, and lockdown-evaluation controls are visible.',

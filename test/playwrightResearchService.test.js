@@ -29,6 +29,8 @@ describe('Playwright research service', () => {
         expect(overview.scenarios.find((scenario) => scenario.id === 'xss-defense-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'access-control-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'self-healing-module-smoke')).to.exist;
+        expect(overview.scenarios.find((scenario) => scenario.id === 'mission-assurance-module-smoke')).to.exist;
+        expect(overview.scenarios.find((scenario) => scenario.id === 'hardware-mfa-module-smoke')).to.exist;
         expect(overview.scenarios.find((scenario) => scenario.id === 'session-management-module-smoke')).to.exist;
         expect(overview.scenarios[0].routes[0]).to.match(/^http:\/\/127\.0\.0\.1:3000\//);
         expect(overview.scenarios[0].routeTargets[0].description).to.be.a('string').and.not.equal('');
@@ -114,6 +116,32 @@ describe('Playwright research service', () => {
         expect(script.content).to.include('/locator-repair/module');
         expect(script.content).to.include('/self-healing/module');
         expect(script.content).to.include('#locator-repair-analyze-btn');
+    });
+
+    it('builds a playwright spec template for the mission-assurance scenario', () => {
+        const script = playwrightResearchService.buildPlaywrightScript({
+            baseUrl: 'http://localhost:3000',
+            scenarioId: 'mission-assurance-module-smoke'
+        });
+
+        expect(script.fileName).to.equal('playwright-mission-assurance-module-smoke.spec.js');
+        expect(script.routePaths).to.include('/mission-assurance/module');
+        expect(script.content).to.include('/mission-assurance/module');
+        expect(script.content).to.include('#mission-assurance-evaluate-btn');
+        expect(script.content).to.include('Policy Decision');
+    });
+
+    it('builds a playwright spec template for the hardware-mfa scenario', () => {
+        const script = playwrightResearchService.buildPlaywrightScript({
+            baseUrl: 'http://localhost:3000',
+            scenarioId: 'hardware-mfa-module-smoke'
+        });
+
+        expect(script.fileName).to.equal('playwright-hardware-mfa-module-smoke.spec.js');
+        expect(script.routePaths).to.include('/hardware-mfa/module');
+        expect(script.content).to.include('/hardware-mfa/module');
+        expect(script.content).to.include('#hardware-mfa-start-btn');
+        expect(script.content).to.include('Challenge And Verify');
     });
 
     it('throws when an unknown scenario is requested', () => {

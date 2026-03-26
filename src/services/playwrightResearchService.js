@@ -104,6 +104,16 @@ const ASSERTION_DESCRIPTIONS = {
     'Self-Healing Module renders repair suggestions': 'Confirms that the Self-Healing page still renders sample-driven repair suggestions.',
     'Mission Assurance Module card is present': 'Checks that the Research Workspace still exposes the Mission Assurance entry point.',
     'Hardware-First MFA Module card is present': 'Checks that the Research Workspace still exposes the Hardware-First MFA entry point.',
+    'Mission Assurance Module heading is visible': 'Confirms that navigation reached the Mission Assurance module.',
+    'Policy Decision is visible': 'Checks that the policy-decision panel is visible for the selected mission action.',
+    'RBAC is visible': 'Confirms that the module explains the role-based access portion of the decision.',
+    'ABAC is visible': 'Confirms that the module explains the attribute-based access portion of the decision.',
+    'Evaluate Decision button is present': 'Checks that the primary mission-policy evaluation control is visible.',
+    'Hardware-First MFA Module heading is visible': 'Confirms that navigation reached the Hardware-First MFA module.',
+    'Challenge And Verify is visible': 'Checks that the step-up challenge and verification workflow is rendered.',
+    'Hardware token is visible': 'Confirms that hardware-token assurance remains part of the current MFA posture.',
+    'PKI is visible': 'Confirms that PKI-backed assurance remains part of the module guidance and controls.',
+    'Start Challenge button is present': 'Checks that the primary hardware-first challenge control is visible.',
     'Session Management Module card is present': 'Checks that the Research Workspace still exposes the Session Management entry point.',
     'Session Management Module heading is visible': 'Confirms that navigation reached the Session Management module.',
     'Live session summary is visible': 'Checks that the page surfaces the current server-side session state.',
@@ -602,6 +612,25 @@ const SCRIPT_STEP_MAP = {
         'await page.locator(\'#locator-repair-analyze-btn\').click();',
         'await expectBodyText(page, \'Generated ML-assisted self-healing suggestions.\');',
         'await expect(page.locator(\'#locator-repair-suggestions\')).toContainText(\'data-testid\');'
+    ].join('\n    '),
+    'mission-assurance-module-smoke': [
+        'await signIn(page);',
+        'await page.goto(`${baseUrl}/mission-assurance/module`, { waitUntil: \'domcontentloaded\' });',
+        'await expectBodyText(page, \'Mission Assurance Module\');',
+        'await expect(page.locator(\'#mission-assurance-evaluate-btn\')).toBeVisible();',
+        'await expectBodyText(page, \'Policy Decision\');',
+        'await expectBodyText(page, \'RBAC\');',
+        'await expectBodyText(page, \'ABAC\');'
+    ].join('\n    '),
+    'hardware-mfa-module-smoke': [
+        'await signIn(page);',
+        'await page.goto(`${baseUrl}/hardware-mfa/module`, { waitUntil: \'domcontentloaded\' });',
+        'await expectBodyText(page, \'Hardware-First MFA Module\');',
+        'await expect(page.locator(\'#hardware-mfa-start-btn\')).toBeVisible();',
+        'await expect(page.locator(\'#hardware-mfa-verify-btn\')).toBeVisible();',
+        'await expectBodyText(page, \'Challenge And Verify\');',
+        'await expectBodyText(page, \'Hardware token\');',
+        'await expectBodyText(page, \'PKI\');'
     ].join('\n    '),
     'session-management-module-smoke': [
         'await signIn(page);',

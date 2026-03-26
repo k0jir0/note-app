@@ -414,6 +414,22 @@ describe('Research module browser coverage', function () {
         await waitForBodyText(driver, 'Server Decision');
     });
 
+    it(getSeleniumScenario('mission-assurance-module-smoke').title, async () => {
+        await openMissionAssuranceModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Policy Decision');
+        await waitForBodyText(driver, 'RBAC');
+        await waitForBodyText(driver, 'ABAC');
+        await driver.findElement(By.id('mission-assurance-evaluate-btn'));
+    });
+
+    it(getSeleniumScenario('hardware-mfa-module-smoke').title, async () => {
+        await openHardwareMfaModule(driver, baseUrl);
+        await waitForBodyText(driver, 'Challenge And Verify');
+        await waitForBodyText(driver, 'Hardware token');
+        await waitForBodyText(driver, 'PKI');
+        await driver.findElement(By.id('hardware-mfa-start-btn'));
+    });
+
     it(getSeleniumScenario('research-full-suite').title, async () => {
         await openResearchWorkspace(driver, baseUrl);
         await waitForBodyText(driver, 'Security Module');

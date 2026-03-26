@@ -228,6 +228,26 @@ test.describe('Research workspace scenario coverage', () => {
         await expect(page.locator('#locator-repair-suggestions')).toContainText('locator-repair-analyze-btn');
     });
 
+    test(getPlaywrightScenario('mission-assurance-module-smoke').title, async ({ page }, testInfo) => {
+        const scenario = getPlaywrightScenario('mission-assurance-module-smoke');
+        annotateScenario(testInfo, scenario);
+
+        await createAuthenticatedSession(page, testInfo);
+        await page.goto('/mission-assurance/module');
+        await expectMissionAssuranceModule(page);
+        await expect(page.locator('#mission-assurance-status')).toContainText('Mission Assurance Module ready.');
+    });
+
+    test(getPlaywrightScenario('hardware-mfa-module-smoke').title, async ({ page }, testInfo) => {
+        const scenario = getPlaywrightScenario('hardware-mfa-module-smoke');
+        annotateScenario(testInfo, scenario);
+
+        await createAuthenticatedSession(page, testInfo);
+        await page.goto('/hardware-mfa/module');
+        await expectHardwareMfaModule(page);
+        await expect(page.locator('#hardware-mfa-status')).toContainText('Hardware-First MFA Module ready.');
+    });
+
     test(getPlaywrightScenario('session-management-module-smoke').title, async ({ page }, testInfo) => {
         const scenario = getPlaywrightScenario('session-management-module-smoke');
         annotateScenario(testInfo, scenario);

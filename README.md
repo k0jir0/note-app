@@ -300,6 +300,7 @@ Notes:
 - Login payload: only `email` and `password` fields are accepted
 - Local login failures return a generic invalid-credentials response to avoid account/provider enumeration
 - Google OAuth routes require both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
+- Google OAuth callback exchange failures now render a friendly login error for both `TokenError` and `InternalOAuthError` cases instead of surfacing a raw server exception
 - Login, signup, logout, note mutations, log analysis, scan import, and sample-correlation actions require a valid CSRF token
 
 ### Notes API Endpoints
@@ -899,6 +900,7 @@ pm2 save && pm2 startup
 | Missing NOTE_ENCRYPTION_KEY error | Generate a 32-byte key and set `NOTE_ENCRYPTION_KEY` |
 | Google sign-in unavailable | Set both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` together, preferably in `.env.local`, or leave both unset |
 | Google shows "Access blocked: This app's request is invalid" | Make sure `APP_BASE_URL` matches the redirect URI registered in Google Cloud exactly. For local development, use `http://localhost:3000/auth/oauth2/redirect/google` |
+| Google sign-in shows "could not be completed" after redirect | Verify that `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_BASE_URL`, and the Google Cloud redirect URI all belong to the same local OAuth client; the app now converts token-exchange failures into a friendly login error instead of a raw stack trace |
 | Older encrypted notes no longer decrypt after key rotation | Set `LEGACY_NOTE_ENCRYPTION_KEY`, re-save affected notes, then remove the compatibility setting |
 | `csrfToken is not defined` in an EJS page | Ensure the route renders the page with `csrfToken: res.locals.csrfToken` and the request passed through the CSRF middleware |
 | `MongoStore.create is not a function` on startup | Use `const { MongoStore } = require('connect-mongo')` with the installed CommonJS package version |

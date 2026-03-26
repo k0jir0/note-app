@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-03-25T22:52:02.354Z",
+  "generatedAt": "2026-03-26T10:37:45.795Z",
   "sourcePath": "artifacts/selenium-results.json",
   "runtime": {
-    "browserName": "edge",
+    "browserName": "chrome",
     "headless": true,
     "baseUrl": "http://localhost:3000"
   },
   "stats": {
-    "tests": 11,
-    "passes": 11,
+    "tests": 17,
+    "passes": 17,
     "failures": 0,
     "pending": 0,
-    "durationMs": 37663,
-    "startTime": "2026-03-25T22:51:24.691Z",
-    "endTime": "2026-03-25T22:52:02.354Z"
+    "durationMs": 52976,
+    "startTime": "2026-03-26T10:36:52.819Z",
+    "endTime": "2026-03-26T10:37:45.795Z"
   },
   "files": [
     "selenium-tests/auth-and-notes.test.js",
@@ -27,7 +27,7 @@
       "fullTitle": "Authentication and notes browser coverage Login Form Smoke",
       "file": "selenium-tests/auth-and-notes.test.js",
       "status": "passed",
-      "durationMs": 343,
+      "durationMs": 278,
       "err": null
     },
     {
@@ -45,7 +45,7 @@
       "fullTitle": "Authentication and notes browser coverage Signup, Login, and Research Entry Flow",
       "file": "selenium-tests/auth-and-notes.test.js",
       "status": "passed",
-      "durationMs": 1803,
+      "durationMs": 1478,
       "err": null
     },
     {
@@ -54,7 +54,7 @@
       "fullTitle": "Authentication and notes browser coverage Notes CRUD Workflow",
       "file": "selenium-tests/auth-and-notes.test.js",
       "status": "passed",
-      "durationMs": 4806,
+      "durationMs": 3136,
       "err": null
     },
     {
@@ -63,7 +63,7 @@
       "fullTitle": "Research module browser coverage Research Workspace Navigation",
       "file": "selenium-tests/research-modules.test.js",
       "status": "passed",
-      "durationMs": 2267,
+      "durationMs": 6763,
       "err": null
     },
     {
@@ -72,7 +72,7 @@
       "fullTitle": "Research module browser coverage Security Module Interactive Workflow",
       "file": "selenium-tests/research-modules.test.js",
       "status": "passed",
-      "durationMs": 3817,
+      "durationMs": 5054,
       "err": null
     },
     {
@@ -81,7 +81,52 @@
       "fullTitle": "Research module browser coverage ML Module Interaction Flow",
       "file": "selenium-tests/research-modules.test.js",
       "status": "passed",
-      "durationMs": 1171,
+      "durationMs": 860,
+      "err": null
+    },
+    {
+      "scenarioId": "injection-prevention-module-smoke",
+      "title": "Injection Prevention Module Smoke",
+      "fullTitle": "Research module browser coverage Injection Prevention Module Smoke",
+      "file": "selenium-tests/research-modules.test.js",
+      "status": "passed",
+      "durationMs": 273,
+      "err": null
+    },
+    {
+      "scenarioId": "xss-defense-module-smoke",
+      "title": "XSS Defense Module Smoke",
+      "fullTitle": "Research module browser coverage XSS Defense Module Smoke",
+      "file": "selenium-tests/research-modules.test.js",
+      "status": "passed",
+      "durationMs": 272,
+      "err": null
+    },
+    {
+      "scenarioId": "access-control-module-smoke",
+      "title": "Access Control Module Smoke",
+      "fullTitle": "Research module browser coverage Access Control Module Smoke",
+      "file": "selenium-tests/research-modules.test.js",
+      "status": "passed",
+      "durationMs": 501,
+      "err": null
+    },
+    {
+      "scenarioId": "mission-assurance-module-smoke",
+      "title": "Mission Assurance Module Smoke",
+      "fullTitle": "Research module browser coverage Mission Assurance Module Smoke",
+      "file": "selenium-tests/research-modules.test.js",
+      "status": "passed",
+      "durationMs": 338,
+      "err": null
+    },
+    {
+      "scenarioId": "hardware-mfa-module-smoke",
+      "title": "Hardware-First MFA Module Smoke",
+      "fullTitle": "Research module browser coverage Hardware-First MFA Module Smoke",
+      "file": "selenium-tests/research-modules.test.js",
+      "status": "passed",
+      "durationMs": 278,
       "err": null
     },
     {
@@ -90,7 +135,16 @@
       "fullTitle": "Research module browser coverage Research Workspace Full Suite",
       "file": "selenium-tests/research-modules.test.js",
       "status": "passed",
-      "durationMs": 1423,
+      "durationMs": 2827,
+      "err": null
+    },
+    {
+      "scenarioId": "session-management-module-smoke",
+      "title": "Session Management Module Smoke",
+      "fullTitle": "Research module browser coverage Session Management Module Smoke",
+      "file": "selenium-tests/research-modules.test.js",
+      "status": "passed",
+      "durationMs": 238,
       "err": null
     },
     {
@@ -99,7 +153,7 @@
       "fullTitle": "Selenium module browser suite Selenium Module Overview",
       "file": "selenium-tests/selenium-module.test.js",
       "status": "passed",
-      "durationMs": 519,
+      "durationMs": 620,
       "err": null
     },
     {
@@ -108,7 +162,7 @@
       "fullTitle": "Selenium module browser suite Selenium Script Preview Updates",
       "file": "selenium-tests/selenium-module.test.js",
       "status": "passed",
-      "durationMs": 877,
+      "durationMs": 1023,
       "err": null
     },
     {
@@ -117,7 +171,7 @@
       "fullTitle": "Selenium module browser suite Selenium Module Navigation Flow",
       "file": "selenium-tests/selenium-module.test.js",
       "status": "passed",
-      "durationMs": 1043,
+      "durationMs": 1127,
       "err": null
     }
   ]
