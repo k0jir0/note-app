@@ -1,6 +1,6 @@
 # Note App
 
-A full-stack note-taking, applied security-research, and browser-automation application built with Node.js, Express, MongoDB, and EJS. Alongside encrypted notes, it includes a Security Module for log and scan analysis, an ML Module for trainable alert triage and audited autonomy, and a Selenium Module for exporting browser smoke suites across the Research Workspace.
+A full-stack note-taking, applied security-research, and browser-automation application built with Node.js, Express, MongoDB, and EJS. Alongside encrypted notes, it includes a Security Module for log and scan analysis, an ML Module for trainable alert triage and audited autonomy, plus dedicated Playwright, Selenium, and Self-Healing modules for inspecting browser coverage, surfacing the latest run status, exporting reusable browser suites, and repairing broken selectors across the Research Workspace.
 
 ## Features
 
@@ -19,7 +19,9 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 - Correlation dashboard linking scan findings with observed security alerts
 - Consolidated Research Workspace that unifies log analysis, scan import, correlations, and automation status
 - Dedicated ML Module for alert-triage model training, runtime inspection, explainable score analysis, feedback-aware supervision, and autonomy proof workflows
-- Dedicated Selenium Module for browser-automation coverage planning, scenario inspection, and generated Selenium WebDriver script templates
+- Dedicated Playwright Module for browser-automation coverage planning, scenario inspection, latest-run artifact reporting, and generated Playwright spec templates
+- Dedicated Selenium Module for browser-automation coverage planning, scenario inspection, latest-run artifact reporting, and generated Selenium WebDriver script templates
+- Dedicated Self-Healing Module for ranking Playwright and Selenium locator repairs from a broken locator, a step goal, and a current DOM snippet
 - ML-driven autonomous response policy that can notify operators or trigger a block webhook for high-risk ingested alerts
 - Optional scheduled ingestion for logs, scans, and intrusion events (Falco JSON ingestion helper + Trivy runner support)
 - Optional Redis-backed realtime ingest endpoint and live alert stream, with separate server and browser connection status in the Security Module UI
@@ -30,13 +32,13 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 - Trivy report artifacts in CI (report-only mode) to enable triage without blocking merges
 - RESTful API with JSON responses
 - Responsive UI with Bootstrap 5
-- Test coverage with Mocha, Chai, and Sinon, including end-to-end coverage for note, auth, Security Module, ML Module, Selenium Module, and autonomy-demo proof flows
+- Test coverage with Mocha, Chai, Sinon, Playwright, and Selenium WebDriver, including end-to-end coverage for note, auth, Security Module, ML Module, Playwright Module, Selenium Module, Self-Healing Module, and autonomy-demo proof flows
 
 ## Tech Stack
 
 **Backend:** Node.js, Express 5.2, MongoDB 8.10 (Mongoose), Passport.js, bcrypt, express-session, connect-mongo, helmet  
 **Frontend:** EJS 5.0, Bootstrap 5.3, Vanilla JS  
-**Testing:** Mocha, Chai, Sinon, ESLint
+**Testing:** Mocha, Chai, Sinon, Playwright, Selenium WebDriver, ESLint
 
 ## Quick Start
 
@@ -91,7 +93,7 @@ npm run start-dev  # Development (auto-reload)
 npm start          # Production
 npm test           # Run tests
 npm run test:selenium # Run Selenium browser tests against a live local app
-npm run test:e2e   # Run Playwright smoke tests in Chromium
+npm run test:e2e   # Run Playwright browser tests in Chromium
 npm run lint       # ESLint
 ```
 
@@ -112,16 +114,20 @@ npm run test:e2e:all
 
 Notes:
 - Playwright tests assume the app is already running on `http://localhost:3000` unless `PLAYWRIGHT_BASE_URL` is set.
-- `npm run test:e2e` runs the starter smoke suite in Chromium; `npm run test:e2e:all` runs it across Chromium, Firefox, and WebKit.
+- `npm run test:e2e` refreshes `artifacts/playwright-results.json`, which powers the latest-run badges on `/playwright/module`.
+- `npm run test:e2e` runs the registered Playwright browser suite in Chromium; `npm run test:e2e:all` runs that same suite across Chromium, Firefox, and WebKit.
 - `npm run test:selenium` assumes the app is reachable on `http://localhost:3000` unless `SELENIUM_BASE_URL` is set, defaults to a headless Edge session (`SELENIUM_BROWSER=chrome` is also supported), and refreshes `artifacts/selenium-results.json` for the Selenium Module page.
+- `npm run locator-repair:train` refreshes the persisted self-healing reranker artifact at `artifacts/locator-repair-model.json`.
 
 Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
 
-Current local verification:
-- `npm test` passes with 272 tests
+Current local verification (March 25, 2026):
+- `npm test` passes with 320 tests
 - `npm run lint` passes with 0 errors
+- Latest `artifacts/playwright-results.json` shows 13 expected / 0 unexpected in Chromium
+- Latest `artifacts/selenium-results.json` shows 11 passing / 0 failing
 
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account
@@ -129,7 +135,9 @@ Current local verification:
 - Use `/research` to access the unified Research Workspace
 - Use the Security Module link inside `/research` to run `Inject Automation Sample` and populate Alerts, Scans, and Correlations with demo data for the signed-in account
 - Use `/ml/module` to inspect the active alert-triage model, compare score provenance and score distributions, review learned feature influence, train either a bootstrap or hybrid model, and verify autonomous-response behavior with the built-in demo flow
+- Use `/playwright/module` to inspect browser-test scenarios, review the latest annotated Playwright run, and export Playwright specs for the auth, notes, research, security, Playwright, and Selenium flows
 - Use `/selenium/module` to inspect browser-test scenarios, review Selenium prerequisites, and export WebDriver smoke templates for the Research, Security, ML, and Selenium module flows
+- Use `/self-healing/module` to open the Self-Healing Module, analyze broken Playwright and Selenium locators, load sample failure cases, and compare ranked repair suggestions before editing the test
 - Optional: send a `POST` request to `/seed` after logging in (dev only) for sample data
 
 ### Optional Automation
@@ -207,15 +215,36 @@ The Research Workspace links to a dedicated ML Module page at `/ml/module`.
 - The dashboard visualizes feedback supply, score-label counts, score-source counts, score buckets, per-alert-type priority breakdowns, and the strongest positive and negative learned feature weights so the model can be inspected rather than simply trusted.
 - `Autonomy Demo Inject` seeds a safe dry-run notify-plus-block scenario and should increase the ML Module's `Observed Autonomous Outcomes` counters, making it easy to prove that the policy loop is recording decisions on stored alerts.
 
+### Playwright Module Overview
+
+The Research Workspace also links to a dedicated Playwright Module page at `/playwright/module`.
+
+- The page acts as a browser-coverage dashboard and spec-generator for the authenticated app's Playwright suite.
+- It exposes scenario metadata for auth, notes, Research Workspace navigation, Security Module flows, and the Playwright and Selenium module pages themselves.
+- The module reads `artifacts/playwright-results.json` and maps annotated browser tests onto scenario cards so the UI can show the latest run status instead of a static placeholder.
+- Generated specs are intentionally smoke-test oriented: they focus on stable routes, headings, and core module controls rather than brittle low-level DOM selectors.
+- The latest verified Chromium artifact covers 13 registered Playwright scenarios, and the page refreshes to reflect the most recent report on disk.
+
+### Self-Healing Module Overview
+
+The Research Workspace also links to a dedicated Self-Healing Module page at `/self-healing/module`.
+
+- The page acts as a self-healing workspace for broken Playwright and Selenium locators rather than as a test runner.
+- It accepts a failing locator, a short step-goal description, and the current HTML snippet around the intended element, then ranks likely repairs for both browser stacks.
+- The current engine is ML-assisted and verification-gated: deterministic candidate generation feeds a trained logistic reranker, and a suggested heal is only considered safe after a deterministic follow-up check.
+- The module includes app-shaped sample cases grounded in the Research Workspace, Playwright Module, and auth flows so repair strategies can be explored without leaving the app.
+- In practice, the Self-Healing Module gives the project a place to reason about selector drift explicitly instead of hiding repair logic inside failing browser suites.
+
 ### Selenium Module Overview
 
 The Research Workspace also links to a dedicated Selenium Module page at `/selenium/module`.
 
-- The page acts as a browser-automation planning and export surface for this app's authenticated research flows.
-- It exposes scenario metadata for the Research Workspace, Security Module, ML Module, Selenium Module itself, and a full cross-module smoke suite.
+- The page acts as a browser-automation planning, reporting, and export surface for this app's authenticated research flows.
+- It exposes scenario metadata for auth, notes, the Research Workspace, Security Module, ML Module, Selenium Module itself, and a full cross-module smoke suite.
+- The module reads `artifacts/selenium-results.json` so it can show the latest suite status, runtime metadata, covered suite files, and per-scenario badges instead of a static catalog.
 - The module shows browser prerequisites, route-level coverage goals, stable assertion targets, and generated JavaScript templates built around `selenium-webdriver`.
 - The exported scripts are intentionally smoke-test oriented: they prioritize stable route navigation, headings, and module controls rather than brittle low-level DOM behavior.
-- In practice, the Selenium Module gives the project a bridge from in-app research tooling to external browser automation and CI smoke coverage.
+- In practice, the Selenium Module gives the project a bridge from in-app research tooling to external browser automation and CI smoke coverage, and the latest verified artifact covers 11 registered Selenium scenarios.
 
 ### Optional Autonomous Response
 
@@ -374,6 +403,12 @@ PUT /api/notes/:id
 | `GET /research` | Unified Research Workspace | Yes |
 | `GET /ml` | Redirects to the dedicated ML Module page | Yes |
 | `GET /ml/module` | Dedicated ML Module page | Yes |
+| `GET /playwright` | Redirects to the dedicated Playwright Module page | Yes |
+| `GET /playwright/module` | Dedicated Playwright Module page | Yes |
+| `GET /self-healing` | Redirects to the dedicated Self-Healing Module page | Yes |
+| `GET /self-healing/module` | Dedicated Self-Healing Module page | Yes |
+| `GET /locator-repair` | Legacy redirect to `/self-healing/module` | Yes |
+| `GET /locator-repair/module` | Legacy redirect to `/self-healing/module` | Yes |
 | `GET /selenium` | Redirects to the dedicated Selenium Module page | Yes |
 | `GET /selenium/module` | Dedicated Selenium Module page | Yes |
 | `GET /auth/login` | Login page | - |
@@ -408,11 +443,28 @@ PUT /api/notes/:id
 | `POST /api/ml/train` | POST | Train a bootstrap or hybrid alert-triage model and rescore stored alerts |
 | `POST /api/ml/autonomy-demo` | POST | Inject a dry-run autonomy demo so the ML Module can show stored notify-block outcomes |
 
+### Playwright API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/playwright/overview` | GET | Get Playwright module coverage metadata, scenario catalog entries, workflow notes, and the latest annotated run summary |
+| `GET /api/playwright/script` | GET | Generate a Playwright spec template for the selected scenario |
+
+### Self-Healing API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /api/locator-repair/overview` | GET | Get Self-Healing Module metadata, supported locator families, repair guidance, model state, and sample failure cases |
+| `GET /api/locator-repair/history` | GET | Get recent self-healing outcomes and feedback summaries |
+| `POST /api/locator-repair/suggest` | POST | Rank Playwright and Selenium locator repairs from a failing locator, step goal, and current HTML snippet |
+| `POST /api/locator-repair/feedback` | POST | Record accepted, rejected, or healed self-healing feedback for a ranked candidate |
+| `POST /api/locator-repair/train` | POST | Train or refresh the persisted self-healing reranker from bootstrap data and recorded feedback |
+
 ### Selenium API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `GET /api/selenium/overview` | GET | Get Selenium module coverage metadata, scenario catalog entries, workflow notes, and browser prerequisites |
+| `GET /api/selenium/overview` | GET | Get Selenium module coverage metadata, scenario catalog entries, workflow notes, browser prerequisites, and the latest run summary |
 | `GET /api/selenium/script` | GET | Generate a Selenium WebDriver script template for the selected scenario |
 
 ## Project Structure
@@ -435,7 +487,9 @@ notes-app/
 │   │   └── runtimeConfig.js
 │   ├── controllers/
 │   │   ├── mlApiController.js
+│   │   ├── locatorRepairApiController.js
 │   │   ├── noteApiController.js
+│   │   ├── playwrightApiController.js
 │   │   ├── scanApiController.js
 │   │   ├── securityApiController.js
 │   │   └── seleniumApiController.js
@@ -450,8 +504,12 @@ notes-app/
 │   │   └── User.js
 │   ├── routes/
 │   │   ├── authRoutes.js
+│   │   ├── locatorRepairApiRoutes.js
+│   │   ├── locatorRepairPageRoutes.js
 │   │   ├── noteApiRoutes.js
 │   │   ├── notePageRoutes.js
+│   │   ├── playwrightApiRoutes.js
+│   │   ├── playwrightPageRoutes.js
 │   │   ├── scanApiRoutes.js
 │   │   ├── scanPageRoutes.js
 │   │   ├── securityApiRoutes.js
@@ -463,6 +521,8 @@ notes-app/
 │   │   ├── automationService.js
 │   │   ├── autonomyDemoService.js
 │   │   ├── incidentResponseService.js
+│   │   ├── locatorRepairResearchService.js
+│   │   ├── playwrightResearchService.js
 │   │   └── seleniumResearchService.js
 │   ├── utils/
 │   │   ├── errorHandler.js
@@ -475,11 +535,13 @@ notes-app/
 │   └── views/
 │       ├── pages/
 │       │   ├── home.ejs
+│       │   ├── locator-repair-module.ejs
 │       │   ├── login.ejs
 │       │   ├── logout.ejs
 │       │   ├── ml-module.ejs
 │       │   ├── note-form.ejs
 │       │   ├── note.ejs
+│       │   ├── playwright-module.ejs
 │       │   ├── research.ejs
 │       │   ├── security-automation.ejs
 │       │   ├── selenium-module.ejs
@@ -513,13 +575,17 @@ npm run pm2:stop   # Stop the PM2-managed processes
 npm run pm2:status # Show PM2 process state
 npm run pm2:logs   # Tail PM2 logs for the web app
 npm test           # Run test suite
+npm run test:e2e   # Run Playwright browser suite in Chromium
+npm run test:e2e:all  # Run Playwright browser suite across all configured browsers
+npm run test:selenium # Run Selenium browser suite and refresh the Selenium results artifact
 npm run lint       # ESLint code quality check
 ```
 
 **Testing Notes:**
 - `npm test` now loads `test/testSetup.js` before the suite so tests run in `NODE_ENV=test` with Redis-backed realtime disabled by default.
-- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, the Security Module workflow, the ML Module overview path, and the Selenium Module overview/script flow.
-- The dedicated Selenium browser suite lives under `selenium-tests/` and exercises the live app through `selenium-webdriver`, including the dedicated `/selenium/module` page, its latest-run summary, and its generated script controls.
+- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, the Security Module workflow, the ML Module overview path, the Self-Healing Module overview/suggestion flow, and the Selenium Module overview/script flow.
+- The dedicated Playwright browser suite lives under `playwright-tests/` and exercises auth, notes, research, security, Selenium, and Playwright module flows. Its latest JSON report is written to `artifacts/playwright-results.json`, which drives `/playwright/module`.
+- `npm run test:selenium` runs through `scripts/run-selenium-suite.js`, and the dedicated Selenium browser suite under `selenium-tests/` exercises the live app through `selenium-webdriver`, including the dedicated `/selenium/module` page, its latest-run summary, and its generated script controls.
 
 ### Stable Local Run Paths
 

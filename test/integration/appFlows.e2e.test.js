@@ -14,6 +14,8 @@ const mlApiRoutes = require('../../src/routes/mlApiRoutes');
 const mlPageRoutes = require('../../src/routes/mlPageRoutes');
 const playwrightApiRoutes = require('../../src/routes/playwrightApiRoutes');
 const playwrightPageRoutes = require('../../src/routes/playwrightPageRoutes');
+const locatorRepairApiRoutes = require('../../src/routes/locatorRepairApiRoutes');
+const locatorRepairPageRoutes = require('../../src/routes/locatorRepairPageRoutes');
 const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
 const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
 const playwrightResearchService = require('../../src/services/playwrightResearchService');
@@ -358,6 +360,8 @@ function createApp() {
     app.use(mlPageRoutes);
     app.use(playwrightApiRoutes);
     app.use(playwrightPageRoutes);
+    app.use(locatorRepairApiRoutes);
+    app.use(locatorRepairPageRoutes);
     app.use(seleniumApiRoutes);
     app.use(seleniumPageRoutes);
     app.use(scanApiRoutes);
@@ -720,9 +724,11 @@ describe('Application end-to-end flows', function () {
         expect(researchHtml).to.include('ML Module');
         expect(researchHtml).to.include('Selenium Module');
         expect(researchHtml).to.include('Playwright Module');
+        expect(researchHtml).to.include('Self-Healing Module');
         expect(researchHtml).to.include('/ml/module');
         expect(researchHtml).to.include('/selenium/module');
         expect(researchHtml).to.include('/playwright/module');
+        expect(researchHtml).to.include('/self-healing/module');
 
         stores.alerts.push({
             _id: new mongoose.Types.ObjectId(),
@@ -899,5 +905,109 @@ describe('Application end-to-end flows', function () {
         expect(playwrightScriptPayload.data.content).to.include('/ml/module');
         expect(playwrightScriptPayload.data.content).to.include('/selenium/module');
         expect(playwrightScriptPayload.data.content).to.include('/playwright/module');
+
+        const legacyLocatorRepairPage = await client.request('/locator-repair/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        expect(legacyLocatorRepairPage.status).to.equal(302);
+        expect(legacyLocatorRepairPage.headers.get('location')).to.equal('/self-healing/module');
+
+        const locatorRepairPage = await client.request('/self-healing/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const locatorRepairHtml = await locatorRepairPage.text();
+
+        expect(locatorRepairPage.status).to.equal(200);
+        expect(locatorRepairHtml).to.include('Self-Healing Module');
+        expect(locatorRepairHtml).to.include('/api/locator-repair/overview');
+        expect(locatorRepairHtml).to.include('/api/locator-repair/history');
+        expect(locatorRepairHtml).to.include('/api/locator-repair/suggest');
+        expect(locatorRepairHtml).to.include('/api/locator-repair/feedback');
+        expect(locatorRepairHtml).to.include('/api/locator-repair/train');
+        expect(locatorRepairHtml).to.include('Suggest Repairs');
+        expect(locatorRepairHtml).to.include('Train Model');
+
+        const locatorRepairOverviewResponse = await client.request('/api/locator-repair/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const locatorRepairOverviewPayload = await locatorRepairOverviewResponse.json();
+
+        expect(locatorRepairOverviewResponse.status).to.equal(200);
+        expect(locatorRepairOverviewPayload.success).to.equal(true);
+        expect(locatorRepairOverviewPayload.data.module.name).to.equal('Self-Healing Module');
+        expect(locatorRepairOverviewPayload.data.coverage.sampleCaseCount).to.be.greaterThan(0);
+        expect(locatorRepairOverviewPayload.data.defaultSampleId).to.be.a('string').and.not.equal('');
+        expect(locatorRepairOverviewPayload.data.model.available).to.equal(true);
+
+        const locatorRepairCsrfToken = await client.getCsrfToken();
+        const locatorRepairSuggestResponse = await client.request('/api/locator-repair/suggest', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': locatorRepairCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                locator: 'By.linkText("Open ML Module")',
+                stepGoal: 'Open the ML Module from the Research Workspace',
+                htmlSnippet: '<a href="/ml/module" data-testid="research-open-ml">Open ML Workspace</a>'
+            })
+        });
+        const locatorRepairSuggestPayload = await locatorRepairSuggestResponse.json();
+
+        expect(locatorRepairSuggestResponse.status).to.equal(200);
+        expect(locatorRepairSuggestPayload.success).to.equal(true);
+        expect(locatorRepairSuggestPayload.data.analysis.locatorFamily).to.equal('selenium-link-text');
+        expect(locatorRepairSuggestPayload.data.suggestions[0].primaryLocator.strategy).to.equal('data-testid');
+        expect(locatorRepairSuggestPayload.data.suggestions[0].primaryLocator.playwright).to.include('research-open-ml');
+        expect(locatorRepairSuggestPayload.data.suggestions[0].primaryLocator.selenium).to.include('research-open-ml');
+
+        const locatorRepairFeedbackResponse = await client.request('/api/locator-repair/feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': locatorRepairCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                locator: 'By.linkText("Open ML Module")',
+                stepGoal: 'Open the ML Module from the Research Workspace',
+                htmlSnippet: '<a href="/ml/module" data-testid="research-open-ml">Open ML Workspace</a>',
+                selectedFingerprint: locatorRepairSuggestPayload.data.suggestions[0].candidate.fingerprint,
+                feedbackLabel: 'accepted',
+                framework: 'integration'
+            })
+        });
+        const locatorRepairFeedbackPayload = await locatorRepairFeedbackResponse.json();
+
+        expect(locatorRepairFeedbackResponse.status).to.equal(200);
+        expect(locatorRepairFeedbackPayload.success).to.equal(true);
+        expect(locatorRepairFeedbackPayload.data.history.summary.totalEntries).to.be.greaterThan(0);
+
+        const locatorRepairHistoryResponse = await client.request('/api/locator-repair/history', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const locatorRepairHistoryPayload = await locatorRepairHistoryResponse.json();
+
+        expect(locatorRepairHistoryResponse.status).to.equal(200);
+        expect(locatorRepairHistoryPayload.success).to.equal(true);
+        expect(locatorRepairHistoryPayload.data.summary.totalEntries).to.be.greaterThan(0);
+
+        const locatorRepairTrainResponse = await client.request('/api/locator-repair/train', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': locatorRepairCsrfToken,
+                'x-test-auth': '1'
+            },
+            body: JSON.stringify({
+                mode: 'bootstrap'
+            })
+        });
+        const locatorRepairTrainPayload = await locatorRepairTrainResponse.json();
+
+        expect(locatorRepairTrainResponse.status).to.equal(200);
+        expect(locatorRepairTrainPayload.success).to.equal(true);
+        expect(locatorRepairTrainPayload.data.model.available).to.equal(true);
     });
 });

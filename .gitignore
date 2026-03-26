@@ -153,6 +153,8 @@ documents/paper2.txt
 documents/selenium1.txt
 documents/playwright1.txt
 artifacts/alert-triage-model.json
+artifacts/locator-repair-model.json
+artifacts/locator-repair-history.json
 artifacts/playwright-results.json
 playwright-report/
 test-results/
