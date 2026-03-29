@@ -45,12 +45,14 @@ const { enforceServerSideApiAccessControl } = require('./src/middleware/apiAcces
 const { enforceInjectionPrevention } = require('./src/middleware/injectionPrevention');
 const { enforceStrictSessionManagement } = require('./src/middleware/sessionManagement');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
+const { sanitizeResponseMetadata } = require('./src/middleware/responseMetadataProtection');
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 const { buildSeedResponseMessage, seedDevelopmentData } = require('./src/services/devSeedService');
 const injectionPreventionApiRoute = require('./src/routes/injectionPreventionApiRoutes');
 const injectionPreventionPageRoute = require('./src/routes/injectionPreventionPageRoutes');
 const { applyMongooseInjectionDefaults } = require('./src/services/injectionPreventionService');
 const { startApplication } = require('./src/utils/appStartup');
+const { handleUnhandledError } = require('./src/utils/errorHandler');
 const { createServerFactory } = require('./src/utils/serverTransport');
 
 const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
@@ -73,6 +75,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         const useSecureCookies = isProduction || Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled);
         const realtimeAvailable = Boolean(process.env.REDIS_URL) && process.env.DISABLE_REDIS !== '1';
 
+        app.disable('x-powered-by');
         app.locals.runtimeConfig = runtimeConfig;
         app.locals.appBaseUrl = runtimeConfig.appBaseUrl;
         app.locals.realtimeAvailable = realtimeAvailable;
@@ -97,6 +100,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.set('view engine', 'ejs');
         app.set('views', path.join(__dirname, 'src', 'views'));
 
+        app.use(sanitizeResponseMetadata);
         app.use(helmet(buildHelmetProtectionOptions({ isProduction })));
 
         app.use(express.json());
@@ -179,7 +183,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
 
                     res.type('text/plain').send(buildSeedResponseMessage(seedSummary));
                 } catch (error) {
-                    res.status(500).send('Error seeding database: ' + error.message);
+                    console.error('Development seed failed:', error);
+                    res.status(500).send('Database seeding failed. Please try again later.');
                 }
             });
         }
@@ -214,6 +219,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         if (process.env.NODE_ENV !== 'production') {
             app.use(devRuntimeRoute);
         }
+
+        app.use(handleUnhandledError);
 
         const PORT = process.env.PORT || 3000;
         const serverFactory = createServerFactory({

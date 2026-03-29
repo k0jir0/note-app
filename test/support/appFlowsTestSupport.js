@@ -33,9 +33,11 @@ const { enforceInjectionPrevention } = require('../../src/middleware/injectionPr
 const { attachSessionAuthAssurance } = require('../../src/middleware/sessionAuthAssurance');
 const { enforceServerSideApiAccessControl } = require('../../src/middleware/apiAccessControl');
 const { enforceStrictSessionManagement } = require('../../src/middleware/sessionManagement');
+const { sanitizeResponseMetadata } = require('../../src/middleware/responseMetadataProtection');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
 const { buildContentSecurityPolicyDirectives, buildHelmetProtectionOptions } = require('../../src/config/xssDefense');
 const { applyMongooseInjectionDefaults } = require('../../src/services/injectionPreventionService');
+const { handleUnhandledError } = require('../../src/utils/errorHandler');
 const Notes = require('../../src/models/Notes');
 const SecurityAlert = require('../../src/models/SecurityAlert');
 const ScanResult = require('../../src/models/ScanResult');
@@ -309,6 +311,8 @@ function createApp() {
     const app = express();
     const mongoosePosture = applyMongooseInjectionDefaults(mongoose);
 
+    app.disable('x-powered-by');
+
     app.set('view engine', 'ejs');
     app.set('views', path.join(__dirname, '../../src/views'));
     app.locals.mongooseLib = mongoose;
@@ -353,6 +357,7 @@ function createApp() {
     app.locals.realtimeAvailable = true;
     app.locals.realtimeEnabled = true;
 
+    app.use(sanitizeResponseMetadata);
     app.use(helmet(buildHelmetProtectionOptions({ isProduction: false })));
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
@@ -437,6 +442,8 @@ function createApp() {
     app.use(seleniumApiRoutes);
     app.use(seleniumPageRoutes);
     app.use(scanApiRoutes);
+
+    app.use(handleUnhandledError);
 
     return app;
 }

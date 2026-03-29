@@ -1,6 +1,7 @@
 const { handleApiError } = require('../utils/errorHandler');
 const hardwareFirstMfaResearchService = require('../services/hardwareFirstMfaResearchService');
 const { extractClientCertificateEvidence } = require('../services/hardwareFirstMfaService');
+const { sanitizeClientErrorList } = require('../utils/metadataSanitization');
 
 const VALIDATION_ERROR_CODES = new Set([
     'UNKNOWN_MFA_METHOD',
@@ -102,7 +103,7 @@ exports.issueChallenge = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
-                errors: [error.message]
+                errors: sanitizeClientErrorList([error.message], 'The submitted MFA request is invalid.')
             });
         }
 
@@ -157,7 +158,7 @@ exports.verifyChallenge = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
-                errors: [error.message]
+                errors: sanitizeClientErrorList([error.message], 'The submitted MFA request is invalid.')
             });
         }
 
@@ -182,7 +183,7 @@ exports.issueRegistrationOptions = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
-                errors: [error.message]
+                errors: sanitizeClientErrorList([error.message], 'The registration request is invalid.')
             });
         }
 
@@ -216,7 +217,7 @@ exports.verifyRegistration = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
-                errors: [error.message]
+                errors: sanitizeClientErrorList([error.message], 'The registration response is invalid.')
             });
         }
 
@@ -240,7 +241,7 @@ exports.registerCurrentPkiCertificate = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
-                errors: [error.message]
+                errors: sanitizeClientErrorList([error.message], 'The certificate registration request is invalid.')
             });
         }
 
@@ -263,7 +264,7 @@ exports.revokeSession = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
-                errors: [error.message]
+                errors: sanitizeClientErrorList([error.message], 'The session revocation request is invalid.')
             });
         }
 

@@ -297,6 +297,8 @@ describe('Application end-to-end flows', function () {
         expect(researchPage.status).to.equal(200);
         expect(researchPage.headers.get('content-security-policy')).to.include('script-src \'self\'');
         expect(researchPage.headers.get('content-security-policy')).to.include('script-src-attr \'none\'');
+        expect(researchPage.headers.get('x-powered-by')).to.equal(null);
+        expect(researchPage.headers.get('server')).to.equal(null);
         expect(researchHtml).to.include('ML Module');
         expect(researchHtml).to.include('Selenium Module');
         expect(researchHtml).to.include('Playwright Module');
