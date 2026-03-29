@@ -841,6 +841,8 @@ GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
 
 When `HTTPS_ENABLED=true`, the server pins inbound HTTPS transport to TLS 1.3 and will not negotiate SSLv3, TLS 1.0, TLS 1.1, or TLS 1.2.
 
+When `IMMUTABLE_LOGGING_ENABLED=true`, the app mirrors operational logs and security-relevant request audit events to a separate append-only HTTP(S) endpoint using authenticated `POST` requests only. The remote log service should be configured as write-only for the app identity and should reject read, update, and delete operations.
+
 **Optional Migration Variables:**
 ```env
 LEGACY_NOTE_ENCRYPTION_KEY=<previous-32-byte-key>

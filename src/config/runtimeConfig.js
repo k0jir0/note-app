@@ -2,6 +2,7 @@ const MIN_SESSION_SECRET_LENGTH = 32;
 const ENCRYPTION_KEY_HEX_REGEX = /^[a-fA-F0-9]{64}$/;
 const MONGODB_OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
 const MAX_AUTOMATION_INTERVAL_MS = 1000 * 60 * 60 * 24;
+const MAX_IMMUTABLE_LOG_TIMEOUT_MS = 1000 * 30;
 
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
@@ -287,6 +288,53 @@ function buildTransportConfig(env, errors) {
     };
 }
 
+function buildImmutableLoggingConfig(env, errors) {
+    const enabled = parseBooleanEnv('IMMUTABLE_LOGGING_ENABLED', env, errors);
+    const timeoutMs = parseIntegerEnv('IMMUTABLE_LOGGING_TIMEOUT_MS', env, {
+        defaultValue: 2000,
+        min: 250,
+        max: MAX_IMMUTABLE_LOG_TIMEOUT_MS
+    }, errors);
+    const endpoint = isNonEmptyString(env.IMMUTABLE_LOGGING_URL) ? env.IMMUTABLE_LOGGING_URL.trim() : '';
+    const token = isNonEmptyString(env.IMMUTABLE_LOGGING_TOKEN) ? env.IMMUTABLE_LOGGING_TOKEN.trim() : '';
+    const source = isNonEmptyString(env.IMMUTABLE_LOGGING_SOURCE) ? env.IMMUTABLE_LOGGING_SOURCE.trim() : 'note-app';
+
+    if (!enabled) {
+        return {
+            enabled: false,
+            endpoint: '',
+            token: '',
+            timeoutMs,
+            source
+        };
+    }
+
+    if (!endpoint) {
+        errors.push('IMMUTABLE_LOGGING_URL is required when IMMUTABLE_LOGGING_ENABLED=true');
+    } else {
+        try {
+            const parsed = new URL(endpoint);
+            if (!['http:', 'https:'].includes(parsed.protocol)) {
+                throw new Error('Invalid protocol');
+            }
+        } catch (_error) {
+            errors.push('IMMUTABLE_LOGGING_URL must be a valid http or https URL when immutable logging is enabled');
+        }
+    }
+
+    if (!token) {
+        errors.push('IMMUTABLE_LOGGING_TOKEN is required when IMMUTABLE_LOGGING_ENABLED=true');
+    }
+
+    return {
+        enabled: true,
+        endpoint,
+        token,
+        timeoutMs,
+        source
+    };
+}
+
 function buildSessionManagementConfig(env, errors) {
     const idleTimeoutMinutes = parseIntegerEnv('SESSION_IDLE_TIMEOUT_MINUTES', env, {
         defaultValue: 15,
@@ -374,6 +422,16 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
                 ? String(runtimeConfig.transport.tlsMaxVersion || 'TLSv1.3')
                 : ''
         },
+        immutableLogging: {
+            enabled: Boolean(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.enabled),
+            endpointConfigured: isNonEmptyString(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.endpoint),
+            timeoutMs: Number.isFinite(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.timeoutMs)
+                ? runtimeConfig.immutableLogging.timeoutMs
+                : null,
+            source: isNonEmptyString(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.source)
+                ? runtimeConfig.immutableLogging.source.trim()
+                : ''
+        },
         automation: {
             logBatch: buildAutomationDiagnostics(automation.logBatch),
             scanBatch: buildAutomationDiagnostics(automation.scanBatch),
@@ -446,6 +504,7 @@ function validateRuntimeConfig(env = process.env) {
     const intrusionBatch = buildIntrusionBatchConfig(env, errors);
     const sessionManagement = buildSessionManagementConfig(env, errors);
     const transport = buildTransportConfig(env, errors);
+    const immutableLogging = buildImmutableLoggingConfig(env, errors);
 
     if (errors.length > 0) {
         throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
@@ -459,6 +518,7 @@ function validateRuntimeConfig(env = process.env) {
         googleAuthEnabled: hasGoogleAuthCredentials(env),
         sessionManagement,
         transport,
+        immutableLogging,
         automation: {
             logBatch,
             scanBatch,

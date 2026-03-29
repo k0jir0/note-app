@@ -53,6 +53,8 @@ const injectionPreventionPageRoute = require('./src/routes/injectionPreventionPa
 const { applyMongooseInjectionDefaults } = require('./src/services/injectionPreventionService');
 const { startApplication } = require('./src/utils/appStartup');
 const { handleUnhandledError } = require('./src/utils/errorHandler');
+const { createImmutableRequestAuditMiddleware } = require('./src/middleware/immutableRequestAudit');
+const { createImmutableLogClient, installGlobalConsoleMirror } = require('./src/utils/immutableLogService');
 const { createServerFactory } = require('./src/utils/serverTransport');
 
 const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
@@ -71,6 +73,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         const mongooseSecurity = applyMongooseInjectionDefaults(mongoose);
         require('./src/config/passport')(passport);
         const app = express();
+        const immutableLogClient = createImmutableLogClient(runtimeConfig);
+        installGlobalConsoleMirror(immutableLogClient);
         const isProduction = process.env.NODE_ENV === 'production';
         const useSecureCookies = isProduction || Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled);
         const realtimeAvailable = Boolean(process.env.REDIS_URL) && process.env.DISABLE_REDIS !== '1';
@@ -92,6 +96,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         // runtime toggle for realtime (can be changed without restarting when Redis is configured)
         app.locals.realtimeEnabled = realtimeAvailable && process.env.ENABLE_REALTIME === '1';
         app.locals.transportSecurity = runtimeConfig.transport;
+        app.locals.immutableLogging = runtimeConfig.immutableLogging;
+        app.locals.immutableLogClient = immutableLogClient;
 
         if (runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders) {
             app.set('trust proxy', 1);
@@ -106,6 +112,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
         app.use(enforceInjectionPrevention);
+        app.use(createImmutableRequestAuditMiddleware({ client: immutableLogClient }));
         app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
         // Public fallback image for notes without an image URL.

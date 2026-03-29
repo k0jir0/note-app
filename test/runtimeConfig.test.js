@@ -99,6 +99,40 @@ describe('Runtime Config Validation', () => {
             certPath: '',
             caPath: ''
         });
+        expect(config.immutableLogging).to.deep.equal({
+            enabled: false,
+            endpoint: '',
+            token: '',
+            timeoutMs: 2000,
+            source: 'note-app'
+        });
+    });
+
+    it('requires endpoint and token when immutable logging is enabled', () => {
+        const env = createValidEnv();
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('IMMUTABLE_LOGGING_URL');
+        expect(() => validateRuntimeConfig(env)).to.throw('IMMUTABLE_LOGGING_TOKEN');
+    });
+
+    it('accepts a valid immutable logging configuration', () => {
+        const env = createValidEnv();
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
+        env.IMMUTABLE_LOGGING_TIMEOUT_MS = '3500';
+        env.IMMUTABLE_LOGGING_SOURCE = 'note-app-web';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.immutableLogging).to.deep.equal({
+            enabled: true,
+            endpoint: 'https://logs.example.com/append',
+            token: 'remote-write-only-token',
+            timeoutMs: 3500,
+            source: 'note-app-web'
+        });
     });
 
     it('accepts valid HTTPS and mTLS transport settings', () => {
@@ -220,6 +254,13 @@ describe('Runtime Config Validation', () => {
                 tlsMinVersion: 'TLSv1.3',
                 tlsMaxVersion: 'TLSv1.3'
             },
+            immutableLogging: {
+                enabled: true,
+                endpoint: 'https://logs.example.com/append',
+                token: 'write-only-token',
+                timeoutMs: 2500,
+                source: 'note-app-web'
+            },
             automation: {
                 logBatch: {
                     enabled: true,
@@ -248,6 +289,12 @@ describe('Runtime Config Validation', () => {
             trustProxyClientCertHeaders: true,
             tlsMinVersion: 'TLSv1.3',
             tlsMaxVersion: 'TLSv1.3'
+        });
+        expect(diagnostics.immutableLogging).to.deep.equal({
+            enabled: true,
+            endpointConfigured: true,
+            timeoutMs: 2500,
+            source: 'note-app-web'
         });
         expect(diagnostics.sessionManagement).to.deep.equal({
             idleTimeoutMinutes: 15,
