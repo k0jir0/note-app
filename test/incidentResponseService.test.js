@@ -7,8 +7,23 @@ const {
 } = require('../src/services/incidentResponseService');
 
 describe('Incident Response Service', () => {
+    const originalNoteKey = process.env.NOTE_ENCRYPTION_KEY;
+
+    before(() => {
+        process.env.NOTE_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    });
+
     afterEach(() => {
         sinon.restore();
+    });
+
+    after(() => {
+        if (originalNoteKey === undefined) {
+            delete process.env.NOTE_ENCRYPTION_KEY;
+            return;
+        }
+
+        process.env.NOTE_ENCRYPTION_KEY = originalNoteKey;
     });
 
     it('builds a block decision for high-risk trained alerts with a target', () => {

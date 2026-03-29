@@ -93,6 +93,8 @@ describe('Runtime Config Validation', () => {
             requestClientCertificate: false,
             requireClientCertificate: false,
             trustProxyClientCertHeaders: false,
+            tlsMinVersion: '',
+            tlsMaxVersion: '',
             keyPath: '',
             certPath: '',
             caPath: ''
@@ -116,6 +118,8 @@ describe('Runtime Config Validation', () => {
             requestClientCertificate: true,
             requireClientCertificate: true,
             trustProxyClientCertHeaders: false,
+            tlsMinVersion: 'TLSv1.3',
+            tlsMaxVersion: 'TLSv1.3',
             keyPath: 'C:\\tls\\server.key',
             certPath: 'C:\\tls\\server.crt',
             caPath: 'C:\\tls\\ca.crt'
@@ -212,7 +216,9 @@ describe('Runtime Config Validation', () => {
                 httpsEnabled: true,
                 requestClientCertificate: true,
                 requireClientCertificate: false,
-                trustProxyClientCertHeaders: true
+                trustProxyClientCertHeaders: true,
+                tlsMinVersion: 'TLSv1.3',
+                tlsMaxVersion: 'TLSv1.3'
             },
             automation: {
                 logBatch: {
@@ -239,7 +245,9 @@ describe('Runtime Config Validation', () => {
             httpsEnabled: true,
             requestClientCertificate: true,
             requireClientCertificate: false,
-            trustProxyClientCertHeaders: true
+            trustProxyClientCertHeaders: true,
+            tlsMinVersion: 'TLSv1.3',
+            tlsMaxVersion: 'TLSv1.3'
         });
         expect(diagnostics.sessionManagement).to.deep.equal({
             idleTimeoutMinutes: 15,

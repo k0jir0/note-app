@@ -279,6 +279,8 @@ function buildTransportConfig(env, errors) {
         requestClientCertificate,
         requireClientCertificate,
         trustProxyClientCertHeaders,
+        tlsMinVersion: httpsEnabled ? 'TLSv1.3' : '',
+        tlsMaxVersion: httpsEnabled ? 'TLSv1.3' : '',
         keyPath,
         certPath,
         caPath
@@ -364,7 +366,13 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
             httpsEnabled: Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled),
             requestClientCertificate: Boolean(runtimeConfig.transport && runtimeConfig.transport.requestClientCertificate),
             requireClientCertificate: Boolean(runtimeConfig.transport && runtimeConfig.transport.requireClientCertificate),
-            trustProxyClientCertHeaders: Boolean(runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders)
+            trustProxyClientCertHeaders: Boolean(runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders),
+            tlsMinVersion: runtimeConfig.transport && runtimeConfig.transport.httpsEnabled
+                ? String(runtimeConfig.transport.tlsMinVersion || 'TLSv1.3')
+                : '',
+            tlsMaxVersion: runtimeConfig.transport && runtimeConfig.transport.httpsEnabled
+                ? String(runtimeConfig.transport.tlsMaxVersion || 'TLSv1.3')
+                : ''
         },
         automation: {
             logBatch: buildAutomationDiagnostics(automation.logBatch),

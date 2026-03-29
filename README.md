@@ -6,6 +6,7 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 
 - Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, AES-256 encryption at rest for selected sensitive user, alert, and scan fields, and per-user authorization.
 - Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, and route-specific rate limiting.
+- Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, route-specific rate limiting, and HTTPS transport pinned to TLS 1.3 when certificate-based transport is enabled.
 - Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security architecture, automation, and browser-testing tools.
 - ML and response: an ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
 - Mission-grade assurance: dedicated modules for RBAC-plus-ABAC mission access decisions, hardware-first MFA and PKI step-up, strict session timeout and concurrent-login control, and server-side access-control verification for protected APIs.
@@ -837,6 +838,8 @@ APP_BASE_URL=https://your-domain.example
 GOOGLE_CLIENT_ID=<google-oauth-client-id>
 GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
 ```
+
+When `HTTPS_ENABLED=true`, the server pins inbound HTTPS transport to TLS 1.3 and will not negotiate SSLv3, TLS 1.0, TLS 1.1, or TLS 1.2.
 
 **Optional Migration Variables:**
 ```env

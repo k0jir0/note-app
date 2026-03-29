@@ -8,8 +8,23 @@ const {
 } = require('../src/services/autonomyDemoService');
 
 describe('Autonomy demo service', () => {
+    const originalNoteKey = process.env.NOTE_ENCRYPTION_KEY;
+
+    before(() => {
+        process.env.NOTE_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    });
+
     afterEach(() => {
         sinon.restore();
+    });
+
+    after(() => {
+        if (originalNoteKey === undefined) {
+            delete process.env.NOTE_ENCRYPTION_KEY;
+            return;
+        }
+
+        process.env.NOTE_ENCRYPTION_KEY = originalNoteKey;
     });
 
     it('builds one block candidate and one notify candidate from the configured source', () => {

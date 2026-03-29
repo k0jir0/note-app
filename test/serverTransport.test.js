@@ -2,6 +2,8 @@ const { expect } = require('chai');
 const sinon = require('sinon');
 
 const {
+    TLS_MIN_VERSION,
+    TLS_MAX_VERSION,
     buildHttpsServerOptions,
     createServerFactory,
     normalizeTransportConfig
@@ -33,6 +35,8 @@ describe('server transport utilities', () => {
             requestClientCertificate: true,
             requireClientCertificate: false,
             trustProxyClientCertHeaders: true,
+            tlsMinVersion: 'TLSv1.3',
+            tlsMaxVersion: 'TLSv1.3',
             keyPath: 'C:\\tls\\server.key',
             certPath: 'C:\\tls\\server.crt',
             caPath: 'C:\\tls\\ca.crt'
@@ -64,9 +68,16 @@ describe('server transport utilities', () => {
             key: Buffer.from('key-data'),
             cert: Buffer.from('cert-data'),
             ca: Buffer.from('ca-data'),
+            minVersion: 'TLSv1.3',
+            maxVersion: 'TLSv1.3',
             requestCert: true,
             rejectUnauthorized: true
         });
+    });
+
+    it('pins HTTPS transport to TLS 1.3 only', () => {
+        expect(TLS_MIN_VERSION).to.equal('TLSv1.3');
+        expect(TLS_MAX_VERSION).to.equal('TLSv1.3');
     });
 
     it('creates an HTTPS server factory when HTTPS transport is enabled', () => {
@@ -100,6 +111,8 @@ describe('server transport utilities', () => {
         expect(httpsLib.createServer.firstCall.args[0]).to.deep.equal({
             key: Buffer.from('key-data'),
             cert: Buffer.from('cert-data'),
+            minVersion: 'TLSv1.3',
+            maxVersion: 'TLSv1.3',
             requestCert: false,
             rejectUnauthorized: false
         });
