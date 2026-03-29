@@ -9,6 +9,7 @@
     "local:run": "powershell -ExecutionPolicy Bypass -File .\\run-local.ps1",
     "local:run:worker": "powershell -ExecutionPolicy Bypass -File .\\run-local.ps1 -WithWorker",
     "check-env": "node scripts/env-check.js",
+    "migrate:encrypt-at-rest": "node scripts/migrate-encryption-at-rest.js",
     "automation:trivy": "node automation/trivy-runner.js",
     "automation:falco": "node automation/falco-runner.js",
     "ml:train": "node scripts/train-alert-triage-model.js",

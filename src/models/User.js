@@ -1,4 +1,10 @@
 const mongoose = require('mongoose');
+const { applyFieldEncryption } = require('../utils/fieldEncryption');
+const {
+    encryptUserDocument,
+    decryptUserDocument,
+    encryptUserUpdatePayload
+} = require('../utils/sensitiveModelEncryption');
 
 const MISSION_ROLES = [
     'operator',
@@ -170,6 +176,12 @@ const userSchema = new mongoose.Schema({
     }
 }, {
     timestamps: true
+});
+
+applyFieldEncryption(userSchema, {
+    encryptDocument: encryptUserDocument,
+    decryptDocument: decryptUserDocument,
+    encryptUpdatePayload: encryptUserUpdatePayload
 });
 
 module.exports = mongoose.model('User', userSchema);

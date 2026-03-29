@@ -4,7 +4,7 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 
 ## Features
 
-- Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, and per-user authorization.
+- Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, AES-256 encryption at rest for selected sensitive user, alert, and scan fields, and per-user authorization.
 - Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, and route-specific rate limiting.
 - Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security architecture, automation, and browser-testing tools.
 - ML and response: an ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
@@ -45,7 +45,7 @@ Edit `.env` for shared local settings:
 ```env
 MONGODB_URI=<your-mongodb-connection-string>
 SESSION_SECRET=your-strong-random-secret-32-chars-minimum
-NOTE_ENCRYPTION_KEY=64-char-hex-key-for-note-encryption
+NOTE_ENCRYPTION_KEY=64-char-hex-key-for-note-and-sensitive-field-encryption
 NODE_ENV=development
 PORT=3000
 ```
@@ -61,6 +61,8 @@ Generate strong local secrets with Node:
 ```bash
 node -e "const crypto=require('crypto'); console.log('SESSION_SECRET=' + crypto.randomBytes(48).toString('hex')); console.log('NOTE_ENCRYPTION_KEY=' + crypto.randomBytes(32).toString('hex'));"
 ```
+
+`NOTE_ENCRYPTION_KEY` now protects note content plus selected sensitive fields stored in user profiles, security alerts, and imported scan payloads. Authentication lookup fields such as `email`, `googleId`, and indexed dedupe fingerprints remain queryable so login and automation flows continue to work.
 
 **MongoDB Setup:**
 - MongoDB Atlas: Create a free cluster, copy connection string
@@ -841,6 +843,14 @@ GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
 LEGACY_NOTE_ENCRYPTION_KEY=<previous-32-byte-key>
 ALLOW_LEGACY_SESSION_SECRET_FALLBACK=false
 ```
+
+**One-Time Encryption Backfill:**
+```bash
+npm run migrate:encrypt-at-rest
+npm run migrate:encrypt-at-rest -- --dry-run
+```
+
+Run the backfill after taking a database backup and before or during a quiet deployment window. It re-saves existing notes, users, security alerts, and scan results so legacy plaintext records are rewritten using the current AES-256 encryption hooks without breaking login lookup fields or alert dedupe fingerprints.
 
 **Optional Automation Variables:**
 ```env

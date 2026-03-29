@@ -1,4 +1,10 @@
 const mongoose = require('mongoose');
+const { applyFieldEncryption } = require('../utils/fieldEncryption');
+const {
+    encryptSecurityAlertDocument,
+    decryptSecurityAlertDocument,
+    encryptSecurityAlertUpdatePayload
+} = require('../utils/sensitiveModelEncryption');
 
 const responseActionSchema = new mongoose.Schema({
     type: {
@@ -158,5 +164,11 @@ alertSchema.index({ user: 1, source: 1, 'details._fingerprint': 1, detectedAt: -
 alertSchema.index({ user: 1, mlScore: -1, detectedAt: -1 });
 alertSchema.index({ user: 1, 'feedback.label': 1, detectedAt: -1 });
 alertSchema.index({ user: 1, 'response.level': 1, detectedAt: -1 });
+
+applyFieldEncryption(alertSchema, {
+    encryptDocument: encryptSecurityAlertDocument,
+    decryptDocument: decryptSecurityAlertDocument,
+    encryptUpdatePayload: encryptSecurityAlertUpdatePayload
+});
 
 module.exports = mongoose.model('SecurityAlert', alertSchema);

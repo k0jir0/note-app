@@ -1,6 +1,7 @@
 const SecurityAlert = require('../models/SecurityAlert');
 const blockingService = require('./blockingService');
 const notificationService = require('./notificationService');
+const { encryptSecurityAlertBulkWriteOperations } = require('../utils/sensitiveModelEncryption');
 
 const POLICY_VERSION = 'ml-autonomous-v1';
 const DEFAULT_ALLOWED_SOURCES = ['server-log-batch', 'intrusion-runner', 'realtime-ingest'];
@@ -320,6 +321,7 @@ async function persistResponses(alerts = [], options = {}) {
         return 0;
     }
 
+    encryptSecurityAlertBulkWriteOperations(operations);
     await SecurityAlertModel.bulkWrite(operations, { ordered: false });
     return operations.length;
 }

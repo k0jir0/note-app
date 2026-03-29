@@ -3,6 +3,7 @@ const GoogleStrategy = require('passport-google-oidc');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const { getConfiguredAppBaseUrl, hasGoogleAuthCredentials } = require('./runtimeConfig');
+const { decryptUserDocument } = require('../utils/sensitiveModelEncryption');
 
 module.exports = function (passport) {
     passport.use(new LocalStrategy({
@@ -96,6 +97,7 @@ module.exports = function (passport) {
     passport.deserializeUser(async (id, done) => {
         try {
             const user = await User.findById(id);
+            decryptUserDocument(user);
             done(null, user);
         } catch (error) {
             done(error);

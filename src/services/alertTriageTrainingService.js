@@ -12,6 +12,7 @@ const {
     saveAlertTriageModel,
     trainAlertTriageModel
 } = require('../utils/alertTriageModel');
+const { encryptSecurityAlertBulkWriteOperations } = require('../utils/sensitiveModelEncryption');
 
 const TRAINABLE_FEEDBACK_LABELS = Object.keys(TRAINABLE_FEEDBACK_CONFIG);
 const RECENT_ALERT_LIMIT = 8;
@@ -295,6 +296,7 @@ async function refreshStoredAlertScores(model) {
         }
     }));
 
+    encryptSecurityAlertBulkWriteOperations(operations);
     await SecurityAlert.bulkWrite(operations, { ordered: false });
     return operations.length;
 }
