@@ -2,7 +2,7 @@ name: Security Scan CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, test-branch ]
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -33,16 +33,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Build hardened app image
+        run: docker build --tag note-app:ci .
+
       - name: Run Trivy image scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'alpine:latest'
+          image-ref: 'note-app:ci'
           format: 'json'
+          output: 'trivy-report.json'
           exit-code: '0' # don't fail CI on findings; publish report instead
           scan-type: 'image'
 
       - name: Upload trivy report
-        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report

@@ -28,6 +28,10 @@
     "test:e2e:headed": "playwright test --project=chromium --headed",
     "test:e2e:theme": "playwright test playwright-tests/theme.spec.js --project=chromium",
     "test:e2e:report": "playwright show-report",
+    "audit:deps": "npm audit --audit-level=high",
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "audit:report": "npm audit --json",
+    "sbom:generate": "node scripts/generate-sbom.js",
     "lint": "eslint . --ext .js"
   },
   "repository": {
@@ -52,6 +56,9 @@
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/k0jir0/note-app/issues"
+  },
+  "overrides": {
+    "serialize-javascript": "7.0.5"
   },
   "homepage": "https://github.com/k0jir0/note-app#readme",
   "devDependencies": {

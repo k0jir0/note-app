@@ -1,4 +1,8 @@
 async function tryLoadKeytarGoogleSecrets() {
+    if (process.env.DISABLE_KEYTAR === '1') {
+        return { loaded: false, skipped: true };
+    }
+
     try {
         const keytar = require('keytar');
         const service = 'note-app-local';

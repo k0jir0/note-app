@@ -2,7 +2,7 @@ name: Dependency Audit
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, test-branch ]
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -24,7 +24,7 @@ jobs:
 
       - name: Run npm audit (report)
         run: |
-          npm audit --json > audit-report.json || true
+          npm run audit:report > audit-report.json || true
         continue-on-error: true
 
       - name: Upload audit report
@@ -34,6 +34,8 @@ jobs:
           name: npm-audit-report
           path: audit-report.json
 
-      - name: Fail on high severity production dependencies (main only)
-        if: github.ref == 'refs/heads/main'
-        run: npm audit --omit=dev --audit-level=high
+      - name: Fail on high severity dependencies
+        run: npm run audit:deps
+
+      - name: Fail on high severity production dependencies
+        run: npm run audit:prod

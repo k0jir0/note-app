@@ -31,6 +31,9 @@ const seleniumApiRoute = require('./src/routes/seleniumApiRoutes');
 const seleniumPageRoute = require('./src/routes/seleniumPageRoutes');
 const scanApiRoute = require('./src/routes/scanApiRoutes');
 const scanPageRoute = require('./src/routes/scanPageRoutes');
+const supplyChainPageRoute = require('./src/routes/supplyChainPageRoutes');
+const auditTelemetryPageRoute = require('./src/routes/auditTelemetryPageRoutes');
+const auditTelemetryApiRoute = require('./src/routes/auditTelemetryApiRoutes');
 const devRuntimeRoute = require('./src/routes/devRuntimeRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const settingsApiRoute = require('./src/routes/settingsApiRoutes');
@@ -58,6 +61,7 @@ const { createImmutableLogClient, installGlobalConsoleMirror } = require('./src/
 const { requestContextMiddleware } = require('./src/utils/requestContext');
 const { configureDatabaseTelemetry } = require('./src/utils/databaseTelemetry');
 const { createServerFactory } = require('./src/utils/serverTransport');
+const { createPersistentAuditClient } = require('./src/services/persistentAuditService');
 
 const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
 
@@ -75,7 +79,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         const mongooseSecurity = applyMongooseInjectionDefaults(mongoose);
         require('./src/config/passport')(passport);
         const app = express();
-        const immutableLogClient = createImmutableLogClient(runtimeConfig);
+        const immutableRemoteClient = createImmutableLogClient(runtimeConfig);
+        const immutableLogClient = createPersistentAuditClient({ baseClient: immutableRemoteClient });
         installGlobalConsoleMirror(immutableLogClient);
         configureDatabaseTelemetry({ client: immutableLogClient });
         const isProduction = process.env.NODE_ENV === 'production';
@@ -226,6 +231,9 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.use(seleniumPageRoute);
         app.use(scanApiRoute);
         app.use(scanPageRoute);
+        app.use(auditTelemetryApiRoute);
+        app.use(supplyChainPageRoute);
+        app.use(auditTelemetryPageRoute);
 
         if (process.env.NODE_ENV !== 'production') {
             app.use(devRuntimeRoute);

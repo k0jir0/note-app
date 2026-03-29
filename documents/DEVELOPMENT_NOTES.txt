@@ -7,7 +7,7 @@ PROJECT OVERVIEW
 
 This full-stack note-taking, security-research, and browser-automation-aware application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, dedicated Security, ML, Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, Playwright, Selenium, and Self-Healing modules, and 487 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, deployment readiness, explainability, and the interaction between secure defaults and developer ergonomics.
 
-Current verified state (March 29, 2026): 487 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, a dedicated Security Module with optional realtime streaming and autonomous incident-response auditing, a dedicated ML Module that functions as a lightweight model-operations surface for trainable triage, feedback-aware supervision, explainability, and autonomy verification, plus dedicated Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, Playwright, Selenium, and Self-Healing modules. The app now enforces a global protected-API access gate, request-level Mongo injection blocking, strict CSP-backed rendering posture, mission-aware RBAC-plus-ABAC evaluation, hardware-first session assurance with WebAuthn and PKI support, strict idle and absolute session limits with concurrent-login invalidation, startup-stable local launch behavior, TLS 1.3-only inbound transport when HTTPS is enabled, sanitized metadata/error exposure, immutable remote logging, request-scoped database state-change telemetry, and SIEM-friendly JSON or syslog log formatting.
+Current verified state (March 29, 2026): 487 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, a dedicated Security Module with optional realtime streaming and autonomous incident-response auditing, a dedicated ML Module that functions as a lightweight model-operations surface for trainable triage, feedback-aware supervision, explainability, and autonomy verification, plus dedicated Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, Playwright, Selenium, and Self-Healing modules. The app now enforces a global protected-API access gate, request-level Mongo injection blocking, strict CSP-backed rendering posture, mission-aware RBAC-plus-ABAC evaluation, hardware-first session assurance with WebAuthn and PKI support, strict idle and absolute session limits with concurrent-login invalidation, startup-stable local launch behavior, TLS 1.3-only inbound transport when HTTPS is enabled, sanitized metadata/error exposure, immutable remote logging, request-scoped database state-change telemetry, SIEM-friendly JSON or syslog log formatting, and a validated hardened distroless container build.
 
 Development log (newest first):
 
@@ -17,6 +17,10 @@ Recent updates (March 29, 2026) focused on transport hardening, auditability, an
 - Added immutable remote logging that mirrors console output and security-relevant HTTP request audit events to a separate write-only HTTP(S) sink with chained hashes and authenticated append requests.
 - Added request-scoped database telemetry using AsyncLocalStorage plus model-layer hooks so persisted state changes now emit Who, What, When, Where, and How summaries for create, update, delete, and tracked bulk-write operations.
 - Extended immutable logging with SIEM-oriented output formatting so the same audit pipeline can emit structured JSON for Splunk/ELK-style collectors or RFC 5424-style syslog text when the downstream collector expects syslog payloads.
+- Tightened dependency scanning by adding local `npm audit` scripts, CI gating for high-severity package CVEs, and a transitive override to remove the vulnerable `serialize-javascript` path currently pulled in by Mocha.
+- Added CycloneDX SBOM generation from the npm lockfile so the repo now keeps a reproducible manifest of third-party libraries at `sbom/note-app.cdx.json`.
+- Added a hardened Docker path with a multi-stage build, production-only dependencies, and a non-root distroless runtime image so container deployments no longer rely on a general-purpose base image.
+- Verified the hardened image locally: `docker build -t note-app:hardened .` succeeds, the app serves HTTP 200 from `/auth/login` when pointed at host MongoDB through `host.docker.internal`, and the container now suppresses optional `keytar` loading that is not usable inside the distroless runtime.
 - Revalidated the project after these security-control additions with focused logging/telemetry tests and a full local `npm test` run at 487 passing tests.
 
 Recent updates (March 26, 2026) focused on architectural security controls and making the Research Workspace reflect them as first-class modules:
@@ -163,6 +167,10 @@ MARCH 29, 2026 SECURITY ADDITIONS
 - Immutable remote logging now supports append-only operational and audit forwarding.
 - Database telemetry now records request-scoped state changes across core persisted models and tracked bulk writes.
 - SIEM integration now supports both structured JSON and RFC 5424-style syslog formatting.
+- Dependency scanning now blocks high-severity known CVEs through local audit scripts and CI workflow enforcement.
+- SBOM generation now provides a committed manifest of third-party libraries derived from the current npm dependency graph.
+- Container hardening now uses a distroless non-root runtime image, with CI scanning the built application image instead of a placeholder container.
+- Local Docker Desktop validation now uses a host-aware MongoDB override rather than raw `localhost`, which is container-internal and not suitable for host MongoDB access.
 
 
 
@@ -171,6 +179,8 @@ MAJOR CHALLENGES AND SOLUTIONS
 - Authentication/Authorization: Complex session management, role/attribute-based access, and secure OAuth required reusable middleware, strict user checks, and robust error handling.
 - Input Validation: Balancing security and usability led to centralized, layered validation and sanitization utilities, with clear separation for create/update flows.
 - Testing: Achieving 487 passing tests required extensive mocking, stubbing, and cleanup, especially for database, authentication, audit logging, and telemetry logic.
+- Dependency governance: keeping a generated SBOM in source control makes supply-chain review more concrete than relying on package manifests alone.
+- Containerization: local Docker validation on Windows required treating host services explicitly with `host.docker.internal`, and optional desktop keyring integrations had to be disabled in the minimal runtime image.
 - Deployment: Technical debt (hardcoded values, insecure cookies) was resolved with environment-driven config, secure defaults, and standardized scripts.
 - Error Handling: Centralized error utilities and async wrappers ensured consistent, user-friendly responses and robust test coverage.
 - Schema Design: Used ObjectId references, realistic constraints, and compound queries for secure, flexible data relationships.

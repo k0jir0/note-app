@@ -285,6 +285,8 @@ module.exports = {
     DEFAULT_FORMAT,
     DEFAULT_SOURCE,
     DEFAULT_TIMEOUT_MS,
+    buildEntryHash,
+    buildRequestPayload,
     createImmutableLogClient,
     installGlobalConsoleMirror
 };

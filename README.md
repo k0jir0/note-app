@@ -13,6 +13,9 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 - Browser automation: Playwright and Selenium modules for scenario planning, latest-run artifact reporting, and generated test templates, plus a Self-Healing Module at `/self-healing/module` that ranks locator repairs from a broken selector, a step goal, and a DOM snippet.
 - Optional automation and realtime: scheduled ingestion for logs, scans, and intrusion events; Falco and Trivy runners; Redis-backed live ingest and streaming; Slack or SMTP notifications; and `/metrics` instrumentation for automation and scan activity.
 - Auditability: immutable remote logging plus request-scoped database telemetry that records who changed what, when, where the request came from, and how the mutation was applied for persisted model changes.
+- Supply-chain visibility: a committed CycloneDX SBOM can be regenerated from the npm lockfile so the project keeps a current manifest of third-party libraries.
+- Dependency scanning: `npm audit`-based scripts and CI gates now check the imported package graph for known high-severity vulnerabilities before changes are merged.
+- Container hardening: the repo now ships a multi-stage Docker build that runs the app on a non-root distroless Node 22 runtime instead of a general-purpose base image.
 - Delivery and quality: a REST API, responsive Bootstrap UI, CI-friendly smoke and integration coverage, report-only Trivy CI artifacts for triage, and end-to-end testing with Mocha, Chai, Sinon, Playwright, and Selenium across notes, auth, security, ML, mission assurance, MFA, session management, the web-security modules, browser modules, self-healing, and autonomy-demo flows.
 
 ## Tech Stack
@@ -78,9 +81,29 @@ npm test           # Run tests
 npm run test:selenium # Run Selenium browser tests against a live local app
 npm run test:e2e   # Run Playwright browser tests in Chromium
 npm run lint       # ESLint
+npm run audit:deps # Fail on high-severity dependency CVEs across all installed deps
+npm run audit:prod # Fail on high-severity dependency CVEs in production deps only
+npm run sbom:generate # Regenerate the CycloneDX dependency manifest
 ```
 
 Server: `http://localhost:3000`
+
+Container build:
+```bash
+docker build -t note-app:hardened .
+docker run --rm -p 3000:3000 --env-file .env note-app:hardened
+```
+
+If MongoDB is running on your Windows host instead of inside Docker, use a container-aware override:
+```bash
+docker run --rm -p 3000:3000 --env-file .env -e MONGODB_URI=mongodb://host.docker.internal:27017/noteApp_local note-app:hardened
+```
+
+Container notes:
+- The runtime image is distroless and runs as a non-root user to reduce the available attack surface.
+- The Docker build only installs production dependencies and excludes local secrets, tests, and other non-runtime files through `.dockerignore`.
+- Provide production environment variables at runtime through `--env-file` or your container platform's secret manager; the image does not bake `.env` files into the final layer.
+- The container disables workstation keyring loading because distroless images do not ship the native `libsecret` stack that `keytar` expects.
 
 For a more stable Windows local launch, prefer the included launcher instead of a transient shell session:
 ```powershell
@@ -109,6 +132,8 @@ Notes:
 Current local verification (March 29, 2026):
 - `npm test` passes with 487 tests
 - `npm run lint` passes with 0 errors
+- `docker build -t note-app:hardened .` completes successfully
+- the hardened container serves `GET /auth/login` with HTTP 200 when run against local MongoDB using `MONGODB_URI=mongodb://host.docker.internal:27017/noteApp_local`
 - Live app checks on `http://localhost:3000` confirm the current protected module routes are mounted
 - Latest `artifacts/playwright-results.json` on disk shows 13 expected / 0 unexpected in Chromium
 - Latest `artifacts/selenium-results.json` on disk shows 11 passing / 0 failing
@@ -119,6 +144,9 @@ Recent security hardening progress (March 29, 2026):
 - immutable remote logging now forwards append-only operational and audit events to a write-only sink
 - request-scoped database telemetry records Who, What, When, Where, and How for persisted state changes
 - SIEM integration now supports both structured JSON and RFC 5424-style syslog formatting through `IMMUTABLE_LOGGING_FORMAT`
+- dependency scanning now uses enforced `npm audit` scripts and CI gates, with a transitive override to avoid the known `serialize-javascript` CVE path through Mocha
+- `npm run sbom:generate` now emits a committed CycloneDX SBOM at `sbom/note-app.cdx.json` so third-party dependencies remain inventoried from the real lockfile state
+- the repo now includes a hardened multi-stage Docker build that uses a non-root distroless runtime image, disables container-only `keytar` loading, and is scanned in CI as the built application image instead of a placeholder base image
 
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account
@@ -856,6 +884,15 @@ SIEM integration options:
 - `IMMUTABLE_LOGGING_FORMAT=json` sends structured JSON payloads that Splunk HEC, Elastic HTTP collectors, and similar SIEM pipelines can ingest directly.
 - `IMMUTABLE_LOGGING_FORMAT=syslog` sends RFC 5424-style syslog lines over the same append-only HTTP transport for collectors that expect syslog text.
 - Both modes preserve the log-chain headers and carry the same event content for console logs, HTTP request audits, and DB state-change telemetry.
+
+SBOM support:
+- Run `npm run sbom:generate` to regenerate `sbom/note-app.cdx.json` from the current `package-lock.json` dependency graph.
+- The generated manifest uses the CycloneDX JSON format and captures the third-party packages currently resolved for the project.
+
+Dependency scanning support:
+- Run `npm run audit:deps` to fail locally when any high-severity known vulnerability exists in the installed dependency graph, including development dependencies used in the repo.
+- Run `npm run audit:prod` to check the production dependency graph only.
+- The GitHub Actions dependency-audit workflow now uploads a JSON audit report and fails builds on high-severity findings in both the full and production dependency graphs.
 
 **Optional Migration Variables:**
 ```env
