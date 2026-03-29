@@ -55,6 +55,8 @@ const { startApplication } = require('./src/utils/appStartup');
 const { handleUnhandledError } = require('./src/utils/errorHandler');
 const { createImmutableRequestAuditMiddleware } = require('./src/middleware/immutableRequestAudit');
 const { createImmutableLogClient, installGlobalConsoleMirror } = require('./src/utils/immutableLogService');
+const { requestContextMiddleware } = require('./src/utils/requestContext');
+const { configureDatabaseTelemetry } = require('./src/utils/databaseTelemetry');
 const { createServerFactory } = require('./src/utils/serverTransport');
 
 const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
@@ -75,6 +77,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         const app = express();
         const immutableLogClient = createImmutableLogClient(runtimeConfig);
         installGlobalConsoleMirror(immutableLogClient);
+        configureDatabaseTelemetry({ client: immutableLogClient });
         const isProduction = process.env.NODE_ENV === 'production';
         const useSecureCookies = isProduction || Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled);
         const realtimeAvailable = Boolean(process.env.REDIS_URL) && process.env.DISABLE_REDIS !== '1';
@@ -108,6 +111,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
 
         app.use(sanitizeResponseMetadata);
         app.use(helmet(buildHelmetProtectionOptions({ isProduction })));
+        app.use(requestContextMiddleware);
 
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));

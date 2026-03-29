@@ -12,6 +12,7 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 - Mission-grade assurance: dedicated modules for RBAC-plus-ABAC mission access decisions, hardware-first MFA and PKI step-up, strict session timeout and concurrent-login control, and server-side access-control verification for protected APIs.
 - Browser automation: Playwright and Selenium modules for scenario planning, latest-run artifact reporting, and generated test templates, plus a Self-Healing Module at `/self-healing/module` that ranks locator repairs from a broken selector, a step goal, and a DOM snippet.
 - Optional automation and realtime: scheduled ingestion for logs, scans, and intrusion events; Falco and Trivy runners; Redis-backed live ingest and streaming; Slack or SMTP notifications; and `/metrics` instrumentation for automation and scan activity.
+- Auditability: immutable remote logging plus request-scoped database telemetry that records who changed what, when, where the request came from, and how the mutation was applied for persisted model changes.
 - Delivery and quality: a REST API, responsive Bootstrap UI, CI-friendly smoke and integration coverage, report-only Trivy CI artifacts for triage, and end-to-end testing with Mocha, Chai, Sinon, Playwright, and Selenium across notes, auth, security, ML, mission assurance, MFA, session management, the web-security modules, browser modules, self-healing, and autonomy-demo flows.
 
 ## Tech Stack
@@ -105,12 +106,19 @@ Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
 
-Current local verification (March 26, 2026):
-- `npm test` passes with 461 tests
+Current local verification (March 29, 2026):
+- `npm test` passes with 487 tests
 - `npm run lint` passes with 0 errors
 - Live app checks on `http://localhost:3000` confirm the current protected module routes are mounted
 - Latest `artifacts/playwright-results.json` on disk shows 13 expected / 0 unexpected in Chromium
 - Latest `artifacts/selenium-results.json` on disk shows 11 passing / 0 failing
+
+Recent security hardening progress (March 29, 2026):
+- inbound HTTPS transport is pinned to TLS 1.3 only when certificate-based transport is enabled
+- response metadata and client-visible error paths are sanitized to avoid leaking server/version details
+- immutable remote logging now forwards append-only operational and audit events to a write-only sink
+- request-scoped database telemetry records Who, What, When, Where, and How for persisted state changes
+- SIEM integration now supports both structured JSON and RFC 5424-style syslog formatting through `IMMUTABLE_LOGGING_FORMAT`
 
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account
@@ -253,6 +261,7 @@ Typical flow:
 - the ML triage layer assigns `mlScore`, `mlLabel`, `mlReasons`, and `scoreSource`
 - the autonomous response policy decides `none`, `notify`, or `block`
 - the alert stores a response audit trail so the dashboards can show what was attempted
+- each persisted state change is forwarded through immutable database telemetry with actor, request, and mutation summaries
 
 Optional environment:
 
@@ -842,6 +851,11 @@ GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
 When `HTTPS_ENABLED=true`, the server pins inbound HTTPS transport to TLS 1.3 and will not negotiate SSLv3, TLS 1.0, TLS 1.1, or TLS 1.2.
 
 When `IMMUTABLE_LOGGING_ENABLED=true`, the app mirrors operational logs and security-relevant request audit events to a separate append-only HTTP(S) endpoint using authenticated `POST` requests only. The remote log service should be configured as write-only for the app identity and should reject read, update, and delete operations.
+
+SIEM integration options:
+- `IMMUTABLE_LOGGING_FORMAT=json` sends structured JSON payloads that Splunk HEC, Elastic HTTP collectors, and similar SIEM pipelines can ingest directly.
+- `IMMUTABLE_LOGGING_FORMAT=syslog` sends RFC 5424-style syslog lines over the same append-only HTTP transport for collectors that expect syslog text.
+- Both modes preserve the log-chain headers and carry the same event content for console logs, HTTP request audits, and DB state-change telemetry.
 
 **Optional Migration Variables:**
 ```env

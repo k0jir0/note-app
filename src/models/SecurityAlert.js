@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { applyFieldEncryption } = require('../utils/fieldEncryption');
+const { applyDatabaseTelemetry } = require('../utils/databaseTelemetry');
 const {
     encryptSecurityAlertDocument,
     decryptSecurityAlertDocument,
@@ -170,5 +171,7 @@ applyFieldEncryption(alertSchema, {
     decryptDocument: decryptSecurityAlertDocument,
     encryptUpdatePayload: encryptSecurityAlertUpdatePayload
 });
+
+applyDatabaseTelemetry(alertSchema, { modelName: 'SecurityAlert' });
 
 module.exports = mongoose.model('SecurityAlert', alertSchema);

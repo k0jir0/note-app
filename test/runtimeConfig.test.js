@@ -1,6 +1,7 @@
 const { expect } = require('chai');
 
 const {
+    IMMUTABLE_LOG_FORMATS,
     MIN_SESSION_SECRET_LENGTH,
     getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,
@@ -104,7 +105,8 @@ describe('Runtime Config Validation', () => {
             endpoint: '',
             token: '',
             timeoutMs: 2000,
-            source: 'note-app'
+            source: 'note-app',
+            format: 'json'
         });
     });
 
@@ -131,8 +133,29 @@ describe('Runtime Config Validation', () => {
             endpoint: 'https://logs.example.com/append',
             token: 'remote-write-only-token',
             timeoutMs: 3500,
-            source: 'note-app-web'
+            source: 'note-app-web',
+            format: 'json'
         });
+    });
+
+    it('accepts syslog formatting for immutable logging output', () => {
+        const env = createValidEnv();
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
+        env.IMMUTABLE_LOGGING_FORMAT = 'syslog';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(IMMUTABLE_LOG_FORMATS).to.include('syslog');
+        expect(config.immutableLogging.format).to.equal('syslog');
+    });
+
+    it('rejects unsupported immutable logging formats', () => {
+        const env = createValidEnv();
+        env.IMMUTABLE_LOGGING_FORMAT = 'cef';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('IMMUTABLE_LOGGING_FORMAT');
     });
 
     it('accepts valid HTTPS and mTLS transport settings', () => {
@@ -259,6 +282,7 @@ describe('Runtime Config Validation', () => {
                 endpoint: 'https://logs.example.com/append',
                 token: 'write-only-token',
                 timeoutMs: 2500,
+                format: 'syslog',
                 source: 'note-app-web'
             },
             automation: {
@@ -294,6 +318,7 @@ describe('Runtime Config Validation', () => {
             enabled: true,
             endpointConfigured: true,
             timeoutMs: 2500,
+            format: 'syslog',
             source: 'note-app-web'
         });
         expect(diagnostics.sessionManagement).to.deep.equal({

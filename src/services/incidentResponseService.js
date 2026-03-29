@@ -1,6 +1,7 @@
 const SecurityAlert = require('../models/SecurityAlert');
 const blockingService = require('./blockingService');
 const notificationService = require('./notificationService');
+const { runTelemetryAwareBulkWrite } = require('../utils/databaseTelemetry');
 const { encryptSecurityAlertBulkWriteOperations } = require('../utils/sensitiveModelEncryption');
 
 const POLICY_VERSION = 'ml-autonomous-v1';
@@ -322,7 +323,12 @@ async function persistResponses(alerts = [], options = {}) {
     }
 
     encryptSecurityAlertBulkWriteOperations(operations);
-    await SecurityAlertModel.bulkWrite(operations, { ordered: false });
+    await runTelemetryAwareBulkWrite({
+        model: SecurityAlertModel,
+        modelName: 'SecurityAlert',
+        operations,
+        bulkWriteOptions: { ordered: false }
+    });
     return operations.length;
 }
 

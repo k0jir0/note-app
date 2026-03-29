@@ -3,12 +3,20 @@ const os = require('os');
 
 const DEFAULT_TIMEOUT_MS = 2000;
 const DEFAULT_SOURCE = 'note-app';
+const DEFAULT_FORMAT = 'json';
 const CONSOLE_LEVEL_MAP = {
     log: 'info',
     info: 'info',
     warn: 'warn',
     error: 'error'
 };
+const SYSLOG_LEVEL_MAP = {
+    error: 3,
+    warn: 4,
+    audit: 5,
+    info: 6
+};
+const SYSLOG_FACILITY = 16;
 
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
@@ -82,6 +90,60 @@ function buildEntryHash(entry, cryptoLib = crypto) {
     return cryptoLib.createHash('sha256').update(JSON.stringify(entry)).digest('hex');
 }
 
+function sanitizeSyslogToken(value, fallback = '-') {
+    if (!isNonEmptyString(value)) {
+        return fallback;
+    }
+
+    const normalized = String(value).trim().replace(/\s+/g, '-');
+    return normalized.replace(/[\]\["=]/g, '-') || fallback;
+}
+
+function escapeSyslogStructuredValue(value) {
+    return String(value)
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\]/g, '\\]');
+}
+
+function buildSyslogPayload(entry, entryHash) {
+    const severity = Object.prototype.hasOwnProperty.call(SYSLOG_LEVEL_MAP, entry.level)
+        ? SYSLOG_LEVEL_MAP[entry.level]
+        : SYSLOG_LEVEL_MAP.info;
+    const priority = (SYSLOG_FACILITY * 8) + severity;
+    const appName = sanitizeSyslogToken(entry.source || DEFAULT_SOURCE, DEFAULT_SOURCE);
+    const host = sanitizeSyslogToken(entry.host, '-');
+    const structuredData = [
+        `source="${escapeSyslogStructuredValue(entry.source || DEFAULT_SOURCE)}"`,
+        `level="${escapeSyslogStructuredValue(entry.level)}"`,
+        `sequence="${escapeSyslogStructuredValue(entry.sequence)}"`,
+        `entryHash="${escapeSyslogStructuredValue(entryHash)}"`
+    ].join(' ');
+
+    return `<${priority}>1 ${entry.timestamp} ${host} ${appName} - - [note-app@48577 ${structuredData}] ${JSON.stringify({
+        message: entry.message,
+        metadata: entry.metadata
+    })}`;
+}
+
+function buildRequestPayload(entry, entryHash, format = DEFAULT_FORMAT) {
+    if (format === 'syslog') {
+        return {
+            body: buildSyslogPayload(entry, entryHash),
+            contentType: 'text/plain; charset=utf-8'
+        };
+    }
+
+    return {
+        body: JSON.stringify({
+            ...entry,
+            entryHash,
+            format: 'json'
+        }),
+        contentType: 'application/json'
+    };
+}
+
 function createImmutableLogClient(runtimeConfig = {}, options = {}) {
     const immutableLogging = runtimeConfig && runtimeConfig.immutableLogging ? runtimeConfig.immutableLogging : {};
     const fetchImpl = options.fetchImpl || global.fetch;
@@ -107,6 +169,7 @@ function createImmutableLogClient(runtimeConfig = {}, options = {}) {
 
     async function capture(level, message, metadata = {}) {
         const timestamp = clock();
+        const format = immutableLogging.format === 'syslog' ? 'syslog' : DEFAULT_FORMAT;
         const entry = {
             schemaVersion: 1,
             application: 'note-app',
@@ -125,6 +188,7 @@ function createImmutableLogClient(runtimeConfig = {}, options = {}) {
             .createHmac('sha256', immutableLogging.token)
             .update(entryHash)
             .digest('hex');
+        const requestPayload = buildRequestPayload(entry, entryHash, format);
 
         const controller = typeof AbortController === 'function' ? new AbortController() : null;
         const timeoutHandle = controller
@@ -135,15 +199,13 @@ function createImmutableLogClient(runtimeConfig = {}, options = {}) {
             const response = await fetchImpl(immutableLogging.endpoint, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': requestPayload.contentType,
                     Authorization: `Bearer ${immutableLogging.token}`,
                     'X-Log-Chain': entryHash,
-                    'X-Log-Signature': signature
+                    'X-Log-Signature': signature,
+                    'X-Log-Format': format
                 },
-                body: JSON.stringify({
-                    ...entry,
-                    entryHash
-                }),
+                body: requestPayload.body,
                 signal: controller ? controller.signal : undefined
             });
 
@@ -220,6 +282,7 @@ function installGlobalConsoleMirror(client, options = {}) {
 }
 
 module.exports = {
+    DEFAULT_FORMAT,
     DEFAULT_SOURCE,
     DEFAULT_TIMEOUT_MS,
     createImmutableLogClient,

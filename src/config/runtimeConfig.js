@@ -3,6 +3,7 @@ const ENCRYPTION_KEY_HEX_REGEX = /^[a-fA-F0-9]{64}$/;
 const MONGODB_OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
 const MAX_AUTOMATION_INTERVAL_MS = 1000 * 60 * 60 * 24;
 const MAX_IMMUTABLE_LOG_TIMEOUT_MS = 1000 * 30;
+const IMMUTABLE_LOG_FORMATS = ['json', 'syslog'];
 
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
@@ -298,6 +299,11 @@ function buildImmutableLoggingConfig(env, errors) {
     const endpoint = isNonEmptyString(env.IMMUTABLE_LOGGING_URL) ? env.IMMUTABLE_LOGGING_URL.trim() : '';
     const token = isNonEmptyString(env.IMMUTABLE_LOGGING_TOKEN) ? env.IMMUTABLE_LOGGING_TOKEN.trim() : '';
     const source = isNonEmptyString(env.IMMUTABLE_LOGGING_SOURCE) ? env.IMMUTABLE_LOGGING_SOURCE.trim() : 'note-app';
+    const format = isNonEmptyString(env.IMMUTABLE_LOGGING_FORMAT) ? env.IMMUTABLE_LOGGING_FORMAT.trim().toLowerCase() : 'json';
+
+    if (!IMMUTABLE_LOG_FORMATS.includes(format)) {
+        errors.push(`IMMUTABLE_LOGGING_FORMAT must be one of: ${IMMUTABLE_LOG_FORMATS.join(', ')}`);
+    }
 
     if (!enabled) {
         return {
@@ -305,7 +311,8 @@ function buildImmutableLoggingConfig(env, errors) {
             endpoint: '',
             token: '',
             timeoutMs,
-            source
+            source,
+            format: IMMUTABLE_LOG_FORMATS.includes(format) ? format : 'json'
         };
     }
 
@@ -331,7 +338,8 @@ function buildImmutableLoggingConfig(env, errors) {
         endpoint,
         token,
         timeoutMs,
-        source
+        source,
+        format
     };
 }
 
@@ -428,6 +436,9 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
             timeoutMs: Number.isFinite(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.timeoutMs)
                 ? runtimeConfig.immutableLogging.timeoutMs
                 : null,
+            format: isNonEmptyString(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.format)
+                ? runtimeConfig.immutableLogging.format.trim()
+                : 'json',
             source: isNonEmptyString(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.source)
                 ? runtimeConfig.immutableLogging.source.trim()
                 : ''
@@ -528,6 +539,7 @@ function validateRuntimeConfig(env = process.env) {
 }
 
 module.exports = {
+    IMMUTABLE_LOG_FORMATS,
     MIN_SESSION_SECRET_LENGTH,
     getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,

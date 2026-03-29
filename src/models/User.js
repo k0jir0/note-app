@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { applyFieldEncryption } = require('../utils/fieldEncryption');
+const { applyDatabaseTelemetry } = require('../utils/databaseTelemetry');
 const {
     encryptUserDocument,
     decryptUserDocument,
@@ -183,5 +184,7 @@ applyFieldEncryption(userSchema, {
     decryptDocument: decryptUserDocument,
     encryptUpdatePayload: encryptUserUpdatePayload
 });
+
+applyDatabaseTelemetry(userSchema, { modelName: 'User' });
 
 module.exports = mongoose.model('User', userSchema);

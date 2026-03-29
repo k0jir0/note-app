@@ -83,8 +83,18 @@ describe('Incident Response Service', () => {
 
     it('executes notifications and block actions and persists the response audit trail', async () => {
         const SecurityAlertModel = {
+            find: sinon.stub(),
             bulkWrite: sinon.stub().resolves({ modifiedCount: 1 })
         };
+        SecurityAlertModel.find
+            .onFirstCall()
+            .returns({
+                lean: async () => ([{ _id: 'alert-3', response: { level: 'none', actions: [] } }])
+            })
+            .onSecondCall()
+            .returns({
+                lean: async () => ([{ _id: 'alert-3', response: { level: 'block', actions: [] } }])
+            });
         const notifyAlertsSummaryFn = sinon.stub().resolves({
             slack: { ok: true, status: 200 },
             email: { skipped: true }

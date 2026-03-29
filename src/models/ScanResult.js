@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { applyFieldEncryption } = require('../utils/fieldEncryption');
+const { applyDatabaseTelemetry } = require('../utils/databaseTelemetry');
 const {
     encryptScanResultDocument,
     decryptScanResultDocument,
@@ -79,5 +80,7 @@ applyFieldEncryption(scanResultSchema, {
     decryptDocument: decryptScanResultDocument,
     encryptUpdatePayload: encryptScanResultUpdatePayload
 });
+
+applyDatabaseTelemetry(scanResultSchema, { modelName: 'ScanResult' });
 
 module.exports = mongoose.model('ScanResult', scanResultSchema);
