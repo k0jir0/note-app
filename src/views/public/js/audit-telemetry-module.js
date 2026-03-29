@@ -77,7 +77,7 @@ function renderEvents(items = [], pagination = null) {
                     </div>
                     <details>
                         <summary class="small">View metadata</summary>
-                        <pre class="bg-body-tertiary border rounded p-3 small mt-2 mb-0" style="white-space: pre-wrap;">${escapeHtml(JSON.stringify(event.metadata || {}, null, 2))}</pre>
+                        <pre class="bg-body-tertiary border rounded p-3 small mt-2 mb-0 audit-prewrap">${escapeHtml(JSON.stringify(event.metadata || {}, null, 2))}</pre>
                     </details>
                 </div>
             `;

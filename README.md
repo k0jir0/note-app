@@ -132,9 +132,12 @@ Notes:
 Current local verification (March 29, 2026):
 - `npm test` passes with 487 tests
 - `npm run lint` passes with 0 errors
+- focused March 29 module coverage passes with `13 passing` across the new Supply Chain and Audit/Telemetry page routes plus the persisted audit-history service and API tests
 - `docker build -t note-app:hardened .` completes successfully
 - the hardened container serves `GET /auth/login` with HTTP 200 when run against local MongoDB using `MONGODB_URI=mongodb://host.docker.internal:27017/noteApp_local`
 - Live app checks on `http://localhost:3000` confirm the current protected module routes are mounted
+- authenticated live checks confirm `GET /audit-telemetry/module` returns HTTP 200 and includes the persisted history grid plus the client loader wired to `/api/audit-telemetry/events`
+- authenticated live checks against `/api/audit-telemetry/events` show the persisted audit feed growing from 2 to 3 events, with the newest event recording `HTTP request completed` for `/api/audit-telemetry/events`
 - Latest `artifacts/playwright-results.json` on disk shows 13 expected / 0 unexpected in Chromium
 - Latest `artifacts/selenium-results.json` on disk shows 11 passing / 0 failing
 
@@ -147,6 +150,9 @@ Recent security hardening progress (March 29, 2026):
 - dependency scanning now uses enforced `npm audit` scripts and CI gates, with a transitive override to avoid the known `serialize-javascript` CVE path through Mocha
 - `npm run sbom:generate` now emits a committed CycloneDX SBOM at `sbom/note-app.cdx.json` so third-party dependencies remain inventoried from the real lockfile state
 - the repo now includes a hardened multi-stage Docker build that uses a non-root distroless runtime image, disables container-only `keytar` loading, and is scanned in CI as the built application image instead of a placeholder base image
+- the Research Workspace now includes a Supply Chain Module at `/supply-chain/module` that surfaces the committed SBOM, npm audit enforcement scripts, CI workflow coverage, license buckets, and hardened container posture in a server-rendered frontend
+- the Research Workspace now includes an Audit and Telemetry Module at `/audit-telemetry/module` that surfaces immutable sink posture, request-scoped DB telemetry coverage, TLS posture, JSON versus syslog payload previews, and a live persisted audit-history panel
+- immutable audit forwarding is now wrapped with a local `AuditEvent` store and an authenticated `/api/audit-telemetry/events` endpoint so the module can show per-user persisted audit history instead of only static posture snapshots
 
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account

@@ -73,6 +73,10 @@ body.dark-mode .d-flex .selenium-tag {
   display: inline;
 }
 
+.audit-prewrap {
+  white-space: pre-wrap;
+}
+
 .settings-menu {
   position: fixed;
   top: 12px;

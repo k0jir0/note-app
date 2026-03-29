@@ -96,7 +96,7 @@ function sanitizeSyslogToken(value, fallback = '-') {
     }
 
     const normalized = String(value).trim().replace(/\s+/g, '-');
-    return normalized.replace(/[\]\["=]/g, '-') || fallback;
+    return normalized.replace(/[\]["=]/g, '-') || fallback;
 }
 
 function escapeSyslogStructuredValue(value) {
