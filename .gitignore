@@ -160,3 +160,6 @@ artifacts/locator-repair-history.json
 artifacts/playwright-results.json
 playwright-report/
 test-results/
+
+# Ignore marketing pitch
+pitch.txt

@@ -395,6 +395,11 @@ const fetchAlerts = async () => {
         throw new Error('Unable to refresh alerts');
     }
 
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        throw new Error('Alerts response was not JSON');
+    }
+
     return response.json();
 };
 
@@ -407,6 +412,12 @@ const updateAlertFeedback = async (alertId, feedbackLabel) => {
         },
         body: JSON.stringify({ feedbackLabel })
     });
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        throw new Error('Feedback response was not JSON');
+    }
+
     const payload = await response.json();
 
     if (!response.ok) {
@@ -428,6 +439,11 @@ const fetchScans = async () => {
         throw new Error('Unable to refresh scans');
     }
 
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        throw new Error('Scans response was not JSON');
+    }
+
     return response.json();
 };
 
@@ -438,6 +454,11 @@ const fetchCorrelations = async () => {
 
     if (!response.ok) {
         throw new Error('Unable to refresh correlations');
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        throw new Error('Correlations response was not JSON');
     }
 
     return response.json();

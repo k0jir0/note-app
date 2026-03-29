@@ -7,11 +7,13 @@ async function fetchNotesSummary() {
         });
 
         if (!response.ok) {
+            console.warn('Notes summary fetch returned status', response.status);
             return;
         }
 
         const contentType = response.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
+            console.warn('Notes summary response was not JSON');
             return;
         }
 

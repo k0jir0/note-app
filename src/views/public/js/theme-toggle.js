@@ -26,9 +26,11 @@
                     'x-csrf-token': getCsrf()
                 },
                 body: JSON.stringify({ nightMode: isDark })
-            }).catch(() => {});
+            }).catch((err) => {
+                console.warn('Theme preference did not persist to server:', err.message || err);
+            });
         } catch (e) {
-            // ignore
+            console.warn('Theme persistence error:', e.message || e);
         }
     }
 

@@ -137,111 +137,79 @@ Recent updates (March 5, 2026) hardened validation and authentication flows:
 - Standardized local login failures to a generic invalid-credentials response so provider details are not leaked.
 - Added regression tests covering generic login failure handling and stricter auth validation behavior.
 
-RECENT ADDITIONS — Security Automation & CI (small essay)
 
-Over the last development cycle the project gained a focused security automation surface that ties together live ingestion, scanner imports, and observability. Rather than treating scans and logs as separate artifacts, I added lightweight runners and parsers that normalize Falco JSON events and Trivy outputs into the application's existing `ScanResult` and `SecurityAlert` models. This design keeps the ingestion code intentionally small and testable: runners write to a watched file or emit parsed objects, the `intrusionParser` normalizes source-specific fields to a compact alert schema, and `automationService` performs dedupe and persistence while emitting `prom-client` metrics so ingestion health is visible at `/metrics`.
+RECENT ADDITIONS (as of March 28, 2026)
 
-Practically, this made two workflows easier: (1) local development and demos (via the `Inject Automation Sample` action and smoke/integration harnesses), and (2) CI-assisted security triage (Trivy runs in GitHub Actions, uploads reports as artifacts, and Falco/Trivy runners can be exercised locally). The CI changes focused on reliability: aligning Node engine versions with dependency constraints, updating the lockfile to remove `npm ci` failures, and configuring Trivy as report-only so scans produce artifacts without blocking merges while the team triages findings.
+- Added and stabilized the Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, and Access Control modules, making security architecture visible and enforceable in both UI and backend.
+- Hardened Google OAuth and local startup, improved error handling, and made OAuth troubleshooting easier.
+- Improved browser-automation modules: Playwright and Selenium modules now reflect live test artifacts, show per-scenario status, and export stable test templates.
+- The Self-Healing Module now supports ML-assisted locator repair for Playwright and Selenium, with feedback-driven ranking and artifact-backed history.
+- Security automation and CI: Integrated Falco/Trivy runners, improved artifact handling, and made security triage and reporting more reliable in CI.
+- The ML Module now acts as a full model-ops and explainability surface, with autonomous response proof and demo flows.
+- All modules and APIs are now protected by global access gates, with stricter session, CSRF, and input validation defaults.
 
-The main lessons were pragmatic: favor small, auditable parsers over heavyweight adapters; keep optional integrations lazy (e.g., SMTP lazy-require) so tests remain deterministic; and surface operational signals (metrics, artifacts) to enable triage without making the pipeline brittle. The next practical steps are automated triage playbooks for Trivy artifacts and restoring stricter CI enforcement once fixes or documented mitigations are in place.
 
 
 MAJOR CHALLENGES AND SOLUTIONS
 
-Authentication and authorization proved most challenging. Securing user sessions with Passport.js involved local strategy configuration, user data serialization/deserialization, and route protection middleware. The solution used reusable `requireAuth` middleware and user-specific queries to ensure users could only access their own notes. Separating API routes (JSON) from page routes (HTML) provided better error handling for different client types.
+- Authentication/Authorization: Complex session management, role/attribute-based access, and secure OAuth required reusable middleware, strict user checks, and robust error handling.
+- Input Validation: Balancing security and usability led to centralized, layered validation and sanitization utilities, with clear separation for create/update flows.
+- Testing: Achieving 461 passing tests required extensive mocking, stubbing, and cleanup, especially for database and authentication logic.
+- Deployment: Technical debt (hardcoded values, insecure cookies) was resolved with environment-driven config, secure defaults, and standardized scripts.
+- Error Handling: Centralized error utilities and async wrappers ensured consistent, user-friendly responses and robust test coverage.
+- Schema Design: Used ObjectId references, realistic constraints, and compound queries for secure, flexible data relationships.
+- Legacy Migration: Updated old code with new security patterns, preserving compatibility and test coverage.
+- Naming/Organization: Standardized file naming and logical grouping improved maintainability and clarity.
 
-Input validation and sanitization balanced security with user experience. The challenge was preventing XSS attacks while validating diverse field types without exposing system internals. This was addressed by creating centralized validation utilities in `src/utils/validation.js`, implementing multi-layer validation across client, server, and database, and using an `isUpdate` flag to differentiate create from update operations. Inputs were sanitized using regex to remove dangerous script tags while preserving legitimate content.
 
-Comprehensive test coverage without a live database connection demanded significant effort. Mocking Mongoose model methods and stubbing authentication middleware while ensuring test isolation was complex. Sinon for stubs, spies, and mocks alongside consistent test patterns solved this. Proper cleanup in `afterEach` blocks prevented state leakage, eventually reaching 461 tests covering models, controllers, routes, middleware, utilities, ML training paths, mission-policy and MFA behavior, session invalidation logic, injection and XSS hardening, Access Control behavior, Playwright scenario export behavior, Selenium scenario export behavior, Self-Healing behavior, autonomous response behavior, autonomy-demo proof flows, integration flows, and edge cases around OAuth and realtime behavior.
+TROUBLESHOOTING (as of March 28, 2026)
 
-Production deployment preparation revealed technical debt: hardcoded values, insecure cookie settings, and mixed indentation. Resolution involved environment variables with fallbacks, secure cookies for production (`secure: process.env.NODE_ENV === 'production'`), proper npm scripts, protected seed routes, and ESLint `--fix` for standardized formatting.
+- Semgrep rule schema errors: Add `languages: [javascript]` to `.semgrep.yml`.
+- `npm ci` lockfile mismatch: Run `npm install`, commit the lockfile, retry.
+- Node engine mismatch in CI: Update workflow to match required Node version.
+- Optional dependency issues: Install only when needed, rely on lazy-require.
+- Trivy scan failures: Artifacts are report-only; triage and patch as needed.
+- Google OAuth/local auth issues: Ensure all OAuth env vars and redirect URIs match, use `.env.local` for workstation secrets.
+- MongoDB/Redis startup: Wait for successful DB connection before listening; Redis is now optional and fails fast if not configured.
 
-Error handling consistency required a centralized `handleError` utility standardizing response formats as `{ success, message, errors }` with appropriate HTTP status codes. All async handlers were wrapped in try-catch blocks, with dedicated test cases verifying database failures, validation errors, and invalid ObjectId casting.
-
-Database schema design involved decisions about references versus embedded documents, field constraints, and indexing. ObjectId references for the User-to-Notes relationship with automatic timestamps, optional fields with defaults, and realistic constraints (title: 3-200 characters, content: max 10,000) created a flexible yet robust structure. Compound queries combining user ID and note ID ensured proper authorization.
-
-The project initially pointed to a different repository and required migration. This involved removing the incorrect remote, installing GitHub CLI (`winget install GitHub.cli`), authenticating via web, creating the new repository programmatically (`gh repo create test-app --public --source=.`), and pushing the code successfully.
-
-Legacy code maintenance required updating older controllers and routes that lacked authentication. Rather than deleting these files, they were updated with `requireAuth` middleware and user-specific filtering to maintain backward compatibility while improving security. Tests were updated accordingly with documentation explaining preservation.
-
-Model naming standardization involved renaming `notes.js` to `Notes.js` for consistency with JavaScript conventions. This required updating all import statements across the active note controller and route modules, related tests, and `index.js`. Git's `mv` command preserved file history during the rename.
-
-TROUBLESHOOTING (recent CI & automation issues)
-
-- Symptom: Semgrep job aborts with "Invalid rule schema".
-	Fix: Add `languages: [javascript]` to each custom rule in `.semgrep.yml`, commit and push.
-
-- Symptom: `npm ci` fails: "package.json and package-lock.json are not in sync".
-	Fix: Run `npm install` locally, commit the updated `package-lock.json`, and push. Use `npm ci` in CI after lockfile is updated.
-
-- Symptom: CI job fails due to Node engine mismatch (eg. connect-mongo requires >=20.8.0).
-	Fix: Update `.github/workflows/*.yml` to use `node-version: 20.8.0` (or an appropriate version matching engines) and re-run workflow.
-
-- Symptom: Integration tests fail locally due to missing optional dependency (e.g., nodemailer).
-	Fix: The codebase lazy-requires optional packages; if you need to run integration scripts that expect SMTP, install `nodemailer` or run the integration harness which avoids SMTP paths.
-
-- Symptom: Trivy scan reports vulnerabilities and fails CI.
-	Fix: Trivy is currently configured as report-only in CI. Download artifacts from the GitHub Actions run, triage HIGH/CRITICAL findings, then patch dependencies or document acceptable mitigations. Re-enable failing behavior when triage is complete.
 
 
 KEY LEARNINGS
 
-Security must be foundational. Never trust user input—validate and sanitize everything. Hash passwords, use environment variables for secrets, implement authentication and authorization, configure cookies securely in production, and protect destructive operations.
+- Security must be foundational: validate/sanitize all input, hash secrets, use environment variables, and enforce strict session/auth controls.
+- Separation of concerns and modularity are critical for maintainability.
+- Testing is essential—mock dependencies, cover edge cases, and clean up after each test.
+- Environment config discipline prevents future refactoring and deployment issues.
+- Consistent API design and error handling improve developer and user experience.
+- Honest technical debt assessment and documentation are more valuable than chasing false perfection.
+- Git workflow discipline and clear documentation enable collaboration and future development.
 
-Separation of concerns improves maintainability. Models handle data structure and validation, controllers contain business logic, routes handle HTTP mapping, middleware provides reusable functionality, utilities centralize common operations, and views contain presentation logic only.
-
-Testing is non-negotiable. Write tests before or during development, not after. Mock external dependencies like databases and authentication, test success and error scenarios, focus on critical paths while aiming for high coverage, use descriptive test names, and clean up after each test.
-
-Environment configuration requires discipline. Use .env files for local development but never commit secrets. Provide .env.example as a template, prefer ignored `.env.local` overrides for workstation-only values such as OAuth credentials, use different configurations for dev/test/prod, default to safe values, and document all required variables.
-
-API design should follow consistent patterns. Use standardized response formats, RESTful conventions, appropriate HTTP status codes, detailed error messages for developers, partial updates with optional fields, and timestamps in all database records.
-
-Error handling must be comprehensive and centralized. Use try-catch for async operations, centralize error logic, log errors for debugging but not in production, return user-friendly messages, differentiate client (4xx) from server errors (5xx), and never expose stack traces.
-
-Code organization affects maintainability. Group related files logically, use consistent naming conventions, keep files focused on single responsibilities, comment complex logic but not obvious code, extract repeated code into utilities, and follow established patterns.
-
-Documentation enables collaboration and future development. Write clear READMEs with setup instructions, document API endpoints with examples, include request/response formats, explain validation rules, provide troubleshooting guidance, and keep documentation synchronized with code.
-
-Honest technical debt assessment beats false perfection. Grade realistically, identify high-priority issues versus nice-to-haves, fix production blockers before optimization, document known issues, and balance perfection with shipping functional software.
-
-Git workflow discipline prevents problems. Commit frequently with descriptive messages, review changes before committing, use branches appropriately, keep commits focused, push regularly, and use version tags for releases.
 
 
 TECHNICAL INSIGHTS
 
-Mongoose quirks: validation runs on save but not update unless `runValidators: true` is specified, `findOne` returns null when no document is found, ObjectId casting errors need explicit handling, virtual fields don't persist, and timestamps only update on save/update operations.
+- Mongoose: Always use `runValidators: true` on updates, handle ObjectId casting, and understand virtual/timestamp behavior.
+- Express/Passport: Sessions are server-side, cookies hold only IDs, and logout requires both session destruction and `req.logout()`.
+- CSRF: Synchronizer-token pattern works, but templates must be tested for token presence.
+- CSP: Removing inline scripts enables strict policies.
+- Testing: Use stubs/mocks, group/cleanup tests, and verify both success and error paths.
+- ESLint: Automate with `--fix`, accept some warnings, and enforce consistent style.
 
-Express sessions store data server-side while cookies hold only session IDs. Session secrets should be long and random, sessions now persist across restarts through MongoDB-backed storage, Passport serializes only the user ID, and logout requires both `req.logout()` and session destruction.
-
-CSRF protection in server-rendered apps requires coordination between middleware, route handlers, templates, and client-side fetch calls. The synchronizer-token pattern worked well here, but it also showed that templates should not assume locals are implicitly present unless render paths are covered by tests.
-
-Content Security Policy becomes much more practical once inline event handlers are removed. Moving image fallbacks and note-delete actions into static JS files made it possible to enforce `script-src 'self'` instead of accepting inline scripts as a permanent compromise.
-
-Passport.js patterns: local strategy handles username/password authentication, serialization stores user identifiers in sessions, deserialization fetches the full user from the database, callbacks use `done(err, user)` or `done(err, false, { message })`, and `req.isAuthenticated()` checks login status. Local auth must guard against accounts without local hashes (for example Google-only users) before calling `bcrypt.compare`.
-
-Testing best practices: use `describe()` for grouping tests, `beforeEach()` for setup, `afterEach()` for cleanup and stub restoration, stub database calls rather than connecting to real databases, test edge cases like empty strings and long inputs, and verify both success and error paths.
-
-ESLint automation with `--fix` auto-corrects many issues. Configure rules in .eslintrc.json, accept some warnings as reasonable (unused variables in stubs), recognize consistent indentation improves readability, and run the linter before committing.
 
 
 WHAT I WOULD DO DIFFERENTLY
 
-Starting with test-driven development for critical features would have caught bugs earlier and established test patterns from the beginning. Planning authentication first—designing the auth flow before other features and creating the middleware library early—would have prevented security gaps.
-
-Standardizing early by choosing indentation style, setting up linter configuration, and establishing naming conventions would have avoided cleanup work. Documenting during development rather than deferring keeps documentation accurate and complete.
-
-Using environment variables from day one prevents refactoring hardcoded values later. Setting up .env.example immediately and configuring for production from the start saves time and reduces deployment issues.
-
-Centralizing validation early by creating utilities before building features prevents scattered logic and encourages reuse. Implementing proper logging with Winston or Morgan, logging to files in production, and including request IDs would improve debugging.
+- Start with TDD for critical features and authentication.
+- Standardize code style, linter config, and naming conventions from the beginning.
+- Use environment variables and `.env.example` from day one.
+- Centralize validation and logging early.
+- Document as you go, not after the fact.
 
 
-FINAL REFLECTION
 
-This project now achieves 461 passing tests, zero ESLint errors, comprehensive authentication and authorization, input validation and sanitization, encrypted notes at rest, CSRF protection, Mongo-backed sessions, RESTful API design with proper status codes, a consolidated Research Workspace, dedicated Security, ML, Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, Playwright, Selenium, and Self-Healing modules, a trainable alert-triage pipeline, an ML Module that doubles as a compact model-operations and explainability surface, a Playwright Module that exports stable annotated browser specs and reflects the latest Playwright artifact, a Selenium Module that exports stable browser-smoke templates and reflects the latest Selenium artifact, a Self-Healing Module that ranks reviewable locator repairs, captures repair outcomes, and supports ML-assisted runtime healing for Playwright and Selenium from current DOM snippets, real mission-policy evaluation, hardware-token and PKI-backed strong-factor assurance, stricter server-managed session invalidation, architectural handling of injection/XSS/access-control concerns, autonomous incident response for ingested alerts, improved realtime behavior, stable local Google OAuth ergonomics, persistent local launcher options, production-ready configuration, a concise README, cleaner startup sequencing, less duplicated browser-module scaffolding, better artifact-loading efficiency, proper Git repository setup, logical code organization, consistent model naming (Notes.js), and stronger security defaults.
+FINAL REFLECTION (as of March 28, 2026)
 
-Recent verification (March 26, 2026): focused tests and live checks confirm the grouped correlation totals, appended demo injection behavior, Security Module realtime connect flow, the clarified server-versus-browser realtime status UI, canonical local Google OAuth redirects, graceful handling of Google OAuth callback exchange failures, the ML Module training endpoint flow, the new ML dashboard visualizations, the autonomous notify-block policy path for ingested alerts, the Autonomy Demo Inject proof path that updates `Observed Autonomous Outcomes`, the Mission Assurance decision flow, the Hardware-First MFA overview, enrollment, challenge, and verification path, the Session Management lockdown and superseded-session behavior, the Injection Prevention and XSS Defense evaluation flows, the Access Control protected-route catalog and deny-by-default API behavior, the Playwright Module overview and script-template export flow, the Selenium Module latest-run summary and per-scenario status flow, the Self-Healing Module overview, history, training, suggestion flow, and startup sequencing that keeps the app from listening before Mongo is connected. The local suite now passes with 461 tests, ESLint is clean, `localhost:3000` serves the app, the latest Playwright artifact records 13 passing Chromium scenarios, the latest Selenium artifact records 11 passing scenarios, and Google auth is normalized onto the configured local origin before the OAuth handshake begins.
-
-Building software is inherently iterative. The first version may work, but achieving security, maintainability, and production readiness requires conscious effort and continuous improvement. The most valuable lesson is that honesty about technical debt surpasses claiming perfection. Real projects involve trade-offs, and understanding them makes for better development decisions.
+The project is now a robust, production-ready, security-focused, and test-driven application with modular architecture, strong authentication, comprehensive validation, encrypted data, and a full suite of research, automation, and browser-testing tools. The most important lesson: real progress comes from honest assessment, continuous improvement, and balancing shipping with technical debt management.
 
 ================================================================================
 Project: Note App | Developer: Ryan V | Date: March 26, 2026
