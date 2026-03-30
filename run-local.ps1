@@ -3,7 +3,8 @@ param(
     [switch]$UsePm2,
     [switch]$Production,
     [switch]$CurrentWindow,
-    [int]$Port = 3000
+    [int]$Port = 3000,
+    [int]$StartupTimeoutSec = 25
 )
 
 Set-StrictMode -Version Latest
@@ -16,6 +17,35 @@ function Test-CommandExists {
     param([Parameter(Mandatory = $true)][string]$Name)
 
     return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Wait-ForLocalHttpReady {
+    param(
+        [Parameter(Mandatory = $true)][int]$Port,
+        [int]$TimeoutSec = 25,
+        [string]$Path = '/auth/login'
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    $probeUri = "http://localhost:$Port$Path"
+    $lastFailure = "No listener detected on localhost:$Port."
+
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $response = Invoke-WebRequest -UseBasicParsing -Uri $probeUri -TimeoutSec 5
+            if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+                return $probeUri
+            }
+
+            $lastFailure = "Unexpected HTTP status $($response.StatusCode) from $probeUri."
+        } catch {
+            $lastFailure = $_.Exception.Message
+        }
+
+        Start-Sleep -Milliseconds 500
+    }
+
+    throw "Local app did not become ready on $probeUri within $TimeoutSec seconds. Last check: $lastFailure"
 }
 
 function Start-LocalProcessWindow {
@@ -40,7 +70,7 @@ function Start-LocalProcessWindow {
         'Bypass',
         '-Command',
         $bootstrap
-    ) | Out-Null
+    )
 }
 
 if (-not (Test-Path (Join-Path $projectRoot 'node_modules'))) {
@@ -63,7 +93,12 @@ if ($UsePm2) {
 
 $webCommand = if ($Production) { 'npm start' } else { 'npm run start-dev' }
 $webLabel = if ($Production) { 'test-app web (prod)' } else { 'test-app web (dev)' }
-Start-LocalProcessWindow -Title $webLabel -CommandText $webCommand
+$webProcess = Start-LocalProcessWindow -Title $webLabel -CommandText $webCommand
+
+if (-not $CurrentWindow) {
+    $probeUri = Wait-ForLocalHttpReady -Port $Port -TimeoutSec $StartupTimeoutSec
+    Write-Host "Verified local web app is reachable at $probeUri."
+}
 
 if ($WithWorker) {
     Start-LocalProcessWindow -Title 'test-app background worker' -CommandText 'npm run worker'

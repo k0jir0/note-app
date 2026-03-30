@@ -5,7 +5,6 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 ## Features
 
 - Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, AES-256 encryption at rest for selected sensitive user, alert, and scan fields, and per-user authorization.
-- Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, and route-specific rate limiting.
 - Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, route-specific rate limiting, and HTTPS transport pinned to TLS 1.3 when certificate-based transport is enabled.
 - Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security architecture, automation, and browser-testing tools.
 - ML and response: an ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
@@ -105,6 +104,21 @@ Container notes:
 - Provide production environment variables at runtime through `--env-file` or your container platform's secret manager; the image does not bake `.env` files into the final layer.
 - The container disables workstation keyring loading because distroless images do not ship the native `libsecret` stack that `keytar` expects.
 
+Architectural sandboxing:
+```bash
+docker compose -f docker-compose.sandbox.yml up --build -d
+docker compose -f docker-compose.sandbox.yml logs -f proxy app mongo
+docker compose -f docker-compose.sandbox.yml down
+```
+
+Sandbox notes:
+- The `proxy` service is the only public entry point and binds the host port (`3000` by default) in the DMZ-style `edge_zone`.
+- The `app` service is not published to the host and only joins the internal `app_zone` plus the internal `data_zone`.
+- The `mongo` service joins only the `data_zone`, so neither the host nor the reverse proxy can connect to the database directly.
+- The sandbox stack sets `TRUST_PROXY_HOPS=1` so Express trusts only the single Nginx hop when reading forwarded client details.
+- The sandbox stack explicitly disables Redis-backed realtime and workstation batch pollers even if `.env` enables them, so local automation settings do not leak into the isolated deployment.
+- This repo is server-rendered rather than a standalone React SPA, so the DMZ role is implemented by the Nginx edge tier in front of the Node application service.
+
 For a more stable Windows local launch, prefer the included launcher instead of a transient shell session:
 ```powershell
 .\run-local.ps1
@@ -129,12 +143,14 @@ Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
 
-Current local verification (March 29, 2026):
-- `npm test` passes with 487 tests
+Current local verification (March 30, 2026):
+- `npm test` passes with 500 tests
 - `npm run lint` passes with 0 errors
 - focused March 29 module coverage passes with `13 passing` across the new Supply Chain and Audit/Telemetry page routes plus the persisted audit-history service and API tests
+- focused sandbox runtime coverage passes with `20 passing` in `test/runtimeConfig.test.js`
 - `docker build -t note-app:hardened .` completes successfully
 - the hardened container serves `GET /auth/login` with HTTP 200 when run against local MongoDB using `MONGODB_URI=mongodb://host.docker.internal:27017/noteApp_local`
+- the three-zone sandbox deployment starts successfully with `docker compose -f docker-compose.sandbox.yml up --build -d`, serves both `/healthz` and `/auth/login` with HTTP 200 through the Nginx DMZ edge on port `3001` during validation, and keeps only the proxy host-published while the app and Mongo services remain internal-only
 - Live app checks on `http://localhost:3000` confirm the current protected module routes are mounted
 - authenticated live checks confirm `GET /audit-telemetry/module` returns HTTP 200 and includes the persisted history grid plus the client loader wired to `/api/audit-telemetry/events`
 - authenticated live checks against `/api/audit-telemetry/events` show the persisted audit feed growing from 2 to 3 events, with the newest event recording `HTTP request completed` for `/api/audit-telemetry/events`
@@ -150,6 +166,7 @@ Recent security hardening progress (March 29, 2026):
 - dependency scanning now uses enforced `npm audit` scripts and CI gates, with a transitive override to avoid the known `serialize-javascript` CVE path through Mocha
 - `npm run sbom:generate` now emits a committed CycloneDX SBOM at `sbom/note-app.cdx.json` so third-party dependencies remain inventoried from the real lockfile state
 - the repo now includes a hardened multi-stage Docker build that uses a non-root distroless runtime image, disables container-only `keytar` loading, and is scanned in CI as the built application image instead of a placeholder base image
+- the repo now includes a three-zone sandbox deployment with an Nginx DMZ edge, an internal-only app zone, and an internal-only data zone so the database is unreachable from the public web tier, and the hardened proxy now runs unprivileged on an internal port behind the published DMZ edge binding
 - the Research Workspace now includes a Supply Chain Module at `/supply-chain/module` that surfaces the committed SBOM, npm audit enforcement scripts, CI workflow coverage, license buckets, and hardened container posture in a server-rendered frontend
 - the Research Workspace now includes an Audit and Telemetry Module at `/audit-telemetry/module` that surfaces immutable sink posture, request-scoped DB telemetry coverage, TLS posture, JSON versus syslog payload previews, and a live persisted audit-history panel
 - immutable audit forwarding is now wrapped with a local `AuditEvent` store and an authenticated `/api/audit-telemetry/events` endpoint so the module can show per-user persisted audit history instead of only static posture snapshots

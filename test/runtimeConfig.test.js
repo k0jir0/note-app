@@ -94,6 +94,7 @@ describe('Runtime Config Validation', () => {
             requestClientCertificate: false,
             requireClientCertificate: false,
             trustProxyClientCertHeaders: false,
+            trustProxyHops: 0,
             tlsMinVersion: '',
             tlsMaxVersion: '',
             keyPath: '',
@@ -175,12 +176,23 @@ describe('Runtime Config Validation', () => {
             requestClientCertificate: true,
             requireClientCertificate: true,
             trustProxyClientCertHeaders: false,
+            trustProxyHops: 0,
             tlsMinVersion: 'TLSv1.3',
             tlsMaxVersion: 'TLSv1.3',
             keyPath: 'C:\\tls\\server.key',
             certPath: 'C:\\tls\\server.crt',
             caPath: 'C:\\tls\\ca.crt'
         });
+    });
+
+    it('accepts explicit reverse-proxy hop trust for sandboxed deployments', () => {
+        const env = createValidEnv();
+        env.TRUST_PROXY_HOPS = '1';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.transport.trustProxyHops).to.equal(1);
+        expect(config.transport.trustProxyClientCertHeaders).to.equal(false);
     });
 
     it('rejects invalid HTTPS and mTLS transport combinations', () => {
@@ -274,6 +286,7 @@ describe('Runtime Config Validation', () => {
                 requestClientCertificate: true,
                 requireClientCertificate: false,
                 trustProxyClientCertHeaders: true,
+                trustProxyHops: 1,
                 tlsMinVersion: 'TLSv1.3',
                 tlsMaxVersion: 'TLSv1.3'
             },
@@ -311,6 +324,7 @@ describe('Runtime Config Validation', () => {
             requestClientCertificate: true,
             requireClientCertificate: false,
             trustProxyClientCertHeaders: true,
+            trustProxyHops: 1,
             tlsMinVersion: 'TLSv1.3',
             tlsMaxVersion: 'TLSv1.3'
         });

@@ -107,8 +107,11 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.locals.immutableLogging = runtimeConfig.immutableLogging;
         app.locals.immutableLogClient = immutableLogClient;
 
-        if (runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders) {
-            app.set('trust proxy', 1);
+        const trustProxyHops = runtimeConfig.transport && Number.isInteger(runtimeConfig.transport.trustProxyHops)
+            ? runtimeConfig.transport.trustProxyHops
+            : 0;
+        if (trustProxyHops > 0 || (runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders)) {
+            app.set('trust proxy', Math.max(trustProxyHops, 1));
         }
 
         app.set('view engine', 'ejs');

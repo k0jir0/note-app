@@ -248,6 +248,11 @@ function buildTransportConfig(env, errors) {
     const requestClientCertificate = parseBooleanEnv('HTTPS_REQUEST_CLIENT_CERT', env, errors);
     const requireClientCertificate = parseBooleanEnv('HTTPS_REQUIRE_CLIENT_CERT', env, errors);
     const trustProxyClientCertHeaders = parseBooleanEnv('TRUST_PROXY_CLIENT_CERT_HEADERS', env, errors);
+    const trustProxyHops = parseIntegerEnv('TRUST_PROXY_HOPS', env, {
+        defaultValue: 0,
+        min: 0,
+        max: 10
+    }, errors);
 
     const keyPath = isNonEmptyString(env.HTTPS_KEY_PATH) ? env.HTTPS_KEY_PATH.trim() : '';
     const certPath = isNonEmptyString(env.HTTPS_CERT_PATH) ? env.HTTPS_CERT_PATH.trim() : '';
@@ -281,6 +286,7 @@ function buildTransportConfig(env, errors) {
         requestClientCertificate,
         requireClientCertificate,
         trustProxyClientCertHeaders,
+        trustProxyHops,
         tlsMinVersion: httpsEnabled ? 'TLSv1.3' : '',
         tlsMaxVersion: httpsEnabled ? 'TLSv1.3' : '',
         keyPath,
@@ -423,6 +429,9 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
             requestClientCertificate: Boolean(runtimeConfig.transport && runtimeConfig.transport.requestClientCertificate),
             requireClientCertificate: Boolean(runtimeConfig.transport && runtimeConfig.transport.requireClientCertificate),
             trustProxyClientCertHeaders: Boolean(runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders),
+            trustProxyHops: Number.isInteger(runtimeConfig.transport && runtimeConfig.transport.trustProxyHops)
+                ? runtimeConfig.transport.trustProxyHops
+                : 0,
             tlsMinVersion: runtimeConfig.transport && runtimeConfig.transport.httpsEnabled
                 ? String(runtimeConfig.transport.tlsMinVersion || 'TLSv1.3')
                 : '',
