@@ -67,15 +67,15 @@ test.describe('Authentication smoke coverage', () => {
         await page.getByRole('link', { name: 'Research' }).click();
         await expect(page).toHaveURL(/\/research$/);
         await expect(page.getByRole('heading', { name: 'Research Workspace' })).toBeVisible();
-        await expect(page.getByRole('heading', { name: 'Playwright Module', exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Playwright Testing Module', exact: true })).toBeVisible();
 
-        await page.getByRole('link', { name: 'Open Playwright Module' }).click();
+        await page.getByRole('link', { name: 'Open Playwright Testing Module' }).click();
         await expect(page).toHaveURL(/\/playwright\/module$/);
-        await expect(page.getByRole('heading', { name: 'Playwright Module', exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Playwright Testing Module', exact: true })).toBeVisible();
         await expect(page.locator('#playwright-scenario-count')).toHaveText(String(scenarioCount));
         await expect(page.locator('#playwright-scenario-select option')).toHaveCount(scenarioCount);
         await expect(page.locator('#playwright-script-file-badge')).toContainText('.spec.js');
         await expect(page.locator('#playwright-script-code')).toContainText('@playwright/test');
-        await expect(page.locator('#playwright-status')).toContainText('Playwright module ready.');
+        await expect(page.locator('#playwright-status')).toContainText('Playwright Testing Module ready.');
     });
 });

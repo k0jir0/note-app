@@ -14,8 +14,8 @@ const { createDriver, getBaseUrl, waitForApp } = require('./helpers/webdriver');
 async function openSeleniumModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/selenium/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'Selenium Module');
-    await waitForBodyText(driver, 'Selenium module ready.');
+    await waitForBodyText(driver, 'Selenium Testing Module');
+    await waitForBodyText(driver, 'Selenium Testing module ready.');
 }
 
 describe('Selenium module browser suite', function () {
@@ -78,7 +78,7 @@ describe('Selenium module browser suite', function () {
 
         let scriptPreview = await driver.findElement(By.id('selenium-script-code')).getText();
         expect(scriptPreview).to.include('/security/module');
-        expect(scriptPreview).to.include('Security Module');
+        expect(scriptPreview).to.include('Security Operations Module');
 
         await clickElement(driver, By.css('#selenium-scenario-select option[value="research-full-suite"]'));
         await clickElement(driver, By.id('selenium-load-script-btn'));
@@ -96,7 +96,7 @@ describe('Selenium module browser suite', function () {
         await openSeleniumModule(driver, baseUrl);
 
         await clickElement(driver, By.id('selenium-refresh-btn'));
-        await waitForBodyText(driver, 'Selenium module refreshed.');
+        await waitForBodyText(driver, 'Selenium Testing module refreshed.');
 
         await clickElement(driver, By.css('a[href="/playwright/module"]'));
         await driver.wait(async () => {
@@ -104,6 +104,6 @@ describe('Selenium module browser suite', function () {
             return currentUrl.includes('/playwright/module');
         }, 15000, 'Expected navigation to the Playwright module.');
 
-        await waitForBodyText(driver, 'Playwright Module');
+        await waitForBodyText(driver, 'Playwright Testing Module');
     });
 });

@@ -171,9 +171,9 @@ async function loadOverview(showMessage = false) {
     renderOverview(overview);
 
     if (showMessage) {
-        renderStatus('XSS Defense Module refreshed.', 'secondary');
+        renderStatus('XSS and CSP Defense Module refreshed.', 'secondary');
     } else {
-        renderStatus('XSS Defense Module ready.', 'secondary');
+        renderStatus('XSS and CSP Defense Module ready.', 'secondary');
     }
 }
 
@@ -214,7 +214,7 @@ async function initializeXssDefenseModule() {
     try {
         await loadOverview(false);
     } catch (error) {
-        renderStatus(error.message || 'Unable to load the XSS Defense Module.', 'danger');
+        renderStatus(error.message || 'Unable to load the XSS and CSP Defense Module.', 'danger');
         return;
     }
 
@@ -222,7 +222,7 @@ async function initializeXssDefenseModule() {
         try {
             await loadOverview(true);
         } catch (error) {
-            renderStatus(error.message || 'Unable to refresh the XSS Defense Module.', 'danger');
+            renderStatus(error.message || 'Unable to refresh the XSS and CSP Defense Module.', 'danger');
         }
     });
 

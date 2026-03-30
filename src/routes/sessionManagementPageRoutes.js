@@ -17,7 +17,7 @@ router.get(
     }),
     (req, res) => {
         res.render('pages/session-management-module.ejs', {
-            title: 'Session Management Module',
+            title: 'Session Security Module',
             csrfToken: res.locals.csrfToken
         });
     }

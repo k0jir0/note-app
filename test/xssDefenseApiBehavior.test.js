@@ -38,7 +38,7 @@ describe('XSS defense API controller behavior', () => {
         const res = makeRes();
         const fakeOverview = {
             module: {
-                name: 'XSS Defense Module'
+                name: 'XSS and CSP Defense Module'
             }
         };
 

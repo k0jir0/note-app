@@ -203,7 +203,7 @@ function renderEvaluation(evaluation) {
 async function loadOverview() {
     const overview = await requestJson(overviewEndpoint);
     renderOverview(overview);
-    renderStatus('Session Management Module ready.', 'secondary');
+    renderStatus('Session Security Module ready.', 'secondary');
 }
 
 async function evaluateScenario() {
@@ -263,6 +263,6 @@ if (rootEl) {
     });
 
     loadOverview().catch((error) => {
-        renderStatus(error.message || 'Unable to load the Session Management Module.', 'danger');
+        renderStatus(error.message || 'Unable to load the Session Security Module.', 'danger');
     });
 }

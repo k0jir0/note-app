@@ -58,7 +58,7 @@ describe('Mission assurance page routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/mission-assurance-module.ejs');
         expect(res.render.firstCall.args[1]).to.deep.equal({
-            title: 'Mission Assurance Module',
+            title: 'Mission Access Assurance Module',
             csrfToken: 'test-csrf-token'
         });
     });

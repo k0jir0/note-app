@@ -168,7 +168,7 @@ function renderOverview(overview) {
 async function loadOverview() {
     const overview = await requestJson(overviewEndpoint);
     renderOverview(overview);
-    renderStatus('Injection Prevention Module ready.', 'secondary');
+    renderStatus('Query Injection Prevention Module ready.', 'secondary');
 }
 
 async function evaluateScenario() {
@@ -205,7 +205,7 @@ async function evaluateScenario() {
 if (rootEl) {
     refreshBtn?.addEventListener('click', () => {
         loadOverview().catch((error) => {
-            renderStatus(error.message || 'Unable to refresh the Injection Prevention Module.', 'danger');
+            renderStatus(error.message || 'Unable to refresh the Query Injection Prevention Module.', 'danger');
         });
     });
 
@@ -221,6 +221,6 @@ if (rootEl) {
     });
 
     loadOverview().catch((error) => {
-        renderStatus(error.message || 'Unable to load the Injection Prevention Module.', 'danger');
+        renderStatus(error.message || 'Unable to load the Query Injection Prevention Module.', 'danger');
     });
 }

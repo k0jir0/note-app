@@ -16,7 +16,7 @@ describe('Session management research service', () => {
             baseUrl: 'http://127.0.0.1:3000/'
         });
 
-        expect(overview.module.name).to.equal('Session Management Module');
+        expect(overview.module.name).to.equal('Session Security Module');
         expect(overview.module.baseUrl).to.equal('http://127.0.0.1:3000');
         expect(overview.policy.preventConcurrentLogins).to.equal(true);
         expect(overview.controls).to.have.length(4);

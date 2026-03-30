@@ -19,7 +19,7 @@ describe('Access control research service', () => {
             }
         });
 
-        expect(overview.module.name).to.equal('Access Control Module');
+        expect(overview.module.name).to.equal('Server Access Control Module');
         expect(overview.module.baseUrl).to.equal('http://127.0.0.1:3000');
         expect(overview.guard.protectedPrefixes).to.include('/api/');
         expect(overview.guard.publicExceptions).to.include('/__test/csrf');

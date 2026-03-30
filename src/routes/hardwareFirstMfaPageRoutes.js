@@ -17,7 +17,7 @@ router.get(
     }),
     (req, res) => {
         res.render('pages/hardware-mfa-module.ejs', {
-            title: 'Hardware-First MFA Module',
+            title: 'Hardware-Backed MFA Module',
             csrfToken: res.locals.csrfToken
         });
     }

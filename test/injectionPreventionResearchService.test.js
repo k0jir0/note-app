@@ -15,7 +15,7 @@ describe('Injection prevention research service', () => {
             mongooseLib: fakeMongoose
         });
 
-        expect(overview.module.name).to.equal('Injection Prevention Module');
+        expect(overview.module.name).to.equal('Query Injection Prevention Module');
         expect(overview.module.baseUrl).to.equal('http://127.0.0.1:3000');
         expect(overview.database.engine).to.equal('MongoDB');
         expect(overview.database.posture.sanitizeFilter).to.equal(true);

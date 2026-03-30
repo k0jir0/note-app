@@ -88,7 +88,7 @@ describe('Audit and telemetry page routes', () => {
 
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/audit-telemetry-module.ejs');
-        expect(res.render.firstCall.args[1].title).to.equal('Audit and Telemetry Module');
+        expect(res.render.firstCall.args[1].title).to.equal('Audit Trail and Telemetry Module');
         expect(res.render.firstCall.args[1].csrfToken).to.equal('test-csrf-token');
         expect(res.render.firstCall.args[1].moduleData.summary.immutableLoggingEnabled).to.equal(true);
         expect(res.render.firstCall.args[1].moduleData.summary.format).to.equal('SYSLOG');

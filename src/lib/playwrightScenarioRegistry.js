@@ -54,7 +54,7 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'research-playwright-entry-flow',
         title: 'Research To Playwright Entry Flow',
-        purpose: 'Sign in, reach the Research Workspace, and open the Playwright Module through the product navigation.',
+        purpose: 'Sign in, reach the Research Workspace, and open the Playwright Testing Module through the product navigation.',
         routes: ['/auth/login', '/research', '/playwright/module'],
         assertions: [
             'Research workspace heading is visible',
@@ -70,7 +70,7 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'workspace-navigation',
         title: 'Research Workspace Navigation',
-        purpose: 'Sign in, open the Research Workspace, and confirm that the Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Access Control, Self-Healing, Mission Assurance, Hardware-First MFA, and Session Management entry points are visible.',
+        purpose: 'Sign in, open the Research Workspace, and confirm that the Security Operations, Alert Triage ML, Selenium Testing, Playwright Testing, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Self-Healing Locator Repair, Mission Access Assurance, Hardware-Backed MFA, and Session Security entry points are visible.',
         routes: ['/auth/login', '/research'],
         assertions: [
             'Login form is reachable',
@@ -95,8 +95,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'security-module-smoke',
-        title: 'Security Module Smoke',
-        purpose: 'Open the Security Module and confirm that its primary analysis, scan, and realtime controls are visible.',
+        title: 'Security Operations Module Smoke',
+        purpose: 'Open the Security Operations Module and confirm that its primary analysis, scan, and realtime controls are visible.',
         routes: ['/security/module'],
         assertions: [
             'Security Module heading is visible',
@@ -113,8 +113,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'ml-module-smoke',
-        title: 'ML Module Smoke',
-        purpose: 'Open the ML Module and confirm that its training, scoring, and review panels are visible.',
+        title: 'Alert Triage ML Module Smoke',
+        purpose: 'Open the Alert Triage ML Module and confirm that its training, scoring, and review panels are visible.',
         routes: ['/ml/module'],
         assertions: [
             'ML Module heading is visible',
@@ -131,8 +131,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'selenium-module-smoke',
-        title: 'Selenium Module Smoke',
-        purpose: 'Open the Selenium Module and confirm that its scenario metadata and script preview are visible.',
+        title: 'Selenium Testing Module Smoke',
+        purpose: 'Open the Selenium Testing Module and confirm that its scenario metadata and script preview are visible.',
         routes: ['/selenium/module'],
         assertions: [
             'Selenium Module heading is visible',
@@ -149,8 +149,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'playwright-module-smoke',
-        title: 'Playwright Module Smoke',
-        purpose: 'Open the Playwright Module and confirm that its scenario metadata and spec preview are visible.',
+        title: 'Playwright Testing Module Smoke',
+        purpose: 'Open the Playwright Testing Module and confirm that its scenario metadata and spec preview are visible.',
         routes: ['/playwright/module'],
         assertions: [
             'Playwright Module heading is visible',
@@ -167,8 +167,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'injection-prevention-module-smoke',
-        title: 'Injection Prevention Module Smoke',
-        purpose: 'Open the Injection Prevention Module and confirm that the hardening posture, safe query templates, and evaluation controls are visible.',
+        title: 'Query Injection Prevention Module Smoke',
+        purpose: 'Open the Query Injection Prevention Module and confirm that the hardening posture, safe query templates, and evaluation controls are visible.',
         routes: ['/injection-prevention/module'],
         assertions: [
             'Injection Prevention Module heading is visible',
@@ -185,8 +185,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'xss-defense-module-smoke',
-        title: 'XSS Defense Module Smoke',
-        purpose: 'Open the XSS Defense Module and confirm that escaped rendering posture, strict CSP directives, and payload-evaluation controls are visible.',
+        title: 'XSS and CSP Defense Module Smoke',
+        purpose: 'Open the XSS and CSP Defense Module and confirm that escaped rendering posture, strict CSP directives, and payload-evaluation controls are visible.',
         routes: ['/xss-defense/module'],
         assertions: [
             'XSS Defense Module heading is visible',
@@ -203,8 +203,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'access-control-module-smoke',
-        title: 'Access Control Module Smoke',
-        purpose: 'Open the Access Control Module and confirm that protected API coverage, identity posture, and access-decision controls are visible.',
+        title: 'Server Access Control Module Smoke',
+        purpose: 'Open the Server Access Control Module and confirm that protected API coverage, identity posture, and access-decision controls are visible.',
         routes: ['/access-control/module'],
         assertions: [
             'Access Control Module heading is visible',
@@ -221,8 +221,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'self-healing-module-smoke',
-        title: 'Self-Healing Module Smoke',
-        purpose: 'Open the legacy locator-repair entry point, confirm it redirects to the canonical Self-Healing page, and verify that a loaded sample produces ranked repair suggestions.',
+        title: 'Self-Healing Locator Repair Module Smoke',
+        purpose: 'Open the legacy locator-repair entry point, confirm it redirects to the canonical Self-Healing Locator Repair page, and verify that a loaded sample produces ranked repair suggestions.',
         routes: ['/locator-repair/module', '/self-healing/module'],
         assertions: [
             'Legacy self-healing redirect resolves to the canonical route',
@@ -240,8 +240,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'mission-assurance-module-smoke',
-        title: 'Mission Assurance Module Smoke',
-        purpose: 'Open the Mission Assurance Module and confirm that the current profile, RBAC plus ABAC policy context, and decision evaluator controls are visible.',
+        title: 'Mission Access Assurance Module Smoke',
+        purpose: 'Open the Mission Access Assurance Module and confirm that the current profile, RBAC plus ABAC policy context, and decision evaluator controls are visible.',
         routes: ['/mission-assurance/module'],
         assertions: [
             'Mission Assurance Module heading is visible',
@@ -258,8 +258,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'hardware-mfa-module-smoke',
-        title: 'Hardware-First MFA Module Smoke',
-        purpose: 'Open the Hardware-First MFA Module and confirm that the session assurance, challenge workflow, and PKI-aware controls are visible.',
+        title: 'Hardware-Backed MFA Module Smoke',
+        purpose: 'Open the Hardware-Backed MFA Module and confirm that the session assurance, challenge workflow, and PKI-aware controls are visible.',
         routes: ['/hardware-mfa/module'],
         assertions: [
             'Hardware-First MFA Module heading is visible',
@@ -276,8 +276,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'session-management-module-smoke',
-        title: 'Session Management Module Smoke',
-        purpose: 'Open the Session Management Module and confirm that the live session summary, timeout policy, and lockdown-evaluation controls are visible.',
+        title: 'Session Security Module Smoke',
+        purpose: 'Open the Session Security Module and confirm that the live session summary, timeout policy, and lockdown-evaluation controls are visible.',
         routes: ['/session-management/module'],
         assertions: [
             'Session Management Module heading is visible',
@@ -311,8 +311,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'security-module-workflow',
-        title: 'Security Module Interactive Workflow',
-        purpose: 'Use the Security Module helpers to load sample data, analyze logs, import a scan, and refresh persisted correlations.',
+        title: 'Security Operations Module Interactive Workflow',
+        purpose: 'Use the Security Operations Module helpers to load sample data, analyze logs, import a scan, and refresh persisted correlations.',
         routes: ['/security/module'],
         assertions: [
             'Sample log helper loads log input',
@@ -329,8 +329,8 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'playwright-module-interactions',
-        title: 'Playwright Module Interaction Flow',
-        purpose: 'Switch scenarios inside the Playwright Module, refresh the overview, and confirm cross-module navigation remains wired.',
+        title: 'Playwright Testing Module Interaction Flow',
+        purpose: 'Switch scenarios inside the Playwright Testing Module, refresh the overview, and confirm cross-module navigation remains wired.',
         routes: ['/playwright/module', '/security/module'],
         assertions: [
             'Scenario selector updates the generated spec',
@@ -347,7 +347,7 @@ const PLAYWRIGHT_SCENARIOS = [
     {
         id: 'research-full-suite',
         title: 'Research Workspace Full Suite',
-        purpose: 'Run one authenticated smoke path across Research, Security, ML, Selenium, Playwright, Injection Prevention, XSS Defense, Access Control, Self-Healing, Session Management, Mission Assurance, and Hardware-First MFA to validate the end-to-end workspace flow.',
+        purpose: 'Run one authenticated smoke path across Research, Security Operations, Alert Triage ML, Selenium Testing, Playwright Testing, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Self-Healing Locator Repair, Session Security, Mission Access Assurance, and Hardware-Backed MFA to validate the end-to-end workspace flow.',
         routes: ['/auth/login', '/research', '/security/module', '/ml/module', '/selenium/module', '/playwright/module', '/injection-prevention/module', '/xss-defense/module', '/access-control/module', '/self-healing/module', '/session-management/module', '/hardware-mfa/module', '/mission-assurance/module'],
         assertions: [
             'Authentication succeeds with a disposable test user',

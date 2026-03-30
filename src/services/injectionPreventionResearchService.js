@@ -145,7 +145,7 @@ function buildInjectionPreventionModuleOverview({ baseUrl, mongooseLib } = {}) {
 
     return {
         module: {
-            name: 'Injection Prevention Module',
+            name: 'Query Injection Prevention Module',
             focus: 'Architectural defenses against SQL-style and NoSQL operator injection',
             route: '/injection-prevention/module',
             baseUrl: normalizeBaseUrl(baseUrl)

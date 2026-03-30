@@ -254,7 +254,7 @@ async function loadOverview() {
     }
 
     renderDecision(overview.defaultEvaluation);
-    renderStatus('Mission Assurance Module ready.', 'secondary');
+    renderStatus('Mission Access Assurance Module ready.', 'secondary');
 }
 
 async function evaluateDecision() {
@@ -292,7 +292,7 @@ async function initializeMissionAssuranceModule() {
     try {
         await loadOverview();
     } catch (error) {
-        renderStatus(error.message || 'Unable to load the Mission Assurance Module.', 'danger');
+        renderStatus(error.message || 'Unable to load the Mission Access Assurance Module.', 'danger');
         return;
     }
 
@@ -308,7 +308,7 @@ async function initializeMissionAssuranceModule() {
         try {
             await loadOverview();
         } catch (error) {
-            renderStatus(error.message || 'Unable to refresh the Mission Assurance Module.', 'danger');
+            renderStatus(error.message || 'Unable to refresh the Mission Access Assurance Module.', 'danger');
         }
     });
 }

@@ -5,7 +5,7 @@
   "serialNumber": "urn:uuid:***",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-03-29T21:57:04.712Z",
+    "timestamp": "2026-03-30T16:44:50.663Z",
     "lifecycles": [
       {
         "phase": "pre-build"
@@ -8422,39 +8422,6 @@
       ]
     },
     {
-      "bom-ref": "randombytes@2.1.0",
-      "type": "library",
-      "name": "randombytes",
-      "version": "2.1.0",
-      "scope": "optional",
-      "purl": "pkg:npm/randombytes@2.1.0",
-      "properties": [
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        }
-      ],
-      "externalReferences": [
-        {
-          "type": "distribution",
-          "url": "https://registry.npmjs.org/randombytes/-/randombytes-2.1.0.tgz"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "bd897788e5fee022945aec468bd5248627ba7eca97a92f4513665a89ce2d3450f637641069738c15bb8a2b84260c70b424ee81d59a78d49d0ba53d2847af1a99"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
       "bom-ref": "range-parser@1.2.1",
       "type": "library",
       "name": "range-parser",
@@ -9053,12 +9020,12 @@
       ]
     },
     {
-      "bom-ref": "serialize-javascript@6.0.2",
+      "bom-ref": "serialize-javascript@7.0.5",
       "type": "library",
       "name": "serialize-javascript",
-      "version": "6.0.2",
+      "version": "7.0.5",
       "scope": "optional",
-      "purl": "pkg:npm/serialize-javascript@6.0.2",
+      "purl": "pkg:npm/serialize-javascript@7.0.5",
       "properties": [
         {
           "name": "cdx:npm:package:development",
@@ -9068,13 +9035,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/serialize-javascript/-/serialize-javascript-6.0.2.tgz"
+          "url": "https://registry.npmjs.org/serialize-javascript/-/serialize-javascript-7.0.5.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "49a6b5c4f0724d3ab681d7856582cba3e445137e4d1d99006ea65e58d777069ce9a5e562b00aa90e3729f1dc9feae22f12a251778ea37a69b203888521e564f2"
+          "content": "1782dc07452a525d7312babed676041334872672306f7005d97581f786fe69f86b7a43948a3c28a0062a17245b8d8926d8f00a05a6f1ea862fff10f1362f0807"
         }
       ],
       "licenses": [
@@ -12163,7 +12130,7 @@
         "minimatch@5.1.9",
         "ms@2.1.3",
         "picocolors@1.1.1",
-        "serialize-javascript@6.0.2",
+        "serialize-javascript@7.0.5",
         "strip-json-comments@3.1.1",
         "supports-color@8.1.1",
         "workerpool@6.5.1",
@@ -12502,12 +12469,6 @@
       "dependsOn": []
     },
     {
-      "ref": "randombytes@2.1.0",
-      "dependsOn": [
-        "safe-buffer@5.2.1"
-      ]
-    },
-    {
       "ref": "range-parser@1.2.1",
       "dependsOn": []
     },
@@ -12640,10 +12601,8 @@
       ]
     },
     {
-      "ref": "serialize-javascript@6.0.2",
-      "dependsOn": [
-        "randombytes@2.1.0"
-      ]
+      "ref": "serialize-javascript@7.0.5",
+      "dependsOn": []
     },
     {
       "ref": "serve-static@2.2.1",

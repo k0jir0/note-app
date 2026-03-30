@@ -12,7 +12,7 @@ router.get('/audit-telemetry', requireAuth, (req, res) => {
 router.get('/audit-telemetry/module', requireAuth, (req, res) => {
     try {
         res.render('pages/audit-telemetry-module.ejs', {
-            title: 'Audit and Telemetry Module',
+            title: 'Audit Trail and Telemetry Module',
             csrfToken: res.locals.csrfToken,
             moduleData: buildAuditTelemetryModuleViewModel({
                 appLocals: req.app && req.app.locals ? req.app.locals : {}

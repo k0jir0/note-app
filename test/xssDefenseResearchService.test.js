@@ -8,7 +8,7 @@ describe('XSS defense research service', () => {
             baseUrl: 'http://127.0.0.1:3000/'
         });
 
-        expect(overview.module.name).to.equal('XSS Defense Module');
+        expect(overview.module.name).to.equal('XSS and CSP Defense Module');
         expect(overview.module.baseUrl).to.equal('http://127.0.0.1:3000');
         expect(overview.csp.enforced).to.equal(true);
         expect(overview.csp.directives.scriptSrc).to.deep.equal(['\'self\'']);

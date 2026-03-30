@@ -24,7 +24,7 @@ router.get('/security/module', requireAuth, async (req, res) => {
         const realtimeEnabled = Boolean(req.app && req.app.locals && req.app.locals.realtimeEnabled);
 
         res.render('pages/security-automation.ejs', {
-            title: 'Security Module',
+            title: 'Security Operations Module',
             csrfToken: res.locals.csrfToken,
             realtimeAvailable,
             realtimeEnabled,

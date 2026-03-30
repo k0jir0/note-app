@@ -72,10 +72,10 @@ describe('Authentication and notes browser coverage', function () {
         await driver.findElement(By.linkText('Research')).click();
         await waitForLocationContains(driver, '/research');
         await waitForBodyText(driver, 'Research Workspace');
-        await waitForBodyText(driver, 'Security Module');
-        await waitForBodyText(driver, 'ML Module');
-        await waitForBodyText(driver, 'Selenium Module');
-        await waitForBodyText(driver, 'Playwright Module');
+        await waitForBodyText(driver, 'Security Operations Module');
+        await waitForBodyText(driver, 'Alert Triage ML Module');
+        await waitForBodyText(driver, 'Selenium Testing Module');
+        await waitForBodyText(driver, 'Playwright Testing Module');
     });
 
     it(getSeleniumScenario('notes-crud-workflow').title, async () => {

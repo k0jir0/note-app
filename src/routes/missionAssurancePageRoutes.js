@@ -17,7 +17,7 @@ router.get(
     }),
     (req, res) => {
         res.render('pages/mission-assurance-module.ejs', {
-            title: 'Mission Assurance Module',
+            title: 'Mission Access Assurance Module',
             csrfToken: res.locals.csrfToken
         });
     }

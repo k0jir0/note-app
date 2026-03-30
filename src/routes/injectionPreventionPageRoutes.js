@@ -17,7 +17,7 @@ router.get(
     }),
     (req, res) => {
         res.render('pages/injection-prevention-module', {
-            title: 'Injection Prevention Module',
+            title: 'Query Injection Prevention Module',
             csrfToken: res.locals.csrfToken
         });
     }

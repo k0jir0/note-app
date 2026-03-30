@@ -12,7 +12,7 @@ router.get('/supply-chain', requireAuth, (req, res) => {
 router.get('/supply-chain/module', requireAuth, (req, res) => {
     try {
         res.render('pages/supply-chain-module.ejs', {
-            title: 'Supply Chain Module',
+            title: 'Supply Chain Security Module',
             csrfToken: res.locals.csrfToken,
             moduleData: buildSupplyChainModuleViewModel()
         });

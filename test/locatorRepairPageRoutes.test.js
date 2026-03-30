@@ -65,7 +65,7 @@ describe('Locator repair Page Routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/locator-repair-module.ejs');
         expect(res.render.firstCall.args[1]).to.deep.equal({
-            title: 'Self-Healing Module',
+            title: 'Self-Healing Locator Repair Module',
             csrfToken: 'test-csrf-token'
         });
     });

@@ -53,7 +53,7 @@ describe('ML Page Routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/ml-module.ejs');
         expect(res.render.firstCall.args[1]).to.deep.equal({
-            title: 'ML Module',
+            title: 'Alert Triage ML Module',
             csrfToken: 'test-csrf-token'
         });
     });

@@ -54,7 +54,7 @@ describe('Supply chain page routes', () => {
 
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/supply-chain-module.ejs');
-        expect(res.render.firstCall.args[1].title).to.equal('Supply Chain Module');
+        expect(res.render.firstCall.args[1].title).to.equal('Supply Chain Security Module');
         expect(res.render.firstCall.args[1].csrfToken).to.equal('test-csrf-token');
         expect(res.render.firstCall.args[1].moduleData.summary.totalComponents).to.be.a('number');
         expect(res.render.firstCall.args[1].moduleData.auditScripts).to.be.an('array').that.is.not.empty;

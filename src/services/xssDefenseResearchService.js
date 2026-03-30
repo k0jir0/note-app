@@ -246,7 +246,7 @@ function buildXssDefenseModuleOverview({ baseUrl } = {}) {
 
     return {
         module: {
-            name: 'XSS Defense Module',
+            name: 'XSS and CSP Defense Module',
             focus: 'Escaped rendering, sink discipline, and strict Content Security Policy',
             route: '/xss-defense/module',
             baseUrl: normalizeBaseUrl(baseUrl)

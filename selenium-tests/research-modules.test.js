@@ -21,143 +21,143 @@ async function openResearchWorkspace(driver, baseUrl) {
 async function openSecurityModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/security/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'Security Module');
+    await waitForBodyText(driver, 'Security Operations Module');
     await waitForElementText(
         driver,
         By.id('workspace-status'),
         (text) => /Workspace loaded(\.| with partial data\.)/.test(text),
         20000,
-        'Expected the Security Module to finish loading.'
+        'Expected the Security Operations Module to finish loading.'
     );
 }
 
 async function openMlModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/ml/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'ML Module');
+    await waitForBodyText(driver, 'Alert Triage ML Module');
     await waitForElementText(
         driver,
         By.id('ml-status'),
-        (text) => text.includes('ML module ready.'),
+        (text) => text.includes('Alert Triage ML module ready.'),
         20000,
-        'Expected the ML Module to finish loading.'
+        'Expected the Alert Triage ML Module to finish loading.'
     );
 }
 
 async function openSeleniumModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/selenium/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'Selenium Module');
+    await waitForBodyText(driver, 'Selenium Testing Module');
     await waitForElementText(
         driver,
         By.id('selenium-status'),
-        (text) => text.includes('Selenium module ready.'),
+        (text) => text.includes('Selenium Testing module ready.'),
         20000,
-        'Expected the Selenium Module to finish loading.'
+        'Expected the Selenium Testing Module to finish loading.'
     );
 }
 
 async function openPlaywrightModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/playwright/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'Playwright Module');
+    await waitForBodyText(driver, 'Playwright Testing Module');
     await waitForElementText(
         driver,
         By.id('playwright-status'),
-        (text) => text.includes('Playwright module ready.'),
+        (text) => text.includes('Playwright Testing module ready.'),
         20000,
-        'Expected the Playwright Module to finish loading.'
+        'Expected the Playwright Testing Module to finish loading.'
     );
 }
 
 async function openInjectionPreventionModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/injection-prevention/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'Injection Prevention Module');
+    await waitForBodyText(driver, 'Query Injection Prevention Module');
     await waitForElementText(
         driver,
         By.id('injection-prevention-status'),
-        (text) => text.includes('Injection Prevention Module ready.'),
+        (text) => text.includes('Query Injection Prevention Module ready.'),
         20000,
-        'Expected the Injection Prevention Module to finish loading.'
+        'Expected the Query Injection Prevention Module to finish loading.'
     );
 }
 
 async function openXssDefenseModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/xss-defense/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'XSS Defense Module');
+    await waitForBodyText(driver, 'XSS and CSP Defense Module');
     await waitForElementText(
         driver,
         By.id('xss-defense-status'),
-        (text) => text.includes('XSS Defense Module ready.'),
+        (text) => text.includes('XSS and CSP Defense Module ready.'),
         20000,
-        'Expected the XSS Defense Module to finish loading.'
+        'Expected the XSS and CSP Defense Module to finish loading.'
     );
 }
 
 async function openAccessControlModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/access-control/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'Access Control Module');
+    await waitForBodyText(driver, 'Server Access Control Module');
     await waitForElementText(
         driver,
         By.id('access-control-status'),
-        (text) => text.includes('Access Control Module ready.'),
+        (text) => text.includes('Server Access Control Module ready.'),
         20000,
-        'Expected the Access Control Module to finish loading.'
+        'Expected the Server Access Control Module to finish loading.'
     );
 }
 
 async function openSelfHealingModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/self-healing/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'Self-Healing Module');
+    await waitForBodyText(driver, 'Self-Healing Locator Repair Module');
     await waitForElementText(
         driver,
         By.id('locator-repair-status'),
-        (text) => text.includes('Self-Healing Module ready.'),
+        (text) => text.includes('Self-Healing Locator Repair Module ready.'),
         20000,
-        'Expected the Self-Healing Module to finish loading.'
+        'Expected the Self-Healing Locator Repair Module to finish loading.'
     );
 }
 
 async function openMissionAssuranceModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/mission-assurance/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'Mission Assurance Module');
+    await waitForBodyText(driver, 'Mission Access Assurance Module');
     await waitForElementText(
         driver,
         By.id('mission-assurance-status'),
-        (text) => text.includes('Mission Assurance Module ready.'),
+        (text) => text.includes('Mission Access Assurance Module ready.'),
         20000,
-        'Expected the Mission Assurance Module to finish loading.'
+        'Expected the Mission Access Assurance Module to finish loading.'
     );
 }
 
 async function openHardwareMfaModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/hardware-mfa/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'Hardware-First MFA Module');
+    await waitForBodyText(driver, 'Hardware-Backed MFA Module');
     await waitForElementText(
         driver,
         By.id('hardware-mfa-status'),
-        (text) => text.includes('Hardware-First MFA Module ready.'),
+        (text) => text.includes('Hardware-Backed MFA Module ready.'),
         20000,
-        'Expected the Hardware-First MFA Module to finish loading.'
+        'Expected the Hardware-Backed MFA Module to finish loading.'
     );
 }
 
 async function openSessionManagementModule(driver, baseUrl) {
     await driver.get(`${baseUrl}/session-management/module`);
     await driver.wait(until.elementLocated(By.css('h1')), 15000);
-    await waitForBodyText(driver, 'Session Management Module');
+    await waitForBodyText(driver, 'Session Security Module');
     await waitForElementText(
         driver,
         By.id('session-management-status'),
-        (text) => text.includes('Session Management Module ready.'),
+        (text) => text.includes('Session Security Module ready.'),
         20000,
-        'Expected the Session Management Module to finish loading.'
+        'Expected the Session Security Module to finish loading.'
     );
 }
 
@@ -185,91 +185,91 @@ describe('Research module browser coverage', function () {
 
     it(getSeleniumScenario('workspace-navigation').title, async () => {
         await openResearchWorkspace(driver, baseUrl);
-        await waitForBodyText(driver, 'Security Module');
-        await waitForBodyText(driver, 'ML Module');
-        await waitForBodyText(driver, 'Selenium Module');
-        await waitForBodyText(driver, 'Playwright Module');
-        await waitForBodyText(driver, 'Injection Prevention Module');
-        await waitForBodyText(driver, 'XSS Defense Module');
-        await waitForBodyText(driver, 'Access Control Module');
-        await waitForBodyText(driver, 'Self-Healing Module');
-        await waitForBodyText(driver, 'Session Management Module');
-        await waitForBodyText(driver, 'Hardware-First MFA Module');
-        await waitForBodyText(driver, 'Mission Assurance Module');
+        await waitForBodyText(driver, 'Security Operations Module');
+        await waitForBodyText(driver, 'Alert Triage ML Module');
+        await waitForBodyText(driver, 'Selenium Testing Module');
+        await waitForBodyText(driver, 'Playwright Testing Module');
+        await waitForBodyText(driver, 'Query Injection Prevention Module');
+        await waitForBodyText(driver, 'XSS and CSP Defense Module');
+        await waitForBodyText(driver, 'Server Access Control Module');
+        await waitForBodyText(driver, 'Self-Healing Locator Repair Module');
+        await waitForBodyText(driver, 'Session Security Module');
+        await waitForBodyText(driver, 'Hardware-Backed MFA Module');
+        await waitForBodyText(driver, 'Mission Access Assurance Module');
 
-        await clickElement(driver, By.linkText('Open Security Module'));
+        await clickElement(driver, By.linkText('Open Security Operations Module'));
         await waitForLocationContains(driver, '/security/module');
-        await waitForBodyText(driver, 'Security Module');
+        await waitForBodyText(driver, 'Security Operations Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
 
-        await clickElement(driver, By.linkText('Open ML Module'));
+        await clickElement(driver, By.linkText('Open Alert Triage ML Module'));
         await waitForLocationContains(driver, '/ml/module');
-        await waitForBodyText(driver, 'ML Module');
+        await waitForBodyText(driver, 'Alert Triage ML Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
 
-        await clickElement(driver, By.linkText('Open Selenium Module'));
+        await clickElement(driver, By.linkText('Open Selenium Testing Module'));
         await waitForLocationContains(driver, '/selenium/module');
-        await waitForBodyText(driver, 'Selenium Module');
+        await waitForBodyText(driver, 'Selenium Testing Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
 
-        await clickElement(driver, By.linkText('Open Playwright Module'));
+        await clickElement(driver, By.linkText('Open Playwright Testing Module'));
         await waitForLocationContains(driver, '/playwright/module');
-        await waitForBodyText(driver, 'Playwright Module');
+        await waitForBodyText(driver, 'Playwright Testing Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
 
-        await clickElement(driver, By.linkText('Open Injection Prevention Module'));
+        await clickElement(driver, By.linkText('Open Query Injection Prevention Module'));
         await waitForLocationContains(driver, '/injection-prevention/module');
-        await waitForBodyText(driver, 'Injection Prevention Module');
+        await waitForBodyText(driver, 'Query Injection Prevention Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
 
-        await clickElement(driver, By.linkText('Open XSS Defense Module'));
+        await clickElement(driver, By.linkText('Open XSS and CSP Defense Module'));
         await waitForLocationContains(driver, '/xss-defense/module');
-        await waitForBodyText(driver, 'XSS Defense Module');
+        await waitForBodyText(driver, 'XSS and CSP Defense Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
 
-        await clickElement(driver, By.linkText('Open Access Control Module'));
+        await clickElement(driver, By.linkText('Open Server Access Control Module'));
         await waitForLocationContains(driver, '/access-control/module');
-        await waitForBodyText(driver, 'Access Control Module');
+        await waitForBodyText(driver, 'Server Access Control Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
 
-        await clickElement(driver, By.linkText('Open Self-Healing Module'));
+        await clickElement(driver, By.linkText('Open Self-Healing Locator Repair Module'));
         await waitForLocationContains(driver, '/self-healing/module');
-        await waitForBodyText(driver, 'Self-Healing Module');
+        await waitForBodyText(driver, 'Self-Healing Locator Repair Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
 
-        await clickElement(driver, By.linkText('Open Session Management Module'));
+        await clickElement(driver, By.linkText('Open Session Security Module'));
         await waitForLocationContains(driver, '/session-management/module');
-        await waitForBodyText(driver, 'Session Management Module');
+        await waitForBodyText(driver, 'Session Security Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
 
-        await clickElement(driver, By.linkText('Open Hardware-First MFA Module'));
+        await clickElement(driver, By.linkText('Open Hardware-Backed MFA Module'));
         await waitForLocationContains(driver, '/hardware-mfa/module');
-        await waitForBodyText(driver, 'Hardware-First MFA Module');
+        await waitForBodyText(driver, 'Hardware-Backed MFA Module');
 
         await clickElement(driver, By.css('a[href="/research"]'));
         await waitForLocationContains(driver, '/research');
 
-        await clickElement(driver, By.linkText('Open Mission Assurance Module'));
+        await clickElement(driver, By.linkText('Open Mission Access Assurance Module'));
         await waitForLocationContains(driver, '/mission-assurance/module');
-        await waitForBodyText(driver, 'Mission Assurance Module');
+        await waitForBodyText(driver, 'Mission Access Assurance Module');
     });
 
     it(getSeleniumScenario('security-module-workflow').title, async () => {

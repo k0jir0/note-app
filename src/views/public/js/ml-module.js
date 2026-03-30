@@ -329,7 +329,7 @@ function renderRecentAlerts(alerts = []) {
     if (!alerts.length) {
         recentAlertsGrid.innerHTML = `
             <div class="col-12">
-                <div class="alert alert-secondary mb-0">No alerts are available yet. Analyze logs in the Security Module first, then label a few alerts and return here.</div>
+                <div class="alert alert-secondary mb-0">No alerts are available yet. Analyze logs in the Security Operations Module first, then label a few alerts and return here.</div>
             </div>
         `;
         return;
@@ -402,7 +402,7 @@ async function fetchOverview() {
         headers: {
             Accept: 'application/json'
         }
-    }, 'Unable to load the ML module overview.');
+    }, 'Unable to load the Alert Triage ML module overview.');
 
     return payload.data;
 }
@@ -505,7 +505,7 @@ async function refreshModule(showMessage = false) {
     const overview = await fetchOverview();
     renderOverview(overview);
     if (showMessage) {
-        renderStatus('ML module refreshed.', 'secondary');
+        renderStatus('Alert Triage ML module refreshed.', 'secondary');
     }
 }
 
@@ -528,9 +528,9 @@ async function handleTraining(mode) {
 async function initializeMlModule() {
     try {
         await refreshModule(false);
-        renderStatus('ML module ready. You can inspect the current model or train a new one from this page.', 'secondary');
+        renderStatus('Alert Triage ML module ready. You can inspect the current model or train a new one from this page.', 'secondary');
     } catch (error) {
-        renderStatus(error.message || 'Unable to load the ML module.', 'danger');
+        renderStatus(error.message || 'Unable to load the Alert Triage ML module.', 'danger');
     }
 }
 
@@ -555,7 +555,7 @@ async function handleAutonomyDemo() {
 if (refreshBtn) {
     refreshBtn.addEventListener('click', () => {
         refreshModule(true).catch((error) => {
-            renderStatus(error.message || 'Unable to refresh the ML module.', 'danger');
+            renderStatus(error.message || 'Unable to refresh the Alert Triage ML module.', 'danger');
         });
     });
 }

@@ -38,7 +38,7 @@ function buildMissionAssuranceModuleOverview({ user, baseUrl } = {}) {
 
     return {
         module: {
-            name: 'Mission Assurance Module',
+            name: 'Mission Access Assurance Module',
             focus: 'CAF-style tactical authentication and authorization',
             policyEngine: 'Least-privilege RBAC plus mission-aware ABAC',
             route: '/mission-assurance/module',

@@ -17,7 +17,7 @@ router.get(
     }),
     (req, res) => {
         res.render('pages/xss-defense-module', {
-            title: 'XSS Defense Module',
+            title: 'XSS and CSP Defense Module',
             csrfToken: res.locals.csrfToken
         });
     }

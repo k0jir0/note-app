@@ -12,7 +12,7 @@ function annotateScenario(testInfo, scenario) {
 }
 
 async function expectWorkspaceReady(page) {
-    await expect(page.getByRole('heading', { name: 'Security Module', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Security Operations Module', exact: true })).toBeVisible();
     await expect(page.locator('#workspace-refresh-all')).toBeVisible();
     await expect(page.locator('#workspace-status')).toContainText(/Workspace loaded|Workspace loaded with partial data/);
 }
@@ -60,9 +60,9 @@ test.describe('Research module interaction coverage', () => {
         await createAuthenticatedSession(page, testInfo);
         await page.goto('/playwright/module');
 
-        await expect(page.getByRole('heading', { name: 'Playwright Module', exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Playwright Testing Module', exact: true })).toBeVisible();
         await expect(page.locator('#playwright-scenario-count')).toHaveText(String(scenarioCount));
-        await expect(page.locator('#playwright-status')).toContainText('Playwright module ready.');
+        await expect(page.locator('#playwright-status')).toContainText('Playwright Testing Module ready.');
 
         await page.locator('#playwright-scenario-select').selectOption('security-module-workflow');
         await expect(page.locator('#playwright-status')).toContainText('Updated the spec preview for the selected scenario.');
@@ -78,10 +78,10 @@ test.describe('Research module interaction coverage', () => {
         await expect(page.locator('#playwright-script-code')).toContainText('#playwright-refresh-btn');
 
         await page.locator('#playwright-refresh-btn').click();
-        await expect(page.locator('#playwright-status')).toContainText('Playwright module refreshed.');
+        await expect(page.locator('#playwright-status')).toContainText('Playwright Testing Module refreshed.');
 
-        await page.getByRole('link', { name: 'Open Security Module' }).click();
+        await page.getByRole('link', { name: 'Open Security Operations Module' }).click();
         await expect(page).toHaveURL(/\/security\/module$/);
-        await expect(page.getByRole('heading', { name: 'Security Module', exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Security Operations Module', exact: true })).toBeVisible();
     });
 });
