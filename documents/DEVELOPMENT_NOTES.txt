@@ -12,6 +12,12 @@ Current verified state (March 30, 2026): 500 passing tests, ESLint clean, MongoD
 Development log (newest first):
 
 Recent updates (March 30, 2026) focused on architectural sandboxing and operator-grade network isolation:
+- Added `ops/kubernetes/immutable-stack.yaml` so the same proxy/app split now has a Kubernetes deployment path with rolling-update Deployments, default-deny ingress, and a public edge service in front of the internal application service.
+- Added a namespace-scoped daily rollout CronJob plus RBAC so the proxy and app pods are forcibly recycled every 24 hours from the pinned approved image reference instead of being left running indefinitely.
+- Added `npm run k8s:apply`, `npm run k8s:rotate`, and `npm run k8s:teardown` plus README guidance so the non-persistent deployment flow is executable and not only documented as a policy target.
+- Switched the local Kubernetes path to a self-contained kind-friendly stack by using the preloaded `note-app:hardened` image with `imagePullPolicy: Never`, adding an internal ephemeral MongoDB service, and exposing the proxy through NodePort `30080` mapped to `http://localhost:3002`.
+- Live-validated the immutable stack on a disposable `kind-note-app-local` cluster: `GET /healthz` and `GET /auth/login` returned HTTP 200 through the public proxy, `kubectl get cronjob,pods,svc -n note-app` showed the daily rollout CronJob plus healthy app/proxy/Mongo resources, and `npm run k8s:rotate` completed a successful rolling recycle.
+- Confirmed the local cluster intentionally reports `Google sign-in is not configured` until `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are injected into `note-app-secrets` and the Google OAuth client allows `http://localhost:3002/auth/oauth2/redirect/google`.
 - Added a dedicated `docker-compose.sandbox.yml` deployment that splits the stack into a DMZ-style `edge_zone`, an internal-only `app_zone`, and an internal-only `data_zone`, with only the Nginx reverse proxy published to the host.
 - Added `ops/nginx/sandbox.conf` so the DMZ edge terminates public HTTP traffic, forwards the app routes and SSE security stream to the internal Node service, and preserves forwarded-client headers for the backend.
 - Extended runtime configuration with `TRUST_PROXY_HOPS` so Express trusts exactly one proxy hop in the sandbox deployment instead of assuming direct client connections.

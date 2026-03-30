@@ -119,6 +119,27 @@ Sandbox notes:
 - The sandbox stack explicitly disables Redis-backed realtime and workstation batch pollers even if `.env` enables them, so local automation settings do not leak into the isolated deployment.
 - This repo is server-rendered rather than a standalone React SPA, so the DMZ role is implemented by the Nginx edge tier in front of the Node application service.
 
+Immutable Kubernetes rotation:
+```bash
+kubectl create namespace note-app
+kubectl create secret generic note-app-secrets -n note-app \
+  --from-literal=SESSION_SECRET='replace-with-long-random-secret' \
+  --from-literal=NOTE_ENCRYPTION_KEY='replace-with-64-char-hex-key'
+npm run k8s:apply
+```
+
+Kubernetes rotation notes:
+- The Kubernetes manifests live at `ops/kubernetes/immutable-stack.yaml` and model the same public-proxy plus internal-app split used by the Docker sandbox.
+- The local kind manifest uses the preloaded hardened image tag (`note-app:hardened`) with `imagePullPolicy: Never` so the cluster reuses the verified local image instead of reaching for an external registry. For a shared or remote cluster, replace that with your approved registry digest.
+- The stack now includes an internal-only ephemeral MongoDB Deployment and Service so the cluster can be stood up and rotated locally without depending on an external database.
+- The `note-app-proxy` Deployment is the only public service and fronts the internal `note-app` ClusterIP service, preserving the same edge/app separation as the Compose sandbox. In the local kind flow it is exposed through NodePort `30080`, mapped to host port `3002`.
+- A namespace-scoped daily CronJob runs `kubectl rollout restart` against both Deployments every 24 hours, which destroys the running pods and recreates them from the declared image even when no application release happened that day.
+- NetworkPolicy resources default-deny pod ingress, then allow traffic only from the proxy tier into the app tier and from the app tier into MongoDB, preventing direct east-west access to the internal services.
+- `npm run k8s:rotate` triggers the same forced recycle manually, and `npm run k8s:teardown` removes the immutable-stack resources when the environment is intentionally retired.
+- Create `note-app-secrets` before applying the manifests. The current manifest targets a local `http://localhost:3002` base URL, an internal in-cluster MongoDB service, and the verified local image digest, so adjust those values only if you are aiming at a different endpoint, database, or approved image.
+- Live verification on March 30, 2026 used a local `kind-note-app-local` cluster: `GET /healthz` and `GET /auth/login` both returned HTTP 200 through `http://localhost:3002`, and `npm run k8s:rotate` completed a successful rolling recycle of both the app and proxy Deployments.
+- Google OAuth is expected to show `Google sign-in is not configured` on this local cluster unless `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are added to `note-app-secrets` and the Google OAuth client includes `http://localhost:3002/auth/oauth2/redirect/google` as an allowed redirect URI.
+
 For a more stable Windows local launch, prefer the included launcher instead of a transient shell session:
 ```powershell
 .\run-local.ps1
