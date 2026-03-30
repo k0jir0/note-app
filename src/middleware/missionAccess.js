@@ -1,4 +1,8 @@
 const { evaluateMissionAccess } = require('../services/missionAccessControlService');
+const {
+    sanitizeClientErrorList,
+    sanitizeClientErrorMessage
+} = require('../utils/metadataSanitization');
 
 function resolveValue(valueOrResolver, req) {
     if (typeof valueOrResolver === 'function') {
@@ -46,7 +50,7 @@ function requireMissionAccessAPI({ actionId, resourceId, contextResolver } = {})
                 return res.status(400).json({
                     success: false,
                     message: 'Validation failed',
-                    errors: [error.message]
+                    errors: sanitizeClientErrorList([error.message], 'The requested mission access check is invalid.')
                 });
             }
 
@@ -81,7 +85,7 @@ function requireMissionAccessPage({ actionId, resourceId, contextResolver, failu
             return res.status(403).redirect(failureRedirect);
         } catch (error) {
             if (error && (error.code === 'UNKNOWN_ACTION' || error.code === 'UNKNOWN_RESOURCE')) {
-                return res.status(400).send(error.message);
+                return res.status(400).send(sanitizeClientErrorMessage(error.message, 'The requested mission access check is invalid.'));
             }
 
             return next(error);

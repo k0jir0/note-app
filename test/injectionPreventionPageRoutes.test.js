@@ -58,7 +58,7 @@ describe('Injection prevention page routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/injection-prevention-module');
         expect(res.render.firstCall.args[1]).to.deep.equal({
-            title: 'Injection Prevention Module',
+            title: 'Query Injection Prevention Module',
             csrfToken: 'test-csrf-token'
         });
     });

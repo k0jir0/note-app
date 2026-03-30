@@ -1,4 +1,11 @@
 const mongoose = require('mongoose');
+const { applyFieldEncryption } = require('../utils/fieldEncryption');
+const { applyDatabaseTelemetry } = require('../utils/databaseTelemetry');
+const {
+    encryptScanResultDocument,
+    decryptScanResultDocument,
+    encryptScanResultUpdatePayload
+} = require('../utils/sensitiveModelEncryption');
 
 const findingSchema = new mongoose.Schema({
     type: {
@@ -67,5 +74,13 @@ const scanResultSchema = new mongoose.Schema({
 
 scanResultSchema.index({ user: 1, importedAt: -1, createdAt: -1 });
 scanResultSchema.index({ user: 1, source: 1, fingerprint: 1, importedAt: -1 });
+
+applyFieldEncryption(scanResultSchema, {
+    encryptDocument: encryptScanResultDocument,
+    decryptDocument: decryptScanResultDocument,
+    encryptUpdatePayload: encryptScanResultUpdatePayload
+});
+
+applyDatabaseTelemetry(scanResultSchema, { modelName: 'ScanResult' });
 
 module.exports = mongoose.model('ScanResult', scanResultSchema);

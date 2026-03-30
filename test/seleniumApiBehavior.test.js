@@ -34,7 +34,7 @@ describe('Selenium API controller behavior', () => {
         const res = makeRes();
         const fakeOverview = {
             module: {
-                name: 'Selenium Module'
+                name: 'Selenium Testing Module'
             },
             coverage: {
                 scenarioCount: 5,

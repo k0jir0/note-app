@@ -60,7 +60,7 @@ describe('Access control page routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/access-control-module');
         expect(res.render.firstCall.args[1]).to.deep.equal({
-            title: 'Access Control Module',
+            title: 'Server Access Control Module',
             csrfToken: 'test-csrf-token'
         });
     });

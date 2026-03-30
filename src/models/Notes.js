@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { VALIDATION_LIMITS } = require('../utils/validation');
+const { applyDatabaseTelemetry } = require('../utils/databaseTelemetry');
 const {
     ENCRYPTED_NOTE_FIELDS,
     encryptText,
@@ -94,5 +95,7 @@ noteSchema.post('findOne', function decryptNoteAfterFindOne(document) {
 noteSchema.post('findOneAndUpdate', function decryptNoteAfterFindOneAndUpdate(document) {
     decryptNoteDocumentFields(document);
 });
+
+applyDatabaseTelemetry(noteSchema, { modelName: 'Note' });
 
 module.exports = mongoose.model('Note', noteSchema);

@@ -374,7 +374,7 @@ function renderOverview(overview) {
 async function loadOverview() {
     const overview = await requestJson(overviewEndpoint);
     renderOverview(overview);
-    renderStatus('Hardware-First MFA Module ready.', 'secondary');
+    renderStatus('Hardware-Backed MFA Module ready.', 'secondary');
 }
 
 async function registerSecurityKey() {
@@ -521,7 +521,7 @@ async function initializeHardwareMfaModule() {
     try {
         await loadOverview();
     } catch (error) {
-        renderStatus(error.message || 'Unable to load the Hardware-First MFA Module.', 'danger');
+        renderStatus(error.message || 'Unable to load the Hardware-Backed MFA Module.', 'danger');
         return;
     }
 

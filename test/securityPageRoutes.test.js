@@ -120,7 +120,7 @@ describe('Security Page Routes', () => {
 
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/security-automation.ejs');
-        expect(res.render.firstCall.args[1].title).to.equal('Security Module');
+        expect(res.render.firstCall.args[1].title).to.equal('Security Operations Module');
         expect(res.render.firstCall.args[1].realtimeAvailable).to.equal(true);
         expect(res.render.firstCall.args[1].realtimeEnabled).to.equal(true);
         expect(res.render.firstCall.args[1].automation.anyEnabled).to.equal(true);

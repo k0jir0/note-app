@@ -17,7 +17,7 @@ router.get(
     }),
     (req, res) => {
         res.render('pages/access-control-module', {
-            title: 'Access Control Module',
+            title: 'Server Access Control Module',
             csrfToken: res.locals.csrfToken
         });
     }

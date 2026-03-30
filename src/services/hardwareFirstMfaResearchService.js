@@ -52,7 +52,7 @@ function buildHardwareFirstMfaModuleOverview({ user, session, baseUrl, transport
 
     return {
         module: {
-            name: 'Hardware-First MFA Module',
+            name: 'Hardware-Backed MFA Module',
             focus: 'Hardware-token and PKI-backed step-up assurance',
             route: '/hardware-mfa/module',
             baseUrl: normalizeBaseUrl(baseUrl)

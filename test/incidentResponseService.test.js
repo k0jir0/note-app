@@ -7,8 +7,23 @@ const {
 } = require('../src/services/incidentResponseService');
 
 describe('Incident Response Service', () => {
+    const originalNoteKey = process.env.NOTE_ENCRYPTION_KEY;
+
+    before(() => {
+        process.env.NOTE_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    });
+
     afterEach(() => {
         sinon.restore();
+    });
+
+    after(() => {
+        if (originalNoteKey === undefined) {
+            delete process.env.NOTE_ENCRYPTION_KEY;
+            return;
+        }
+
+        process.env.NOTE_ENCRYPTION_KEY = originalNoteKey;
     });
 
     it('builds a block decision for high-risk trained alerts with a target', () => {
@@ -68,8 +83,18 @@ describe('Incident Response Service', () => {
 
     it('executes notifications and block actions and persists the response audit trail', async () => {
         const SecurityAlertModel = {
+            find: sinon.stub(),
             bulkWrite: sinon.stub().resolves({ modifiedCount: 1 })
         };
+        SecurityAlertModel.find
+            .onFirstCall()
+            .returns({
+                lean: async () => ([{ _id: 'alert-3', response: { level: 'none', actions: [] } }])
+            })
+            .onSecondCall()
+            .returns({
+                lean: async () => ([{ _id: 'alert-3', response: { level: 'block', actions: [] } }])
+            });
         const notifyAlertsSummaryFn = sinon.stub().resolves({
             slack: { ok: true, status: 200 },
             email: { skipped: true }

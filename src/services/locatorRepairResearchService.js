@@ -125,7 +125,7 @@ function buildLocatorRepairModuleOverview({ baseUrl, modelPath, historyPath } = 
 
     return {
         module: {
-            name: 'Self-Healing Module',
+            name: 'Self-Healing Locator Repair Module',
             runtime: DEFAULT_ENGINE_MODE,
             targetFrameworks: 'Playwright and Selenium',
             exportStyle: 'Ranked self-healing suggestions and runtime self-heal helpers',

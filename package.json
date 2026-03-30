@@ -7,8 +7,16 @@
     "start": "node index.js",
     "start-dev": "node index.js",
     "local:run": "powershell -ExecutionPolicy Bypass -File .\\run-local.ps1",
+    "local:health": "powershell -ExecutionPolicy Bypass -File .\\scripts\\check-local-health.ps1",
     "local:run:worker": "powershell -ExecutionPolicy Bypass -File .\\run-local.ps1 -WithWorker",
+    "sandbox:up": "docker compose -f docker-compose.sandbox.yml up --build -d",
+    "sandbox:down": "docker compose -f docker-compose.sandbox.yml down",
+    "sandbox:logs": "docker compose -f docker-compose.sandbox.yml logs -f proxy app mongo",
+    "k8s:apply": "kubectl apply -f ops/kubernetes/immutable-stack.yaml",
+    "k8s:rotate": "kubectl rollout restart deployment/note-app deployment/note-app-proxy -n note-app",
+    "k8s:teardown": "kubectl delete -f ops/kubernetes/immutable-stack.yaml",
     "check-env": "node scripts/env-check.js",
+    "migrate:encrypt-at-rest": "node scripts/migrate-encryption-at-rest.js",
     "automation:trivy": "node automation/trivy-runner.js",
     "automation:falco": "node automation/falco-runner.js",
     "ml:train": "node scripts/train-alert-triage-model.js",
@@ -27,6 +35,10 @@
     "test:e2e:headed": "playwright test --project=chromium --headed",
     "test:e2e:theme": "playwright test playwright-tests/theme.spec.js --project=chromium",
     "test:e2e:report": "playwright show-report",
+    "audit:deps": "npm audit --audit-level=high",
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "audit:report": "npm audit --json",
+    "sbom:generate": "node scripts/generate-sbom.js",
     "lint": "eslint . --ext .js"
   },
   "repository": {
@@ -51,6 +63,9 @@
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/k0jir0/note-app/issues"
+  },
+  "overrides": {
+    "serialize-javascript": "7.0.5"
   },
   "homepage": "https://github.com/k0jir0/note-app#readme",
   "devDependencies": {

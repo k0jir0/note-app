@@ -1,6 +1,9 @@
 const fs = require('fs');
 const https = require('https');
 
+const TLS_MIN_VERSION = 'TLSv1.3';
+const TLS_MAX_VERSION = 'TLSv1.3';
+
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
 }
@@ -12,6 +15,8 @@ function normalizeTransportConfig(transport = {}) {
         requestClientCertificate: Boolean(transport.requestClientCertificate),
         requireClientCertificate: Boolean(transport.requireClientCertificate),
         trustProxyClientCertHeaders: Boolean(transport.trustProxyClientCertHeaders),
+        tlsMinVersion: transport.httpsEnabled ? TLS_MIN_VERSION : '',
+        tlsMaxVersion: transport.httpsEnabled ? TLS_MAX_VERSION : '',
         keyPath: isNonEmptyString(transport.keyPath) ? transport.keyPath.trim() : '',
         certPath: isNonEmptyString(transport.certPath) ? transport.certPath.trim() : '',
         caPath: isNonEmptyString(transport.caPath) ? transport.caPath.trim() : ''
@@ -36,6 +41,8 @@ function buildHttpsServerOptions({ transport = {}, fsLib = fs } = {}) {
     const options = {
         key: readTlsFile(normalizedTransport.keyPath, 'HTTPS private key', fsLib),
         cert: readTlsFile(normalizedTransport.certPath, 'HTTPS certificate', fsLib),
+        minVersion: normalizedTransport.tlsMinVersion,
+        maxVersion: normalizedTransport.tlsMaxVersion,
         requestCert: normalizedTransport.requestClientCertificate,
         rejectUnauthorized: normalizedTransport.requireClientCertificate
     };
@@ -62,6 +69,8 @@ function createServerFactory({ transport = {}, httpsLib = https, fsLib = fs } = 
 }
 
 module.exports = {
+    TLS_MIN_VERSION,
+    TLS_MAX_VERSION,
     buildHttpsServerOptions,
     createServerFactory,
     normalizeTransportConfig

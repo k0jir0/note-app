@@ -1,17 +1,21 @@
 # Note App
 
-A full-stack note-taking, applied security-research, and browser-automation application built with Node.js, Express, MongoDB, and EJS. Alongside encrypted notes, it includes dedicated Security, ML, Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, Playwright, Selenium, and Self-Healing modules across a unified Research Workspace.
+A full-stack note-taking, applied security-research, and browser-automation application built with Node.js, Express, MongoDB, and EJS. Alongside encrypted notes, it includes dedicated Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Playwright Testing, Selenium Testing, and Self-Healing Locator Repair modules across a unified Research Workspace.
 
 ## Features
 
-- Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, and per-user authorization.
-- Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, and route-specific rate limiting.
+- Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, AES-256 encryption at rest for selected sensitive user, alert, and scan fields, and per-user authorization.
+- Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, route-specific rate limiting, and HTTPS transport pinned to TLS 1.3 when certificate-based transport is enabled.
 - Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security architecture, automation, and browser-testing tools.
-- ML and response: an ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
+- ML and response: an Alert Triage ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
 - Mission-grade assurance: dedicated modules for RBAC-plus-ABAC mission access decisions, hardware-first MFA and PKI step-up, strict session timeout and concurrent-login control, and server-side access-control verification for protected APIs.
-- Browser automation: Playwright and Selenium modules for scenario planning, latest-run artifact reporting, and generated test templates, plus a Self-Healing Module at `/self-healing/module` that ranks locator repairs from a broken selector, a step goal, and a DOM snippet.
+- Browser automation: Playwright Testing and Selenium Testing modules for scenario planning, latest-run artifact reporting, and generated test templates, plus a Self-Healing Locator Repair Module at `/self-healing/module` that ranks locator repairs from a broken selector, a step goal, and a DOM snippet.
 - Optional automation and realtime: scheduled ingestion for logs, scans, and intrusion events; Falco and Trivy runners; Redis-backed live ingest and streaming; Slack or SMTP notifications; and `/metrics` instrumentation for automation and scan activity.
-- Delivery and quality: a REST API, responsive Bootstrap UI, CI-friendly smoke and integration coverage, report-only Trivy CI artifacts for triage, and end-to-end testing with Mocha, Chai, Sinon, Playwright, and Selenium across notes, auth, security, ML, mission assurance, MFA, session management, the web-security modules, browser modules, self-healing, and autonomy-demo flows.
+- Auditability: immutable remote logging plus request-scoped database telemetry that records who changed what, when, where the request came from, and how the mutation was applied for persisted model changes.
+- Supply-chain visibility: a committed CycloneDX SBOM can be regenerated from the npm lockfile so the project keeps a current manifest of third-party libraries.
+- Dependency scanning: `npm audit`-based scripts and CI gates now check the imported package graph for known high-severity vulnerabilities before changes are merged.
+- Container hardening: the repo now ships a multi-stage Docker build that runs the app on a non-root distroless Node 22 runtime instead of a general-purpose base image.
+- Delivery and quality: a REST API, responsive Bootstrap UI, CI-friendly smoke and integration coverage, report-only Trivy CI artifacts for triage, and end-to-end testing with Mocha, Chai, Sinon, Playwright, and Selenium across notes, auth, Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, the web-security modules, browser modules, Self-Healing Locator Repair, and autonomy-demo flows.
 
 ## Tech Stack
 
@@ -45,7 +49,7 @@ Edit `.env` for shared local settings:
 ```env
 MONGODB_URI=<your-mongodb-connection-string>
 SESSION_SECRET=your-strong-random-secret-32-chars-minimum
-NOTE_ENCRYPTION_KEY=64-char-hex-key-for-note-encryption
+NOTE_ENCRYPTION_KEY=64-char-hex-key-for-note-and-sensitive-field-encryption
 NODE_ENV=development
 PORT=3000
 ```
@@ -62,6 +66,8 @@ Generate strong local secrets with Node:
 node -e "const crypto=require('crypto'); console.log('SESSION_SECRET=' + crypto.randomBytes(48).toString('hex')); console.log('NOTE_ENCRYPTION_KEY=' + crypto.randomBytes(32).toString('hex'));"
 ```
 
+`NOTE_ENCRYPTION_KEY` now protects note content plus selected sensitive fields stored in user profiles, security alerts, and imported scan payloads. Authentication lookup fields such as `email`, `googleId`, and indexed dedupe fingerprints remain queryable so login and automation flows continue to work.
+
 **MongoDB Setup:**
 - MongoDB Atlas: Create a free cluster, copy connection string
 - Local MongoDB: Use `mongodb://localhost:27017/noteApp`
@@ -74,9 +80,65 @@ npm test           # Run tests
 npm run test:selenium # Run Selenium browser tests against a live local app
 npm run test:e2e   # Run Playwright browser tests in Chromium
 npm run lint       # ESLint
+npm run audit:deps # Fail on high-severity dependency CVEs across all installed deps
+npm run audit:prod # Fail on high-severity dependency CVEs in production deps only
+npm run sbom:generate # Regenerate the CycloneDX dependency manifest
 ```
 
 Server: `http://localhost:3000`
+
+Container build:
+```bash
+docker build -t note-app:hardened .
+docker run --rm -p 3000:3000 --env-file .env note-app:hardened
+```
+
+If MongoDB is running on your Windows host instead of inside Docker, use a container-aware override:
+```bash
+docker run --rm -p 3000:3000 --env-file .env -e MONGODB_URI=mongodb://host.docker.internal:27017/noteApp_local note-app:hardened
+```
+
+Container notes:
+- The runtime image is distroless and runs as a non-root user to reduce the available attack surface.
+- The Docker build only installs production dependencies and excludes local secrets, tests, and other non-runtime files through `.dockerignore`.
+- Provide production environment variables at runtime through `--env-file` or your container platform's secret manager; the image does not bake `.env` files into the final layer.
+- The container disables workstation keyring loading because distroless images do not ship the native `libsecret` stack that `keytar` expects.
+
+Architectural sandboxing:
+```bash
+docker compose -f docker-compose.sandbox.yml up --build -d
+docker compose -f docker-compose.sandbox.yml logs -f proxy app mongo
+docker compose -f docker-compose.sandbox.yml down
+```
+
+Sandbox notes:
+- The `proxy` service is the only public entry point and binds the host port (`3000` by default) in the DMZ-style `edge_zone`.
+- The `app` service is not published to the host and only joins the internal `app_zone` plus the internal `data_zone`.
+- The `mongo` service joins only the `data_zone`, so neither the host nor the reverse proxy can connect to the database directly.
+- The sandbox stack sets `TRUST_PROXY_HOPS=1` so Express trusts only the single Nginx hop when reading forwarded client details.
+- The sandbox stack explicitly disables Redis-backed realtime and workstation batch pollers even if `.env` enables them, so local automation settings do not leak into the isolated deployment.
+- This repo is server-rendered rather than a standalone React SPA, so the DMZ role is implemented by the Nginx edge tier in front of the Node application service.
+
+Immutable Kubernetes rotation:
+```bash
+kubectl create namespace note-app
+kubectl create secret generic note-app-secrets -n note-app \
+  --from-literal=SESSION_SECRET='replace-with-long-random-secret' \
+  --from-literal=NOTE_ENCRYPTION_KEY='replace-with-64-char-hex-key'
+npm run k8s:apply
+```
+
+Kubernetes rotation notes:
+- The Kubernetes manifests live at `ops/kubernetes/immutable-stack.yaml` and model the same public-proxy plus internal-app split used by the Docker sandbox.
+- The local kind manifest uses the preloaded hardened image tag (`note-app:hardened`) with `imagePullPolicy: Never` so the cluster reuses the verified local image instead of reaching for an external registry. For a shared or remote cluster, replace that with your approved registry digest.
+- The stack now includes an internal-only ephemeral MongoDB Deployment and Service so the cluster can be stood up and rotated locally without depending on an external database.
+- The `note-app-proxy` Deployment is the only public service and fronts the internal `note-app` ClusterIP service, preserving the same edge/app separation as the Compose sandbox. In the local kind flow it is exposed through NodePort `30080`, mapped to host port `3002`.
+- A namespace-scoped daily CronJob runs `kubectl rollout restart` against both Deployments every 24 hours, which destroys the running pods and recreates them from the declared image even when no application release happened that day.
+- NetworkPolicy resources default-deny pod ingress, then allow traffic only from the proxy tier into the app tier and from the app tier into MongoDB, preventing direct east-west access to the internal services.
+- `npm run k8s:rotate` triggers the same forced recycle manually, and `npm run k8s:teardown` removes the immutable-stack resources when the environment is intentionally retired.
+- Create `note-app-secrets` before applying the manifests. The current manifest targets a local `http://localhost:3002` base URL, an internal in-cluster MongoDB service, and the verified local image digest, so adjust those values only if you are aiming at a different endpoint, database, or approved image.
+- Live verification on March 30, 2026 used a local `kind-note-app-local` cluster: `GET /healthz` and `GET /auth/login` both returned HTTP 200 through `http://localhost:3002`, and `npm run k8s:rotate` completed a successful rolling recycle of both the app and proxy Deployments.
+- Google OAuth is expected to show `Google sign-in is not configured` on this local cluster unless `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are added to `note-app-secrets` and the Google OAuth client includes `http://localhost:3002/auth/oauth2/redirect/google` as an allowed redirect URI.
 
 For a more stable Windows local launch, prefer the included launcher instead of a transient shell session:
 ```powershell
@@ -95,31 +157,52 @@ Notes:
 - Playwright tests assume the app is already running on `http://localhost:3000` unless `PLAYWRIGHT_BASE_URL` is set.
 - `npm run test:e2e` refreshes `artifacts/playwright-results.json`, which powers the latest-run badges on `/playwright/module`.
 - `npm run test:e2e` runs the registered Playwright browser suite in Chromium; `npm run test:e2e:all` runs that same suite across Chromium, Firefox, and WebKit.
-- `npm run test:selenium` assumes the app is reachable on `http://localhost:3000` unless `SELENIUM_BASE_URL` is set, defaults to a headless Edge session (`SELENIUM_BROWSER=chrome` is also supported), and refreshes `artifacts/selenium-results.json` for the Selenium Module page.
+- `npm run test:selenium` assumes the app is reachable on `http://localhost:3000` unless `SELENIUM_BASE_URL` is set, defaults to a headless Edge session (`SELENIUM_BROWSER=chrome` is also supported), and refreshes `artifacts/selenium-results.json` for the Selenium Testing Module page.
 - `npm run locator-repair:train` refreshes the persisted self-healing reranker artifact at `artifacts/locator-repair-model.json`.
 
 Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
 
-Current local verification (March 26, 2026):
-- `npm test` passes with 461 tests
+Current local verification (March 30, 2026):
+- `npm test` passes with 500 tests
 - `npm run lint` passes with 0 errors
+- focused March 29 module coverage passes with `13 passing` across the new Supply Chain and Audit/Telemetry page routes plus the persisted audit-history service and API tests
+- focused sandbox runtime coverage passes with `20 passing` in `test/runtimeConfig.test.js`
+- `docker build -t note-app:hardened .` completes successfully
+- the hardened container serves `GET /auth/login` with HTTP 200 when run against local MongoDB using `MONGODB_URI=mongodb://host.docker.internal:27017/noteApp_local`
+- the three-zone sandbox deployment starts successfully with `docker compose -f docker-compose.sandbox.yml up --build -d`, serves both `/healthz` and `/auth/login` with HTTP 200 through the Nginx DMZ edge on port `3001` during validation, and keeps only the proxy host-published while the app and Mongo services remain internal-only
 - Live app checks on `http://localhost:3000` confirm the current protected module routes are mounted
+- authenticated live checks confirm `GET /audit-telemetry/module` returns HTTP 200 and includes the persisted history grid plus the client loader wired to `/api/audit-telemetry/events`
+- authenticated live checks against `/api/audit-telemetry/events` show the persisted audit feed growing from 2 to 3 events, with the newest event recording `HTTP request completed` for `/api/audit-telemetry/events`
 - Latest `artifacts/playwright-results.json` on disk shows 13 expected / 0 unexpected in Chromium
 - Latest `artifacts/selenium-results.json` on disk shows 11 passing / 0 failing
+
+Recent security hardening progress (March 29, 2026):
+- inbound HTTPS transport is pinned to TLS 1.3 only when certificate-based transport is enabled
+- response metadata and client-visible error paths are sanitized to avoid leaking server/version details
+- immutable remote logging now forwards append-only operational and audit events to a write-only sink
+- request-scoped database telemetry records Who, What, When, Where, and How for persisted state changes
+- SIEM integration now supports both structured JSON and RFC 5424-style syslog formatting through `IMMUTABLE_LOGGING_FORMAT`
+- dependency scanning now uses enforced `npm audit` scripts and CI gates, with a transitive override to avoid the known `serialize-javascript` CVE path through Mocha
+- `npm run sbom:generate` now emits a committed CycloneDX SBOM at `sbom/note-app.cdx.json` so third-party dependencies remain inventoried from the real lockfile state
+- the repo now includes a hardened multi-stage Docker build that uses a non-root distroless runtime image, disables container-only `keytar` loading, and is scanned in CI as the built application image instead of a placeholder base image
+- the repo now includes a three-zone sandbox deployment with an Nginx DMZ edge, an internal-only app zone, and an internal-only data zone so the database is unreachable from the public web tier, and the hardened proxy now runs unprivileged on an internal port behind the published DMZ edge binding
+- the Research Workspace now includes a Supply Chain Security Module at `/supply-chain/module` that surfaces the committed SBOM, npm audit enforcement scripts, CI workflow coverage, license buckets, and hardened container posture in a server-rendered frontend
+- the Research Workspace now includes an Audit Trail and Telemetry Module at `/audit-telemetry/module` that surfaces immutable sink posture, request-scoped DB telemetry coverage, TLS posture, JSON versus syslog payload previews, and a live persisted audit-history panel
+- immutable audit forwarding is now wrapped with a local `AuditEvent` store and an authenticated `/api/audit-telemetry/events` endpoint so the module can show per-user persisted audit history instead of only static posture snapshots
 
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account
 - Login and start creating notes
-- Use `/research` to access the unified Research Workspace for Security, ML, Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, Playwright, Selenium, and Self-Healing
-- Use the Security Module link inside `/research` to run `Inject Automation Sample` and populate Alerts, Scans, and Correlations with demo data for the signed-in account
+- Use `/research` to access the unified Research Workspace for Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Playwright Testing, Selenium Testing, and Self-Healing Locator Repair
+- Use the Security Operations Module link inside `/research` to run `Inject Automation Sample` and populate Alerts, Scans, and Correlations with demo data for the signed-in account
 - Use `/ml/module` to inspect the active alert-triage model, compare score provenance and score distributions, review learned feature influence, train either a bootstrap or hybrid model, and verify autonomous-response behavior with the built-in demo flow
 - Use `/mission-assurance/module`, `/hardware-mfa/module`, and `/session-management/module` to inspect mission-role policy decisions, strong-factor step-up posture, and abandoned-terminal lockdown behavior
 - Use `/injection-prevention/module`, `/xss-defense/module`, and `/access-control/module` to inspect the app's architectural handling of injection prevention, XSS defense, and server-side access verification
 - Use `/playwright/module` to inspect browser-test scenarios, review the latest annotated Playwright run, and export Playwright specs for the auth, notes, research, security, Playwright, and Selenium flows
-- Use `/selenium/module` to inspect browser-test scenarios, review Selenium prerequisites, and export WebDriver smoke templates for the Research, Security, ML, and Selenium module flows
-- Use `/self-healing/module` to open the Self-Healing Module, analyze broken Playwright and Selenium locators, load sample failure cases, and compare ranked repair suggestions before editing the test
+- Use `/selenium/module` to inspect browser-test scenarios, review Selenium prerequisites, and export WebDriver smoke templates for the Research Workspace, Security Operations, Alert Triage ML, and Selenium Testing module flows
+- Use `/self-healing/module` to open the Self-Healing Locator Repair Module, analyze broken Playwright and Selenium locators, load sample failure cases, and compare ranked repair suggestions before editing the test
 - Optional: send a `POST` request to `/seed` after logging in (dev only) for sample data
 
 ### Optional Automation
@@ -174,71 +257,71 @@ Notes:
 - The web app uses `MONGODB_URI` and the worker now does the same, with `MONGO_URI` accepted only as a compatibility fallback.
 - The worker loads both `.env` and `.env.local`, so local Redis and OAuth-related overrides are available there too.
 - In development, `POST /api/runtime/realtime` can toggle realtime on or off at runtime, but Redis still needs to be configured first.
-- The Security Module page now shows two realtime states: a server badge for feature availability and a browser badge for the current tab's live stream state.
+- The Security Operations Module page now shows two realtime states: a server badge for feature availability and a browser badge for the current tab's live stream state.
 - `Disconnect Realtime` only closes the current browser tab's SSE stream; it does not disable realtime globally on the server.
 
-### Security Module Demo Sample
+### Security Operations Module Demo Sample
 
-The Research Workspace links to a dedicated Security Module page with an `Inject Automation Sample` action.
+The Research Workspace links to a dedicated Security Operations Module page with an `Inject Automation Sample` action.
 
 - It writes demo alert and scan records for the currently authenticated user.
 - The sample currently creates visible alert types for failed-login burst, suspicious path probing, scanner-tool detection, injection attempt, and directory enumeration.
 - After completion, the workspace refreshes the Alerts, Scans, and Correlations panels so the saved records appear immediately.
 - If backend sample behavior changes, restart the app and reload the Research page so both server and browser assets are current.
 
-### ML Module Overview
+### Alert Triage ML Module Overview
 
-The Research Workspace links to a dedicated ML Module page at `/ml/module`.
+The Research Workspace links to a dedicated Alert Triage ML Module page at `/ml/module`.
 
 - The page acts as a compact model-operations surface for the alert-triage system rather than a single training button.
 - It ties together the full triage loop: label supply, model fitting, runtime model state, explainability, scored-alert inspection, and the downstream autonomy audit trail.
 - `Train Bootstrap Model` fits a synthetic-first logistic-regression model for cold-start demos and sparse-label environments.
 - `Train Hybrid Model` mixes project-wide analyst labels with synthetic examples when real coverage is still limited.
 - The dashboard visualizes feedback supply, score-label counts, score-source counts, score buckets, per-alert-type priority breakdowns, and the strongest positive and negative learned feature weights so the model can be inspected rather than simply trusted.
-- `Autonomy Demo Inject` seeds a safe dry-run notify-plus-block scenario and should increase the ML Module's `Observed Autonomous Outcomes` counters, making it easy to prove that the policy loop is recording decisions on stored alerts.
+- `Autonomy Demo Inject` seeds a safe dry-run notify-plus-block scenario and should increase the Alert Triage ML Module's `Observed Autonomous Outcomes` counters, making it easy to prove that the policy loop is recording decisions on stored alerts.
 
-### Playwright Module Overview
+### Playwright Testing Module Overview
 
-The Research Workspace also links to a dedicated Playwright Module page at `/playwright/module`.
+The Research Workspace also links to a dedicated Playwright Testing Module page at `/playwright/module`.
 
 - The page acts as a browser-coverage dashboard and spec-generator for the authenticated app's Playwright suite.
-- It exposes scenario metadata for auth, notes, Research Workspace navigation, Security Module flows, and the Playwright and Selenium module pages themselves.
+- It exposes scenario metadata for auth, notes, Research Workspace navigation, Security Operations Module flows, and the Playwright Testing and Selenium Testing module pages themselves.
 - The module reads `artifacts/playwright-results.json` and maps annotated browser tests onto scenario cards so the UI can show the latest run status instead of a static placeholder.
 - Generated specs are intentionally smoke-test oriented: they focus on stable routes, headings, and core module controls rather than brittle low-level DOM selectors.
 - The latest verified Chromium artifact covers 13 registered Playwright scenarios, and the page refreshes to reflect the most recent report on disk.
 
-### Self-Healing Module Overview
+### Self-Healing Locator Repair Module Overview
 
-The Research Workspace also links to a dedicated Self-Healing Module page at `/self-healing/module`.
+The Research Workspace also links to a dedicated Self-Healing Locator Repair Module page at `/self-healing/module`.
 
 - The page acts as a self-healing workspace for broken Playwright and Selenium locators rather than as a test runner.
 - It accepts a failing locator, a short step-goal description, and the current HTML snippet around the intended element, then ranks likely repairs for both browser stacks.
 - The current engine is ML-assisted and verification-gated: deterministic candidate generation feeds a trained logistic reranker, and a suggested heal is only considered safe after a deterministic follow-up check.
-- The module includes app-shaped sample cases grounded in the Research Workspace, Playwright Module, and auth flows so repair strategies can be explored without leaving the app.
+- The module includes app-shaped sample cases grounded in the Research Workspace, Playwright Testing Module, and auth flows so repair strategies can be explored without leaving the app.
 - The page route was renamed for clarity, but the underlying compatibility-oriented API surface still uses `/api/locator-repair/*` and the current training command remains `npm run locator-repair:train`.
-- In practice, the Self-Healing Module gives the project a place to reason about selector drift explicitly instead of hiding repair logic inside failing browser suites.
+- In practice, the Self-Healing Locator Repair Module gives the project a place to reason about selector drift explicitly instead of hiding repair logic inside failing browser suites.
 
 ### Security Architecture Modules Overview
 
 The Research Workspace now includes a set of focused security-architecture modules for the access, assurance, and browser-hardening layers:
 
-- `/mission-assurance/module` models RBAC-plus-ABAC decisions using mission role, clearance, assigned mission, device trust, network zone, and break-glass state.
-- `/hardware-mfa/module` inspects hardware-token and PKI posture, supports WebAuthn-backed enrollment and assertion flows, and exposes whether strong-factor step-up is currently satisfied.
-- `/session-management/module` shows strict idle and absolute timeout policy, concurrent-login prevention, and abandoned-terminal lockdown scenarios.
-- `/injection-prevention/module` explains the request guard, Mongo operator-key blocking, and safe query posture enforced through Mongoose defaults.
-- `/xss-defense/module` surfaces escaped rendering, strict CSP behavior, and how suspicious payloads are handled before they become script execution.
-- `/access-control/module` catalogs protected API routes and demonstrates that the server re-verifies identity, ownership, and policy even when a frontend control is visible or hidden.
+- `/mission-assurance/module` hosts the Mission Access Assurance Module and models RBAC-plus-ABAC decisions using mission role, clearance, assigned mission, device trust, network zone, and break-glass state.
+- `/hardware-mfa/module` hosts the Hardware-Backed MFA Module and inspects hardware-token and PKI posture, supports WebAuthn-backed enrollment and assertion flows, and exposes whether strong-factor step-up is currently satisfied.
+- `/session-management/module` hosts the Session Security Module and shows strict idle and absolute timeout policy, concurrent-login prevention, and abandoned-terminal lockdown scenarios.
+- `/injection-prevention/module` hosts the Query Injection Prevention Module and explains the request guard, Mongo operator-key blocking, and safe query posture enforced through Mongoose defaults.
+- `/xss-defense/module` hosts the XSS and CSP Defense Module and surfaces escaped rendering, strict CSP behavior, and how suspicious payloads are handled before they become script execution.
+- `/access-control/module` hosts the Server Access Control Module and catalogs protected API routes and demonstrates that the server re-verifies identity, ownership, and policy even when a frontend control is visible or hidden.
 
-### Selenium Module Overview
+### Selenium Testing Module Overview
 
-The Research Workspace also links to a dedicated Selenium Module page at `/selenium/module`.
+The Research Workspace also links to a dedicated Selenium Testing Module page at `/selenium/module`.
 
 - The page acts as a browser-automation planning, reporting, and export surface for this app's authenticated research flows.
-- It exposes scenario metadata for auth, notes, the Research Workspace, Security Module, ML Module, Selenium Module itself, and a full cross-module smoke suite.
+- It exposes scenario metadata for auth, notes, the Research Workspace, Security Operations Module, Alert Triage ML Module, the Selenium Testing Module itself, and a full cross-module smoke suite.
 - The module reads `artifacts/selenium-results.json` so it can show the latest suite status, runtime metadata, covered suite files, and per-scenario badges instead of a static catalog.
 - The module shows browser prerequisites, route-level coverage goals, stable assertion targets, and generated JavaScript templates built around `selenium-webdriver`.
 - The exported scripts are intentionally smoke-test oriented: they prioritize stable route navigation, headings, and module controls rather than brittle low-level DOM behavior.
-- In practice, the Selenium Module gives the project a bridge from in-app research tooling to external browser automation and CI smoke coverage, and the latest verified artifact covers 11 registered Selenium scenarios.
+- In practice, the Selenium Testing Module gives the project a bridge from in-app research tooling to external browser automation and CI smoke coverage, and the latest verified artifact covers 11 registered Selenium scenarios.
 
 ### Optional Autonomous Response
 
@@ -250,6 +333,7 @@ Typical flow:
 - the ML triage layer assigns `mlScore`, `mlLabel`, `mlReasons`, and `scoreSource`
 - the autonomous response policy decides `none`, `notify`, or `block`
 - the alert stores a response audit trail so the dashboards can show what was attempted
+- each persisted state change is forwarded through immutable database telemetry with actor, request, and mutation summaries
 
 Optional environment:
 
@@ -274,11 +358,11 @@ BLOCK_WEBHOOK_SECRET=
 
 Notes:
 
-- Autonomous response is intentionally scoped to ingested incidents, not manual demo actions such as the Security Module sample injector.
+- Autonomous response is intentionally scoped to ingested incidents, not manual demo actions such as the Security Operations Module sample injector.
 - A `notify` decision uses the existing Slack-email summary notifier.
 - A `block` decision also requires a concrete target such as `details.ip`, `details.src`, or `details.target`.
 - If notification or block providers are not configured, the response is still recorded on the alert as a skipped action for auditability.
-- The ML Module's autonomy panels read stored alert response metadata, so after using `Autonomy Demo Inject` the `Observed Autonomous Outcomes` and `Action Outcomes` panels should move immediately on refresh.
+- The Alert Triage ML Module's autonomy panels read stored alert response metadata, so after using `Autonomy Demo Inject` the `Observed Autonomous Outcomes` and `Action Outcomes` panels should move immediately on refresh.
 
 ## API Documentation
 
@@ -396,26 +480,26 @@ PUT /api/notes/:id
 | `GET /notes/:id` | View note | Yes |
 | `GET /notes/:id/edit` | Edit note form | Yes |
 | `GET /research` | Unified Research Workspace | Yes |
-| `GET /ml` | Redirects to the dedicated ML Module page | Yes |
-| `GET /ml/module` | Dedicated ML Module page | Yes |
-| `GET /mission-assurance` | Redirects to the dedicated Mission Assurance Module page | Yes |
-| `GET /mission-assurance/module` | Dedicated Mission Assurance Module page | Yes |
-| `GET /hardware-mfa` | Redirects to the dedicated Hardware-First MFA Module page | Yes |
-| `GET /hardware-mfa/module` | Dedicated Hardware-First MFA Module page | Yes |
-| `GET /session-management` | Redirects to the dedicated Session Management Module page | Yes |
-| `GET /session-management/module` | Dedicated Session Management Module page | Yes |
-| `GET /injection-prevention` | Redirects to the dedicated Injection Prevention Module page | Yes |
-| `GET /injection-prevention/module` | Dedicated Injection Prevention Module page | Yes |
-| `GET /xss-defense` | Redirects to the dedicated XSS Defense Module page | Yes |
-| `GET /xss-defense/module` | Dedicated XSS Defense Module page | Yes |
-| `GET /access-control` | Redirects to the dedicated Access Control Module page | Yes |
-| `GET /access-control/module` | Dedicated Access Control Module page | Yes |
-| `GET /playwright` | Redirects to the dedicated Playwright Module page | Yes |
-| `GET /playwright/module` | Dedicated Playwright Module page | Yes |
-| `GET /self-healing` | Redirects to the dedicated Self-Healing Module page | Yes |
-| `GET /self-healing/module` | Dedicated Self-Healing Module page | Yes |
-| `GET /selenium` | Redirects to the dedicated Selenium Module page | Yes |
-| `GET /selenium/module` | Dedicated Selenium Module page | Yes |
+| `GET /ml` | Redirects to the dedicated Alert Triage ML Module page | Yes |
+| `GET /ml/module` | Dedicated Alert Triage ML Module page | Yes |
+| `GET /mission-assurance` | Redirects to the dedicated Mission Access Assurance Module page | Yes |
+| `GET /mission-assurance/module` | Dedicated Mission Access Assurance Module page | Yes |
+| `GET /hardware-mfa` | Redirects to the dedicated Hardware-Backed MFA Module page | Yes |
+| `GET /hardware-mfa/module` | Dedicated Hardware-Backed MFA Module page | Yes |
+| `GET /session-management` | Redirects to the dedicated Session Security Module page | Yes |
+| `GET /session-management/module` | Dedicated Session Security Module page | Yes |
+| `GET /injection-prevention` | Redirects to the dedicated Query Injection Prevention Module page | Yes |
+| `GET /injection-prevention/module` | Dedicated Query Injection Prevention Module page | Yes |
+| `GET /xss-defense` | Redirects to the dedicated XSS and CSP Defense Module page | Yes |
+| `GET /xss-defense/module` | Dedicated XSS and CSP Defense Module page | Yes |
+| `GET /access-control` | Redirects to the dedicated Server Access Control Module page | Yes |
+| `GET /access-control/module` | Dedicated Server Access Control Module page | Yes |
+| `GET /playwright` | Redirects to the dedicated Playwright Testing Module page | Yes |
+| `GET /playwright/module` | Dedicated Playwright Testing Module page | Yes |
+| `GET /self-healing` | Redirects to the dedicated Self-Healing Locator Repair Module page | Yes |
+| `GET /self-healing/module` | Dedicated Self-Healing Locator Repair Module page | Yes |
+| `GET /selenium` | Redirects to the dedicated Selenium Testing Module page | Yes |
+| `GET /selenium/module` | Dedicated Selenium Testing Module page | Yes |
 | `GET /auth/login` | Login page | - |
 | `GET /auth/signup` | Signup page | - |
 | `GET /auth/logout` | Logout confirmation page | Yes |
@@ -423,7 +507,7 @@ PUT /api/notes/:id
 | `GET /security/scans` | Redirects to the Scans section in `/security/module` | Yes |
 | `GET /security/correlations` | Redirects to the Correlations section in `/security/module` | Yes |
 | `GET /security/automation` | Redirects to the Automation section in `/security/module` | Yes |
-| `GET /security/module` | Dedicated Security Module page | Yes |
+| `GET /security/module` | Dedicated Security Operations Module page | Yes |
 | `POST /seed` | Seed database (dev only) | Yes |
 
 ### Security API Endpoints
@@ -444,15 +528,15 @@ PUT /api/notes/:id
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `GET /api/ml/overview` | GET | Get the current ML Module overview, including model metadata, alert score distributions, and recent scored alerts |
+| `GET /api/ml/overview` | GET | Get the current Alert Triage ML Module overview, including model metadata, alert score distributions, and recent scored alerts |
 | `POST /api/ml/train` | POST | Train a bootstrap or hybrid alert-triage model and rescore stored alerts |
-| `POST /api/ml/autonomy-demo` | POST | Inject a dry-run autonomy demo so the ML Module can show stored notify-block outcomes |
+| `POST /api/ml/autonomy-demo` | POST | Inject a dry-run autonomy demo so the Alert Triage ML Module can show stored notify-block outcomes |
 
 ### Mission Assurance API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `GET /api/mission-assurance/overview` | GET | Get the Mission Assurance Module overview, current mission profile, and policy matrix summary |
+| `GET /api/mission-assurance/overview` | GET | Get the Mission Access Assurance Module overview, current mission profile, and policy matrix summary |
 | `POST /api/mission-assurance/evaluate` | POST | Evaluate a mission access decision across role, clearance, mission, device, network, and break-glass context |
 
 ### Hardware-First MFA API Endpoints
@@ -485,7 +569,7 @@ PUT /api/notes/:id
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `GET /api/xss-defense/overview` | GET | Get escaped-rendering and CSP posture for the XSS Defense Module |
+| `GET /api/xss-defense/overview` | GET | Get escaped-rendering and CSP posture for the XSS and CSP Defense Module |
 | `POST /api/xss-defense/evaluate` | POST | Evaluate a sample payload against the app's escaping and CSP-based XSS defenses |
 
 ### Access Control API Endpoints
@@ -499,14 +583,14 @@ PUT /api/notes/:id
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `GET /api/playwright/overview` | GET | Get Playwright module coverage metadata, scenario catalog entries, workflow notes, and the latest annotated run summary |
+| `GET /api/playwright/overview` | GET | Get Playwright Testing Module coverage metadata, scenario catalog entries, workflow notes, and the latest annotated run summary |
 | `GET /api/playwright/script` | GET | Generate a Playwright spec template for the selected scenario |
 
 ### Self-Healing API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `GET /api/locator-repair/overview` | GET | Get Self-Healing Module metadata, supported locator families, repair guidance, model state, and sample failure cases |
+| `GET /api/locator-repair/overview` | GET | Get Self-Healing Locator Repair Module metadata, supported locator families, repair guidance, model state, and sample failure cases |
 | `GET /api/locator-repair/history` | GET | Get recent self-healing outcomes and feedback summaries |
 | `POST /api/locator-repair/suggest` | POST | Rank Playwright and Selenium locator repairs from a failing locator, step goal, and current HTML snippet |
 | `POST /api/locator-repair/feedback` | POST | Record accepted, rejected, or healed self-healing feedback for a ranked candidate |
@@ -516,12 +600,12 @@ PUT /api/notes/:id
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `GET /api/selenium/overview` | GET | Get Selenium module coverage metadata, scenario catalog entries, workflow notes, browser prerequisites, and the latest run summary |
+| `GET /api/selenium/overview` | GET | Get Selenium Testing Module coverage metadata, scenario catalog entries, workflow notes, browser prerequisites, and the latest run summary |
 | `GET /api/selenium/script` | GET | Generate a Selenium WebDriver script template for the selected scenario |
 
 ## Project Structure
 
-Abbreviated high-level view; the Research Workspace now includes additional module files for Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, and Access Control alongside the browser-automation modules shown below.
+Abbreviated high-level view; the Research Workspace now includes additional module files for Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, and Server Access Control alongside the browser-automation modules shown below.
 
 ```text
 notes-app/
@@ -637,8 +721,8 @@ npm run lint       # ESLint code quality check
 
 **Testing Notes:**
 - `npm test` now loads `test/testSetup.js` before the suite so tests run in `NODE_ENV=test` with Redis-backed realtime disabled by default.
-- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, the Security Module workflow, the ML Module overview path, Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, the Self-Healing Module overview/suggestion flow, and the Selenium Module overview/script flow.
-- The dedicated Playwright browser suite lives under `playwright-tests/` and exercises auth, notes, research, security, Selenium, and Playwright module flows. Its latest JSON report is written to `artifacts/playwright-results.json`, which drives `/playwright/module`.
+- The suite includes request-level integration coverage in `test/integration/appFlows.e2e.test.js` for note CRUD, server-rendered note flows, the Security Operations Module workflow, the Alert Triage ML Module overview path, Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, Server Access Control, the Self-Healing Locator Repair Module overview/suggestion flow, and the Selenium Testing Module overview/script flow.
+- The dedicated Playwright browser suite lives under `playwright-tests/` and exercises auth, notes, research, security, Selenium Testing, and Playwright Testing module flows. Its latest JSON report is written to `artifacts/playwright-results.json`, which drives `/playwright/module`.
 - `npm run test:selenium` runs through `scripts/run-selenium-suite.js`, and the dedicated Selenium browser suite under `selenium-tests/` exercises the live app through `selenium-webdriver`, including the dedicated `/selenium/module` page, its latest-run summary, and its generated script controls.
 
 ### Stable Local Run Paths
@@ -700,7 +784,7 @@ npm run start-dev
 node automation/falco-runner.js   # Falco JSON ingestion helper
 node automation/trivy-runner.js   # Trivy image/file scanner wrapper
 ```
-3. If you want realtime delivery in the Security Module UI, start the worker with Redis configured:
+3. If you want realtime delivery in the Security Operations Module UI, start the worker with Redis configured:
 ```bash
 npm run worker
 ```
@@ -836,11 +920,39 @@ GOOGLE_CLIENT_ID=<google-oauth-client-id>
 GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
 ```
 
+When `HTTPS_ENABLED=true`, the server pins inbound HTTPS transport to TLS 1.3 and will not negotiate SSLv3, TLS 1.0, TLS 1.1, or TLS 1.2.
+
+When `IMMUTABLE_LOGGING_ENABLED=true`, the app mirrors operational logs and security-relevant request audit events to a separate append-only HTTP(S) endpoint using authenticated `POST` requests only. The remote log service should be configured as write-only for the app identity and should reject read, update, and delete operations.
+
+SIEM integration options:
+- `IMMUTABLE_LOGGING_FORMAT=json` sends structured JSON payloads that Splunk HEC, Elastic HTTP collectors, and similar SIEM pipelines can ingest directly.
+- `IMMUTABLE_LOGGING_FORMAT=syslog` sends RFC 5424-style syslog lines over the same append-only HTTP transport for collectors that expect syslog text.
+- Both modes preserve the log-chain headers and carry the same event content for console logs, HTTP request audits, and DB state-change telemetry.
+
+SBOM support:
+- Run `npm run sbom:generate` to regenerate `sbom/note-app.cdx.json` from the current `package-lock.json` dependency graph.
+- The generated manifest uses the CycloneDX JSON format and captures the third-party packages currently resolved for the project.
+- The main GitHub Actions CI workflow now regenerates `sbom/note-app.cdx.json` on every run and uploads it as a build artifact.
+- CI now fails if regenerating the SBOM changes the committed file, which keeps the checked-in manifest aligned with the current lockfile state.
+
+Dependency scanning support:
+- Run `npm run audit:deps` to fail locally when any high-severity known vulnerability exists in the installed dependency graph, including development dependencies used in the repo.
+- Run `npm run audit:prod` to check the production dependency graph only.
+- The GitHub Actions dependency-audit workflow now uploads a JSON audit report and fails builds on high-severity findings in both the full and production dependency graphs.
+
 **Optional Migration Variables:**
 ```env
 LEGACY_NOTE_ENCRYPTION_KEY=<previous-32-byte-key>
 ALLOW_LEGACY_SESSION_SECRET_FALLBACK=false
 ```
+
+**One-Time Encryption Backfill:**
+```bash
+npm run migrate:encrypt-at-rest
+npm run migrate:encrypt-at-rest -- --dry-run
+```
+
+Run the backfill after taking a database backup and before or during a quiet deployment window. It re-saves existing notes, users, security alerts, and scan results so legacy plaintext records are rewritten using the current AES-256 encryption hooks without breaking login lookup fields or alert dedupe fingerprints.
 
 **Optional Automation Variables:**
 ```env

@@ -39,7 +39,7 @@ describe('Injection prevention API controller behavior', () => {
         const res = makeRes();
         const fakeOverview = {
             module: {
-                name: 'Injection Prevention Module'
+                name: 'Query Injection Prevention Module'
             }
         };
 

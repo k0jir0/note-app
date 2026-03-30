@@ -9,7 +9,7 @@ router.get('/ml', requireAuth, (req, res) => {
 
 router.get('/ml/module', requireAuth, (req, res) => {
     res.render('pages/ml-module.ejs', {
-        title: 'ML Module',
+        title: 'Alert Triage ML Module',
         csrfToken: res.locals.csrfToken
     });
 });

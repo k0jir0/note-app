@@ -34,7 +34,7 @@ describe('Locator repair API controller behavior', () => {
         const res = makeRes();
         const fakeOverview = {
             module: {
-                name: 'Self-Healing Module'
+                name: 'Self-Healing Locator Repair Module'
             },
             coverage: {
                 sampleCaseCount: 5

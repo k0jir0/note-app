@@ -1,6 +1,7 @@
 const { expect } = require('chai');
 
 const {
+    IMMUTABLE_LOG_FORMATS,
     MIN_SESSION_SECRET_LENGTH,
     getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,
@@ -93,10 +94,69 @@ describe('Runtime Config Validation', () => {
             requestClientCertificate: false,
             requireClientCertificate: false,
             trustProxyClientCertHeaders: false,
+            trustProxyHops: 0,
+            tlsMinVersion: '',
+            tlsMaxVersion: '',
             keyPath: '',
             certPath: '',
             caPath: ''
         });
+        expect(config.immutableLogging).to.deep.equal({
+            enabled: false,
+            endpoint: '',
+            token: '',
+            timeoutMs: 2000,
+            source: 'note-app',
+            format: 'json'
+        });
+    });
+
+    it('requires endpoint and token when immutable logging is enabled', () => {
+        const env = createValidEnv();
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('IMMUTABLE_LOGGING_URL');
+        expect(() => validateRuntimeConfig(env)).to.throw('IMMUTABLE_LOGGING_TOKEN');
+    });
+
+    it('accepts a valid immutable logging configuration', () => {
+        const env = createValidEnv();
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
+        env.IMMUTABLE_LOGGING_TIMEOUT_MS = '3500';
+        env.IMMUTABLE_LOGGING_SOURCE = 'note-app-web';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.immutableLogging).to.deep.equal({
+            enabled: true,
+            endpoint: 'https://logs.example.com/append',
+            token: 'remote-write-only-token',
+            timeoutMs: 3500,
+            source: 'note-app-web',
+            format: 'json'
+        });
+    });
+
+    it('accepts syslog formatting for immutable logging output', () => {
+        const env = createValidEnv();
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
+        env.IMMUTABLE_LOGGING_FORMAT = 'syslog';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(IMMUTABLE_LOG_FORMATS).to.include('syslog');
+        expect(config.immutableLogging.format).to.equal('syslog');
+    });
+
+    it('rejects unsupported immutable logging formats', () => {
+        const env = createValidEnv();
+        env.IMMUTABLE_LOGGING_FORMAT = 'cef';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('IMMUTABLE_LOGGING_FORMAT');
     });
 
     it('accepts valid HTTPS and mTLS transport settings', () => {
@@ -116,10 +176,23 @@ describe('Runtime Config Validation', () => {
             requestClientCertificate: true,
             requireClientCertificate: true,
             trustProxyClientCertHeaders: false,
+            trustProxyHops: 0,
+            tlsMinVersion: 'TLSv1.3',
+            tlsMaxVersion: 'TLSv1.3',
             keyPath: 'C:\\tls\\server.key',
             certPath: 'C:\\tls\\server.crt',
             caPath: 'C:\\tls\\ca.crt'
         });
+    });
+
+    it('accepts explicit reverse-proxy hop trust for sandboxed deployments', () => {
+        const env = createValidEnv();
+        env.TRUST_PROXY_HOPS = '1';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.transport.trustProxyHops).to.equal(1);
+        expect(config.transport.trustProxyClientCertHeaders).to.equal(false);
     });
 
     it('rejects invalid HTTPS and mTLS transport combinations', () => {
@@ -212,7 +285,18 @@ describe('Runtime Config Validation', () => {
                 httpsEnabled: true,
                 requestClientCertificate: true,
                 requireClientCertificate: false,
-                trustProxyClientCertHeaders: true
+                trustProxyClientCertHeaders: true,
+                trustProxyHops: 1,
+                tlsMinVersion: 'TLSv1.3',
+                tlsMaxVersion: 'TLSv1.3'
+            },
+            immutableLogging: {
+                enabled: true,
+                endpoint: 'https://logs.example.com/append',
+                token: 'write-only-token',
+                timeoutMs: 2500,
+                format: 'syslog',
+                source: 'note-app-web'
             },
             automation: {
                 logBatch: {
@@ -239,7 +323,17 @@ describe('Runtime Config Validation', () => {
             httpsEnabled: true,
             requestClientCertificate: true,
             requireClientCertificate: false,
-            trustProxyClientCertHeaders: true
+            trustProxyClientCertHeaders: true,
+            trustProxyHops: 1,
+            tlsMinVersion: 'TLSv1.3',
+            tlsMaxVersion: 'TLSv1.3'
+        });
+        expect(diagnostics.immutableLogging).to.deep.equal({
+            enabled: true,
+            endpointConfigured: true,
+            timeoutMs: 2500,
+            format: 'syslog',
+            source: 'note-app-web'
         });
         expect(diagnostics.sessionManagement).to.deep.equal({
             idleTimeoutMinutes: 15,

@@ -189,9 +189,9 @@ async function loadOverview(showMessage = false) {
     renderOverview(overview);
 
     if (showMessage) {
-        renderStatus('Access Control Module refreshed.', 'secondary');
+        renderStatus('Server Access Control Module refreshed.', 'secondary');
     } else {
-        renderStatus('Access Control Module ready.', 'secondary');
+        renderStatus('Server Access Control Module ready.', 'secondary');
     }
 }
 
@@ -224,7 +224,7 @@ async function initializeAccessControlModule() {
     try {
         await loadOverview(false);
     } catch (error) {
-        renderStatus(error.message || 'Unable to load the Access Control Module.', 'danger');
+        renderStatus(error.message || 'Unable to load the Server Access Control Module.', 'danger');
         return;
     }
 
@@ -232,7 +232,7 @@ async function initializeAccessControlModule() {
         try {
             await loadOverview(true);
         } catch (error) {
-            renderStatus(error.message || 'Unable to refresh the Access Control Module.', 'danger');
+            renderStatus(error.message || 'Unable to refresh the Server Access Control Module.', 'danger');
         }
     });
 

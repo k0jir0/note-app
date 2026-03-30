@@ -31,13 +31,13 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Primary Module</span>
-                            <h2 class="h3 mt-2 mb-1">Security Module</h2>
+                            <span class="research-kicker">Security Operations</span>
+                            <h2 class="h3 mt-2 mb-1">Security Operations Module</h2>
                             <p class="text-muted mb-0">Log analysis, scan importing, correlations, automation status, and demo sample injection now live in one dedicated module page.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-<%= workspace.automation.anyEnabled ? 'success' : 'secondary' %>"><%= workspace.automation.enabledCount %>/2 automation pollers active</span>
-                            <a href="/security/module" class="btn btn-dark">Open Security Module</a>
+                            <a href="/security/module" class="btn btn-dark">Open Security Operations Module</a>
                         </div>
                     </div>
                 </div>
@@ -46,13 +46,43 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Modeling Module</span>
-                            <h2 class="h3 mt-2 mb-1">ML Module</h2>
+                            <span class="research-kicker">Auditability</span>
+                            <h2 class="h3 mt-2 mb-1">Audit Trail and Telemetry Module</h2>
+                            <p class="text-muted mb-0">Inspect immutable forwarding posture, request-scoped DB telemetry coverage, TLS 1.3 transport policy, and JSON versus syslog sink previews from one dedicated auditability workspace.</p>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <span class="badge text-bg-danger">Auditability + SIEM posture</span>
+                            <a href="/audit-telemetry/module" class="btn btn-outline-dark">Open Audit Trail and Telemetry Module</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-4">
+                <div class="card automation-card h-100">
+                    <div class="card-body d-flex flex-column justify-content-between gap-3">
+                        <div>
+                            <span class="research-kicker">Supply Chain Security</span>
+                            <h2 class="h3 mt-2 mb-1">Supply Chain Security Module</h2>
+                            <p class="text-muted mb-0">Review the committed CycloneDX SBOM, npm audit enforcement commands, CI workflow coverage, and the hardened distroless container posture from one dedicated supply-chain workspace.</p>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <span class="badge text-bg-success">SBOM + dependency governance</span>
+                            <a href="/supply-chain/module" class="btn btn-outline-dark">Open Supply Chain Security Module</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-4">
+                <div class="card automation-card h-100">
+                    <div class="card-body d-flex flex-column justify-content-between gap-3">
+                        <div>
+                            <span class="research-kicker">Model Operations</span>
+                            <h2 class="h3 mt-2 mb-1">Alert Triage ML Module</h2>
                             <p class="text-muted mb-0">Inspect the alert triage model, review label distributions, and train a new bootstrap or hybrid model from one dedicated page.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-info">Trainable alert triage</span>
-                            <a href="/ml/module" class="btn btn-outline-dark">Open ML Module</a>
+                            <a href="/ml/module" class="btn btn-outline-dark">Open Alert Triage ML Module</a>
                         </div>
                     </div>
                 </div>
@@ -61,13 +91,13 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Browser Module</span>
-                            <h2 class="h3 mt-2 mb-1">Playwright Module</h2>
+                            <span class="research-kicker">Browser Testing</span>
+                            <h2 class="h3 mt-2 mb-1">Playwright Testing Module</h2>
                             <p class="text-muted mb-0">Generate Playwright smoke specs, review browser-test coverage for this app, and export resilient test templates tailored to the Research Workspace.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-primary">Playwright spec templates</span>
-                            <a href="/playwright/module" class="btn btn-outline-dark">Open Playwright Module</a>
+                            <a href="/playwright/module" class="btn btn-outline-dark">Open Playwright Testing Module</a>
                         </div>
                     </div>
                 </div>
@@ -76,13 +106,13 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Browser Module</span>
-                            <h2 class="h3 mt-2 mb-1">Selenium Module</h2>
+                            <span class="research-kicker">Browser Testing</span>
+                            <h2 class="h3 mt-2 mb-1">Selenium Testing Module</h2>
                             <p class="text-muted mb-0">Generate Selenium WebDriver smoke suites, review browser-test coverage for this app, and export script templates tailored to the Research Workspace.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-warning">Browser automation templates</span>
-                            <a href="/selenium/module" class="btn btn-outline-dark">Open Selenium Module</a>
+                            <a href="/selenium/module" class="btn btn-outline-dark">Open Selenium Testing Module</a>
                         </div>
                     </div>
                 </div>
@@ -91,13 +121,13 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Security Module</span>
-                            <h2 class="h3 mt-2 mb-1">Injection Prevention Module</h2>
+                            <span class="research-kicker">Data-Layer Defense</span>
+                            <h2 class="h3 mt-2 mb-1">Query Injection Prevention Module</h2>
                             <p class="text-muted mb-0">Inspect structured query builders, request-level operator blocking, and the Mongoose hardening that keeps injection-shaped input out of the data layer.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-primary">Structured query defense</span>
-                            <a href="/injection-prevention/module" class="btn btn-outline-dark">Open Injection Prevention Module</a>
+                            <a href="/injection-prevention/module" class="btn btn-outline-dark">Open Query Injection Prevention Module</a>
                         </div>
                     </div>
                 </div>
@@ -106,13 +136,13 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Browser Security Module</span>
-                            <h2 class="h3 mt-2 mb-1">XSS Defense Module</h2>
+                            <span class="research-kicker">Browser Protection</span>
+                            <h2 class="h3 mt-2 mb-1">XSS and CSP Defense Module</h2>
                             <p class="text-muted mb-0">Inspect escaped rendering, DOM sink discipline, and the strict Content Security Policy that keeps unauthorized scripts from running.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-info">Escaping + CSP backstop</span>
-                            <a href="/xss-defense/module" class="btn btn-outline-dark">Open XSS Defense Module</a>
+                            <a href="/xss-defense/module" class="btn btn-outline-dark">Open XSS and CSP Defense Module</a>
                         </div>
                     </div>
                 </div>
@@ -121,13 +151,13 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Authorization Module</span>
-                            <h2 class="h3 mt-2 mb-1">Access Control Module</h2>
+                            <span class="research-kicker">Server Authorization</span>
+                            <h2 class="h3 mt-2 mb-1">Server Access Control Module</h2>
                             <p class="text-muted mb-0">Inspect protected-by-default API coverage, ownership scoping, and the server-side checks that block broken-access-control attempts even if the frontend is bypassed.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-warning">Protected-by-default APIs</span>
-                            <a href="/access-control/module" class="btn btn-outline-dark">Open Access Control Module</a>
+                            <a href="/access-control/module" class="btn btn-outline-dark">Open Server Access Control Module</a>
                         </div>
                     </div>
                 </div>
@@ -136,13 +166,13 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Testing Module</span>
-                            <h2 class="h3 mt-2 mb-1">Self-Healing Module</h2>
+                            <span class="research-kicker">Locator Resilience</span>
+                            <h2 class="h3 mt-2 mb-1">Self-Healing Locator Repair Module</h2>
                             <p class="text-muted mb-0">Explore ML-assisted self-healing for broken Playwright and Selenium locators, compare trained repair strategies, and inspect deterministic self-heal candidates from current DOM snippets.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-secondary">ML-assisted self-healing</span>
-                            <a href="/self-healing/module" class="btn btn-outline-dark">Open Self-Healing Module</a>
+                            <a href="/self-healing/module" class="btn btn-outline-dark">Open Self-Healing Locator Repair Module</a>
                         </div>
                     </div>
                 </div>
@@ -151,13 +181,13 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Assurance Module</span>
-                            <h2 class="h3 mt-2 mb-1">Mission Assurance Module</h2>
+                            <span class="research-kicker">Mission Policy</span>
+                            <h2 class="h3 mt-2 mb-1">Mission Access Assurance Module</h2>
                             <p class="text-muted mb-0">Model least-privilege tactical access with RBAC plus ABAC, compare mission roles against data classifications, and simulate whether sensitive actions should be allowed before they reach a hardened workflow.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-dark">RBAC + ABAC policy lab</span>
-                            <a href="/mission-assurance/module" class="btn btn-outline-dark">Open Mission Assurance Module</a>
+                            <a href="/mission-assurance/module" class="btn btn-outline-dark">Open Mission Access Assurance Module</a>
                         </div>
                     </div>
                 </div>
@@ -166,13 +196,13 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Identity Module</span>
-                            <h2 class="h3 mt-2 mb-1">Hardware-First MFA Module</h2>
+                            <span class="research-kicker">Strong Authentication</span>
+                            <h2 class="h3 mt-2 mb-1">Hardware-Backed MFA Module</h2>
                             <p class="text-muted mb-0">Inspect registered strong factors, simulate hardware-token or PKI-backed step-up, and confirm whether the current session has enough assurance for hardened mission actions.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-success">Hardware token + PKI step-up</span>
-                            <a href="/hardware-mfa/module" class="btn btn-outline-dark">Open Hardware-First MFA Module</a>
+                            <a href="/hardware-mfa/module" class="btn btn-outline-dark">Open Hardware-Backed MFA Module</a>
                         </div>
                     </div>
                 </div>
@@ -181,13 +211,13 @@
                 <div class="card automation-card h-100">
                     <div class="card-body d-flex flex-column justify-content-between gap-3">
                         <div>
-                            <span class="research-kicker">Session Module</span>
-                            <h2 class="h3 mt-2 mb-1">Session Management Module</h2>
+                            <span class="research-kicker">Session Control</span>
+                            <h2 class="h3 mt-2 mb-1">Session Security Module</h2>
                             <p class="text-muted mb-0">Inspect idle and absolute timeout policy, review live server-side session state, and simulate whether abandoned or superseded sessions should lock down immediately.</p>
                         </div>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge text-bg-danger">Strict timeout + single-session control</span>
-                            <a href="/session-management/module" class="btn btn-outline-dark">Open Session Management Module</a>
+                            <a href="/session-management/module" class="btn btn-outline-dark">Open Session Security Module</a>
                         </div>
                     </div>
                 </div>

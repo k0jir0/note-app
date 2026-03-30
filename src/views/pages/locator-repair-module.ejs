@@ -23,14 +23,14 @@
         data-locator-repair-train-endpoint="/api/locator-repair/train">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div>
-                <h1 class="notes-title mb-1">Self-Healing Module</h1>
+                <h1 class="notes-title mb-1">Self-Healing Locator Repair Module</h1>
                 <p class="text-muted mb-2">A research workspace for repairing broken Playwright and Selenium locators with trained, reviewable suggestions and deterministic self-heal gating.</p>
                 <p class="text-muted mb-0">Paste a failed locator and the current DOM fragment, compare stable replacement strategies, then capture accept or reject feedback so the reranker improves over time.</p>
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 <a href="/research" class="btn btn-outline-dark">Back to Research</a>
-                <a href="/playwright/module" class="btn btn-outline-dark">Open Playwright Module</a>
-                <a href="/selenium/module" class="btn btn-outline-dark">Open Selenium Module</a>
+                <a href="/playwright/module" class="btn btn-outline-dark">Open Playwright Testing Module</a>
+                <a href="/selenium/module" class="btn btn-outline-dark">Open Selenium Testing Module</a>
                 <a href="/notes" class="btn btn-secondary">Back to Notes</a>
             </div>
         </div>
@@ -202,7 +202,7 @@
                             type="text"
                             class="form-control"
                             id="locator-repair-original-locator"
-                            placeholder='Examples: By.linkText("Open ML Module") or page.getByRole("button", { name: "Load Spec" })'>
+                            placeholder='Examples: By.linkText("Open Alert Triage ML Module") or page.getByRole("button", { name: "Load Spec" })'>
                     </div>
                     <div class="col-12">
                         <label for="locator-repair-step-goal" class="form-label">Step goal</label>
@@ -210,7 +210,7 @@
                             type="text"
                             class="form-control"
                             id="locator-repair-step-goal"
-                            placeholder="Describe the user intent, such as opening the ML Module or filling the email field.">
+                            placeholder="Describe the user intent, such as opening the Alert Triage ML Module or filling the email field.">
                     </div>
                     <div class="col-12">
                         <label for="locator-repair-html-snippet" class="form-label">Current HTML snippet</label>

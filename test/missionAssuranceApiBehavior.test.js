@@ -35,7 +35,7 @@ describe('Mission assurance API controller behavior', () => {
         const res = makeRes();
         const fakeOverview = {
             module: {
-                name: 'Mission Assurance Module'
+                name: 'Mission Access Assurance Module'
             }
         };
 

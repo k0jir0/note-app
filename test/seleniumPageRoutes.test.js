@@ -53,7 +53,7 @@ describe('Selenium Page Routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/selenium-module.ejs');
         expect(res.render.firstCall.args[1]).to.deep.equal({
-            title: 'Selenium Module',
+            title: 'Selenium Testing Module',
             csrfToken: 'test-csrf-token'
         });
     });

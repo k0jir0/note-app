@@ -36,7 +36,7 @@ describe('Session management API controller behavior', () => {
         const res = makeRes();
         const fakeOverview = {
             module: {
-                name: 'Session Management Module'
+                name: 'Session Security Module'
             }
         };
 

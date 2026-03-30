@@ -58,7 +58,7 @@ describe('Hardware-first MFA page routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/hardware-mfa-module.ejs');
         expect(res.render.firstCall.args[1]).to.deep.equal({
-            title: 'Hardware-First MFA Module',
+            title: 'Hardware-Backed MFA Module',
             csrfToken: 'test-csrf-token'
         });
     });

@@ -2,6 +2,8 @@ const MIN_SESSION_SECRET_LENGTH = 32;
 const ENCRYPTION_KEY_HEX_REGEX = /^[a-fA-F0-9]{64}$/;
 const MONGODB_OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
 const MAX_AUTOMATION_INTERVAL_MS = 1000 * 60 * 60 * 24;
+const MAX_IMMUTABLE_LOG_TIMEOUT_MS = 1000 * 30;
+const IMMUTABLE_LOG_FORMATS = ['json', 'syslog'];
 
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
@@ -246,6 +248,11 @@ function buildTransportConfig(env, errors) {
     const requestClientCertificate = parseBooleanEnv('HTTPS_REQUEST_CLIENT_CERT', env, errors);
     const requireClientCertificate = parseBooleanEnv('HTTPS_REQUIRE_CLIENT_CERT', env, errors);
     const trustProxyClientCertHeaders = parseBooleanEnv('TRUST_PROXY_CLIENT_CERT_HEADERS', env, errors);
+    const trustProxyHops = parseIntegerEnv('TRUST_PROXY_HOPS', env, {
+        defaultValue: 0,
+        min: 0,
+        max: 10
+    }, errors);
 
     const keyPath = isNonEmptyString(env.HTTPS_KEY_PATH) ? env.HTTPS_KEY_PATH.trim() : '';
     const certPath = isNonEmptyString(env.HTTPS_CERT_PATH) ? env.HTTPS_CERT_PATH.trim() : '';
@@ -279,9 +286,66 @@ function buildTransportConfig(env, errors) {
         requestClientCertificate,
         requireClientCertificate,
         trustProxyClientCertHeaders,
+        trustProxyHops,
+        tlsMinVersion: httpsEnabled ? 'TLSv1.3' : '',
+        tlsMaxVersion: httpsEnabled ? 'TLSv1.3' : '',
         keyPath,
         certPath,
         caPath
+    };
+}
+
+function buildImmutableLoggingConfig(env, errors) {
+    const enabled = parseBooleanEnv('IMMUTABLE_LOGGING_ENABLED', env, errors);
+    const timeoutMs = parseIntegerEnv('IMMUTABLE_LOGGING_TIMEOUT_MS', env, {
+        defaultValue: 2000,
+        min: 250,
+        max: MAX_IMMUTABLE_LOG_TIMEOUT_MS
+    }, errors);
+    const endpoint = isNonEmptyString(env.IMMUTABLE_LOGGING_URL) ? env.IMMUTABLE_LOGGING_URL.trim() : '';
+    const token = isNonEmptyString(env.IMMUTABLE_LOGGING_TOKEN) ? env.IMMUTABLE_LOGGING_TOKEN.trim() : '';
+    const source = isNonEmptyString(env.IMMUTABLE_LOGGING_SOURCE) ? env.IMMUTABLE_LOGGING_SOURCE.trim() : 'note-app';
+    const format = isNonEmptyString(env.IMMUTABLE_LOGGING_FORMAT) ? env.IMMUTABLE_LOGGING_FORMAT.trim().toLowerCase() : 'json';
+
+    if (!IMMUTABLE_LOG_FORMATS.includes(format)) {
+        errors.push(`IMMUTABLE_LOGGING_FORMAT must be one of: ${IMMUTABLE_LOG_FORMATS.join(', ')}`);
+    }
+
+    if (!enabled) {
+        return {
+            enabled: false,
+            endpoint: '',
+            token: '',
+            timeoutMs,
+            source,
+            format: IMMUTABLE_LOG_FORMATS.includes(format) ? format : 'json'
+        };
+    }
+
+    if (!endpoint) {
+        errors.push('IMMUTABLE_LOGGING_URL is required when IMMUTABLE_LOGGING_ENABLED=true');
+    } else {
+        try {
+            const parsed = new URL(endpoint);
+            if (!['http:', 'https:'].includes(parsed.protocol)) {
+                throw new Error('Invalid protocol');
+            }
+        } catch (_error) {
+            errors.push('IMMUTABLE_LOGGING_URL must be a valid http or https URL when immutable logging is enabled');
+        }
+    }
+
+    if (!token) {
+        errors.push('IMMUTABLE_LOGGING_TOKEN is required when IMMUTABLE_LOGGING_ENABLED=true');
+    }
+
+    return {
+        enabled: true,
+        endpoint,
+        token,
+        timeoutMs,
+        source,
+        format
     };
 }
 
@@ -364,7 +428,29 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
             httpsEnabled: Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled),
             requestClientCertificate: Boolean(runtimeConfig.transport && runtimeConfig.transport.requestClientCertificate),
             requireClientCertificate: Boolean(runtimeConfig.transport && runtimeConfig.transport.requireClientCertificate),
-            trustProxyClientCertHeaders: Boolean(runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders)
+            trustProxyClientCertHeaders: Boolean(runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders),
+            trustProxyHops: Number.isInteger(runtimeConfig.transport && runtimeConfig.transport.trustProxyHops)
+                ? runtimeConfig.transport.trustProxyHops
+                : 0,
+            tlsMinVersion: runtimeConfig.transport && runtimeConfig.transport.httpsEnabled
+                ? String(runtimeConfig.transport.tlsMinVersion || 'TLSv1.3')
+                : '',
+            tlsMaxVersion: runtimeConfig.transport && runtimeConfig.transport.httpsEnabled
+                ? String(runtimeConfig.transport.tlsMaxVersion || 'TLSv1.3')
+                : ''
+        },
+        immutableLogging: {
+            enabled: Boolean(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.enabled),
+            endpointConfigured: isNonEmptyString(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.endpoint),
+            timeoutMs: Number.isFinite(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.timeoutMs)
+                ? runtimeConfig.immutableLogging.timeoutMs
+                : null,
+            format: isNonEmptyString(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.format)
+                ? runtimeConfig.immutableLogging.format.trim()
+                : 'json',
+            source: isNonEmptyString(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.source)
+                ? runtimeConfig.immutableLogging.source.trim()
+                : ''
         },
         automation: {
             logBatch: buildAutomationDiagnostics(automation.logBatch),
@@ -438,6 +524,7 @@ function validateRuntimeConfig(env = process.env) {
     const intrusionBatch = buildIntrusionBatchConfig(env, errors);
     const sessionManagement = buildSessionManagementConfig(env, errors);
     const transport = buildTransportConfig(env, errors);
+    const immutableLogging = buildImmutableLoggingConfig(env, errors);
 
     if (errors.length > 0) {
         throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
@@ -451,6 +538,7 @@ function validateRuntimeConfig(env = process.env) {
         googleAuthEnabled: hasGoogleAuthCredentials(env),
         sessionManagement,
         transport,
+        immutableLogging,
         automation: {
             logBatch,
             scanBatch,
@@ -460,6 +548,7 @@ function validateRuntimeConfig(env = process.env) {
 }
 
 module.exports = {
+    IMMUTABLE_LOG_FORMATS,
     MIN_SESSION_SECRET_LENGTH,
     getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,

@@ -41,7 +41,7 @@ describe('Access control API controller behavior', () => {
         const res = makeRes();
         const fakeOverview = {
             module: {
-                name: 'Access Control Module'
+                name: 'Server Access Control Module'
             }
         };
 

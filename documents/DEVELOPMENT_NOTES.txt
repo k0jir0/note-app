@@ -5,22 +5,55 @@ Note-Taking Application Development Process
 
 PROJECT OVERVIEW
 
-This full-stack note-taking, security-research, and browser-automation-aware application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, dedicated Security, ML, Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, Playwright, Selenium, and Self-Healing modules, and 461 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, deployment readiness, explainability, and the interaction between secure defaults and developer ergonomics.
+This full-stack note-taking, security-research, and browser-automation-aware application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, dedicated Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Playwright Testing, Selenium Testing, and Self-Healing Locator Repair modules, and 487 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, deployment readiness, explainability, and the interaction between secure defaults and developer ergonomics.
 
-Current verified state (March 26, 2026): 461 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, a dedicated Security Module with optional realtime streaming and autonomous incident-response auditing, a dedicated ML Module that functions as a lightweight model-operations surface for trainable triage, feedback-aware supervision, explainability, and autonomy verification, plus dedicated Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, Access Control, Playwright, Selenium, and Self-Healing modules. The app now enforces a global protected-API access gate, request-level Mongo injection blocking, strict CSP-backed rendering posture, mission-aware RBAC-plus-ABAC evaluation, hardware-first session assurance with WebAuthn and PKI support, strict idle and absolute session limits with concurrent-login invalidation, and startup-stable local launch behavior. The Playwright module continues to map the latest annotated JSON report onto 13 scenario cards, the Selenium module continues to read a generated Selenium results artifact and show suite/runtime metadata plus 11 per-scenario statuses, and the Self-Healing Module continues to combine deterministic candidate generation, a trained logistic reranker, captured repair feedback, and runtime self-heal helpers for Playwright and Selenium.
+Current verified state (March 30, 2026): 500 passing tests, ESLint clean, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, dedicated Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Playwright Testing, Selenium Testing, Self-Healing Locator Repair, Supply Chain Security, and Audit Trail and Telemetry modules, plus focused March 29 module coverage at 13 passing tests for the new page routes and persisted audit-history backend and focused March 30 sandbox runtime coverage at 20 passing tests. The app now enforces a global protected-API access gate, request-level Mongo injection blocking, strict CSP-backed rendering posture, mission-aware RBAC-plus-ABAC evaluation, hardware-first session assurance with WebAuthn and PKI support, strict idle and absolute session limits with concurrent-login invalidation, startup-stable local launch behavior, TLS 1.3-only inbound transport when HTTPS is enabled, sanitized metadata/error exposure, immutable remote logging, request-scoped database state-change telemetry, SIEM-friendly JSON or syslog log formatting, a validated hardened distroless container build, a verified three-zone DMZ/app/data sandbox deployment with an unprivileged Nginx edge tier, and a live authenticated audit-history feed backed by persisted `AuditEvent` records.
 
 Development log (newest first):
 
+Recent updates (March 30, 2026) focused on architectural sandboxing and operator-grade network isolation:
+- Added `ops/kubernetes/immutable-stack.yaml` so the same proxy/app split now has a Kubernetes deployment path with rolling-update Deployments, default-deny ingress, and a public edge service in front of the internal application service.
+- Added a namespace-scoped daily rollout CronJob plus RBAC so the proxy and app pods are forcibly recycled every 24 hours from the pinned approved image reference instead of being left running indefinitely.
+- Added `npm run k8s:apply`, `npm run k8s:rotate`, and `npm run k8s:teardown` plus README guidance so the non-persistent deployment flow is executable and not only documented as a policy target.
+- Switched the local Kubernetes path to a self-contained kind-friendly stack by using the preloaded `note-app:hardened` image with `imagePullPolicy: Never`, adding an internal ephemeral MongoDB service, and exposing the proxy through NodePort `30080` mapped to `http://localhost:3002`.
+- Live-validated the immutable stack on a disposable `kind-note-app-local` cluster: `GET /healthz` and `GET /auth/login` returned HTTP 200 through the public proxy, `kubectl get cronjob,pods,svc -n note-app` showed the daily rollout CronJob plus healthy app/proxy/Mongo resources, and `npm run k8s:rotate` completed a successful rolling recycle.
+- Confirmed the local cluster intentionally reports `Google sign-in is not configured` until `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are injected into `note-app-secrets` and the Google OAuth client allows `http://localhost:3002/auth/oauth2/redirect/google`.
+- Added a dedicated `docker-compose.sandbox.yml` deployment that splits the stack into a DMZ-style `edge_zone`, an internal-only `app_zone`, and an internal-only `data_zone`, with only the Nginx reverse proxy published to the host.
+- Added `ops/nginx/sandbox.conf` so the DMZ edge terminates public HTTP traffic, forwards the app routes and SSE security stream to the internal Node service, and preserves forwarded-client headers for the backend.
+- Extended runtime configuration with `TRUST_PROXY_HOPS` so Express trusts exactly one proxy hop in the sandbox deployment instead of assuming direct client connections.
+- Added sandbox helper scripts to `package.json` and documented the deployment flow in the README so the isolation topology is runnable instead of only described conceptually.
+- Hardened the proxy container itself by running it as an unprivileged user on internal port `8080`, storing temp files on tmpfs, and keeping the root filesystem read-only without breaking startup.
+- Constrained the sandbox app service so Redis-backed realtime and local file-poller automation are disabled by default even if a workstation `.env` enables them, preventing host-specific automation settings from leaking into the isolated deployment.
+- Live-validated the sandbox on port `3001`: `docker compose -f docker-compose.sandbox.yml up --build -d` succeeded, `GET /healthz` and `GET /auth/login` returned HTTP 200 through the Nginx edge, and `docker compose ps` confirmed that only the proxy was host-published while the app and Mongo services stayed internal-only.
+- Revalidated the configuration layer with `npx mocha test/runtimeConfig.test.js` at 20 passing tests and kept `npm run lint` clean after the sandbox changes.
+
+Recent updates (March 29, 2026) focused on transport hardening, auditability, and operational log ingestion:
+- Enforced TLS 1.3 only for certificate-based inbound HTTPS transport, explicitly preventing negotiation of SSLv3, TLS 1.0, TLS 1.1, and TLS 1.2.
+- Sanitized response metadata and client-visible error handling so server banners, framework-identifying headers, and raw internal error details are not leaked back to callers.
+- Added immutable remote logging that mirrors console output and security-relevant HTTP request audit events to a separate write-only HTTP(S) sink with chained hashes and authenticated append requests.
+- Added request-scoped database telemetry using AsyncLocalStorage plus model-layer hooks so persisted state changes now emit Who, What, When, Where, and How summaries for create, update, delete, and tracked bulk-write operations.
+- Extended immutable logging with SIEM-oriented output formatting so the same audit pipeline can emit structured JSON for Splunk/ELK-style collectors or RFC 5424-style syslog text when the downstream collector expects syslog payloads.
+- Tightened dependency scanning by adding local `npm audit` scripts, CI gating for high-severity package CVEs, and a transitive override to remove the vulnerable `serialize-javascript` path currently pulled in by Mocha.
+- Added CycloneDX SBOM generation from the npm lockfile so the repo now keeps a reproducible manifest of third-party libraries at `sbom/note-app.cdx.json`.
+- Added a hardened Docker path with a multi-stage budil, production-only dependencies, and a non-root distroless runtime image so container deployments no longer rely on a general-purpose base image.
+- Verified the hardened image locally: `docker build -t note-app:hardened .` succeeds, the app serves HTTP 200 from `/auth/login` when pointed at host MongoDB through `host.docker.internal`, and the container now suppresses optional `keytar` loading that is not usable inside the distroless runtime.
+- Added a Supply Chain Security Module to the Research Workspace so the March 29 SBOM, dependency-audit scripts, workflow enforcement, license distribution, and container-hardening posture are visible in a dedicated authenticated frontend instead of only in docs and CI files.
+- Added an Audit Trail and Telemetry Module to the Research Workspace so immutable forwarding posture, TLS policy, request-scoped DB telemetry coverage, response-surface hardening, and JSON versus syslog previews are visible in a dedicated authenticated frontend.
+- Added a persistent `AuditEvent` model, a wrapper around the immutable log client, and an authenticated `/api/audit-telemetry/events` endpoint so audit history is stored per user and can be rendered live in the new Audit Trail and Telemetry Module.
+- Verified the new research-module path live: authenticated requests reached `/audit-telemetry/module` successfully, and repeated reads from `/api/audit-telemetry/events` increased the visible count from 2 to 3 events with the newest persisted record capturing `HTTP request completed` for `/api/audit-telemetry/events`.
+- Revalidated the new module and audit-history path with focused Mocha coverage for the new routes, service, and API, ending with 13 passing tests.
+- Revalidated the project after these security-control additions with focused logging/telemetry tests and a full local `npm test` run at 487 passing tests.
+
 Recent updates (March 26, 2026) focused on architectural security controls and making the Research Workspace reflect them as first-class modules:
-- Added a Mission Assurance Module that models RBAC-plus-ABAC decisions across mission role, clearance, assigned mission, device trust, network zone, MFA posture, and break-glass approval so policy reasoning is visible instead of buried in route handlers.
+- Added a Mission Access Assurance Module that models RBAC-plus-ABAC decisions across mission role, clearance, assigned mission, device trust, network zone, MFA posture, and break-glass approval so policy reasoning is visible instead of buried in route handlers.
 - Added mission-aware middleware and policy services so sensitive research actions are evaluated server-side against the same role and attribute matrix shown by the module UI.
-- Added a Hardware-First MFA Module with real WebAuthn-backed hardware-token enrollment and assertion verification plus PKI-aware step-up support grounded in trusted client-certificate evidence from direct mTLS or trusted proxy headers.
+- Added a Hardware-Backed MFA Module with real WebAuthn-backed hardware-token enrollment and assertion verification plus PKI-aware step-up support grounded in trusted client-certificate evidence from direct mTLS or trusted proxy headers.
 - Added HTTPS and mutual-TLS transport configuration support so PKI-backed assurance is no longer just a mock research concept; the app can now be configured to request and verify client certificates.
-- Added a Session Management Module with strict idle timeout, absolute timeout, and concurrent-login prevention logic, including server-side invalidation of superseded sessions and abandoned-terminal lockdown scenarios.
+- Added a Session Security Module with strict idle timeout, absolute timeout, and concurrent-login prevention logic, including server-side invalidation of superseded sessions and abandoned-terminal lockdown scenarios.
 - Added a dev-only seeded access matrix for analyst, operator, mission lead, auditor, admin, and break-glass personas, while replacing the earlier hardcoded shared seed password with a safer env-backed or randomly generated local password flow.
-- Added an Injection Prevention Module plus a global request guard that rejects operator-shaped Mongo payloads early and enables Mongoose `sanitizeFilter` plus `strictQuery` defaults as an architectural NoSQL-injection defense.
-- Added an XSS Defense Module and tightened the app's CSP/escaped-rendering posture so the browser-hardening model is both visible in the UI and enforced centrally through app configuration.
-- Added an Access Control Module and a global protected-API gate so `/api/*` endpoints are denied by default unless the server sees a verified authenticated identity, even if a frontend control is visible or a request is replayed directly.
+- Added a Query Injection Prevention Module plus a global request guard that rejects operator-shaped Mongo payloads early and enables Mongoose `sanitizeFilter` plus `strictQuery` defaults as an architectural NoSQL-injection defense.
+- Added an XSS and CSP Defense Module and tightened the app's CSP/escaped-rendering posture so the browser-hardening model is both visible in the UI and enforced centrally through app configuration.
+- Added a Server Access Control Module and a global protected-API gate so `/api/*` endpoints are denied by default unless the server sees a verified authenticated identity, even if a frontend control is visible or a request is replayed directly.
 - Tightened `requireAuth` and `requireAuthAPI` to require a real verified `req.user._id`, keeping page access and API access aligned with the new broken-access-control posture.
 - Stabilized local startup further by fixing the launcher and current-process restart path so the live app on `localhost:3000` reflects the latest routes instead of silently serving a stale process after major route additions.
 - Hardened the Google OAuth callback flow so token-exchange failures are handled consistently even when Passport surfaces them as `InternalOAuthError` rather than `TokenError`, replacing raw callback stack traces with the same friendly login-page error and guidance.
@@ -28,25 +61,25 @@ Recent updates (March 26, 2026) focused on architectural security controls and m
 - Revalidated the project after these changes with `npm test` at 461 passing, `npm run lint` clean, and live route checks confirming the new protected research-module pages and APIs are mounted.
 
 Recent updates (March 25, 2026) focused on making the browser-automation surfaces reflect live verification rather than static scenario catalogs:
-- Expanded the Playwright browser suite to cover auth forms, signup-login flow, server-rendered notes CRUD, Research Workspace navigation, Security Module interaction flow, Selenium Module smoke coverage, Playwright Module interaction flow, and a broader cross-module suite.
+- Expanded the Playwright browser suite to cover auth forms, signup-login flow, server-rendered notes CRUD, Research Workspace navigation, Security Operations Module interaction flow, Selenium Testing Module smoke coverage, Playwright Testing Module interaction flow, and a broader cross-module suite.
 - Introduced a shared Playwright scenario registry plus annotated Playwright specs so `/playwright/module` can resolve each registered scenario against `artifacts/playwright-results.json` and show `Latest run: passed` when the latest annotated suite succeeds.
-- Verified the latest Playwright artifact in Chromium with 13 expected tests and 0 unexpected failures, which gives the Playwright Module page an accurate latest-run view instead of "Run status unavailable".
-- Implemented a live Selenium suite against `http://localhost:3000`, including dedicated coverage for auth, signup/login into notes, notes CRUD, Research Workspace navigation, Security Module interactions, ML Module flow, and the `/selenium/module` page itself.
-- Added `scripts/run-selenium-suite.js` so `npm run test:selenium` not only runs the Selenium suite but also writes `artifacts/selenium-results.json`, letting the Selenium Module page surface suite status, browser/runtime metadata, covered test files, and per-scenario badges.
-- Reworked the Selenium Module service and UI so the page is now useful as an operational browser-testing dashboard: it shows the latest suite result, refresh time, scenario coverage, generated WebDriver scripts, and scenario-by-scenario pass status from the latest artifact.
+- Verified the latest Playwright artifact in Chromium with 13 expected tests and 0 unexpected failures, which gives the Playwright Testing Module page an accurate latest-run view instead of "Run status unavailable".
+- Implemented a live Selenium suite against `http://localhost:3000`, including dedicated coverage for auth, signup/login into notes, notes CRUD, Research Workspace navigation, Security Operations Module interactions, Alert Triage ML Module flow, and the `/selenium/module` page itself.
+- Added `scripts/run-selenium-suite.js` so `npm run test:selenium` not only runs the Selenium suite but also writes `artifacts/selenium-results.json`, letting the Selenium Testing Module page surface suite status, browser/runtime metadata, covered test files, and per-scenario badges.
+- Reworked the Selenium Testing Module service and UI so the page is now useful as an operational browser-testing dashboard: it shows the latest suite result, refresh time, scenario coverage, generated WebDriver scripts, and scenario-by-scenario pass status from the latest artifact.
 - Hardened local realtime startup by making Redis client creation lazy/fail-fast so enabling a `REDIS_URL` without an active Redis listener no longer spams repeated `ECONNREFUSED 127.0.0.1:6379` errors during simple app startup or test imports.
-- Added a dedicated Self-Healing Module inside the Research Workspace with page/API routes that treat selector drift as a first-class research workflow rather than a hidden browser-test maintenance chore.
+- Added a dedicated Self-Healing Locator Repair Module inside the Research Workspace with page/API routes that treat selector drift as a first-class research workflow rather than a hidden browser-test maintenance chore.
 - Implemented an ML-assisted self-healing service that reads a broken Playwright or Selenium locator, a short step goal, and the current HTML snippet, generates deterministic repair candidates across `data-testid`, `id`, `href`, `name`, role-plus-name, placeholder, and text strategies, then reranks them with a trained logistic model.
 - Added persisted self-healing history, repair feedback capture, bootstrap-versus-hybrid model training, and runtime Playwright/Selenium self-heal helpers so accepted and rejected outcomes can improve future repair ranking.
-- Grounded the Self-Healing Module in app-shaped sample cases from the Research Workspace, Playwright Module, and auth flows so self-healing ideas can be explored against realistic failures instead of toy examples.
+- Grounded the Self-Healing Locator Repair Module in app-shaped sample cases from the Research Workspace, Playwright Testing Module, and auth flows so self-healing ideas can be explored against realistic failures instead of toy examples.
 - Renamed the canonical browser route from `/locator-repair/module` to `/self-healing/module` so the URL matches the module's product-facing name, while preserving `/locator-repair` and `/locator-repair/module` as legacy redirects and leaving `/api/locator-repair/*` intact for compatibility.
-- Added controller, route, service, page-route, runtime-helper, and integration coverage for the Self-Healing Module, raising the local suite to 320 passing tests while keeping ESLint clean.
+- Added controller, route, service, page-route, runtime-helper, and integration coverage for the Self-Healing Locator Repair Module, raising the local suite to 320 passing tests while keeping ESLint clean.
 
 More March 25, 2026 work focused on reliability, maintainability, and keeping CI aligned with the evolved browser-automation surface:
-- Added a Playwright smoke path for the Self-Healing Module, covering the legacy `/locator-repair/module` redirect, the canonical `/self-healing/module` page, sample loading, and generated repair suggestions so CI exercises the newest browser-research surface directly.
+- Added a Playwright smoke path for the Self-Healing Locator Repair Module, covering the legacy `/locator-repair/module` redirect, the canonical `/self-healing/module` page, sample loading, and generated repair suggestions so CI exercises the newest browser-research surface directly.
 - Added `npm run lint` to the main GitHub Actions CI workflow and updated the browser workflow so Playwright boots against a deterministic CI-safe environment with MongoDB available during startup.
 - Fixed the app startup race by making the web server wait for a successful MongoDB connection before calling `listen()`, preventing the app from accepting requests while session-backed or model-backed routes are still booting.
-- Extracted shared browser-module service and client scaffolding so the Playwright and Selenium modules reuse more of the same artifact-loading, scenario-overview, and page-behavior foundation instead of drifting as near-duplicate stacks.
+- Extracted shared browser-module service and client scaffolding so the Playwright Testing and Selenium Testing modules reuse more of the same artifact-loading, scenario-overview, and page-behavior foundation instead of drifting as near-duplicate stacks.
 - Split the Self-Healing service into smaller catalog, parsing, and engine layers so locator extraction, feature scoring, and ML-assisted ranking stay readable without changing the public behavior of the module.
 - Consolidated runtime env loading into a dedicated config helper, preserving `.env.local` override behavior without repeated ad hoc dotenv calls in the main entrypoint.
 - Added mtime-aware artifact caching for Playwright and Selenium result files so repeated module overview and script-generation calls stop reparsing unchanged JSON artifacts on every request.
@@ -54,44 +87,44 @@ More March 25, 2026 work focused on reliability, maintainability, and keeping CI
 - Simplified the README Features section into a shorter, clearer summary that keeps the same meaning while making the project's scope easier to scan quickly.
 
 Recent updates (March 21, 2026) focused on testing depth and clearer realtime UX:
-- Added end-to-end application coverage for authenticated note API CRUD, the server-rendered note create-edit flow, and the Security Module workflow for log analysis, scan import, correlations, and realtime probing.
+- Added end-to-end application coverage for authenticated note API CRUD, the server-rendered note create-edit flow, and the Security Operations Module workflow for log analysis, scan import, correlations, and realtime probing.
 - Introduced `test/testSetup.js` so `npm test` boots in `NODE_ENV=test`, disables Redis-backed realtime side effects by default, and runs the expanded integration suite deterministically.
-- Clarified the Security Module realtime UI so the page now distinguishes server capability from the current browser tab's live stream state.
+- Clarified the Security Operations Module realtime UI so the page now distinguishes server capability from the current browser tab's live stream state.
 - Updated the realtime connect-disconnect controls so disconnecting shows an explicit browser-side disconnected state instead of implying the whole backend realtime feature has been turned off.
 - Revalidated the branch after these changes with the then-current suite passing cleanly and a clean ESLint run before merging the work back into `main`.
 
 More March 21, 2026 work expanded the machine-learning and local-run story:
 - Added ML-ready alert triage fields, analyst feedback capture, and a trainable logistic-regression scoring path with heuristic fallback when no model artifact is present.
-- Added a dedicated ML Module frontend and API flow so model status, label distribution, recent scored alerts, and bootstrap-versus-hybrid training can be driven from the authenticated UI.
-- Hardened the ML Module browser fetch behavior to send same-origin credentials, surface clearer non-JSON/session-expiry failures, and prevent duplicate training requests while a training job is already in progress.
-- Expanded the ML Module dashboard with score buckets, alert-type priority breakdowns, and learned feature-influence views so the model can be inspected visually instead of only through summary counts.
-- Added theory-focused descriptions to every ML Module panel so the page explains the role of labels, metrics, score sources, score buckets, feature weights, and inference outputs in supervised triage.
-- Clarified the ML Module's role as a model-operations workspace: the page now ties together training, runtime model state, explainability, feedback-derived supervision, and autonomous-response proof rather than treating ML as an isolated backend experiment.
+- Added a dedicated Alert Triage ML Module frontend and API flow so model status, label distribution, recent scored alerts, and bootstrap-versus-hybrid training can be driven from the authenticated UI.
+- Hardened the Alert Triage ML Module browser fetch behavior to send same-origin credentials, surface clearer non-JSON/session-expiry failures, and prevent duplicate training requests while a training job is already in progress.
+- Expanded the Alert Triage ML Module dashboard with score buckets, alert-type priority breakdowns, and learned feature-influence views so the model can be inspected visually instead of only through summary counts.
+- Added theory-focused descriptions to every Alert Triage ML Module panel so the page explains the role of labels, metrics, score sources, score buckets, feature weights, and inference outputs in supervised triage.
+- Clarified the Alert Triage ML Module's role as a model-operations workspace: the page now ties together training, runtime model state, explainability, feedback-derived supervision, and autonomous-response proof rather than treating ML as an isolated backend experiment.
 - Added a Windows `run-local.ps1` launcher that opens dedicated PowerShell windows for the web app and optional realtime worker so local refreshes are not dependent on short-lived shell sessions.
 - Added `ecosystem.config.cjs` plus npm PM2 helper scripts so the app and realtime worker can run under a persistent local process manager instead of editor-owned shell sessions.
 - Updated local run guidance in the README to point developers toward `run-local.ps1` or PM2 whenever they see intermittent "site can't be reached" refresh behavior from transient launch environments.
 - Added an `incidentResponseService` policy layer that turns ML triage output into audited `none`, `notify`, or `block` decisions for scheduled automation and realtime-ingest alerts.
 - Stored autonomous response metadata directly on `SecurityAlert` documents so dashboards can show the response level, rationale, and provider outcomes instead of hiding those actions in logs.
 - Routed scheduled automation and the realtime worker through the same autonomous response service, replacing the earlier one-off realtime blocking path with a shared ML-aware decision path.
-- Updated the Security Module and ML Module frontends so recent alerts show the recorded autonomous response state alongside triage scores and analyst feedback.
-- Added an `Autonomy Demo Inject` flow in the ML Module that seeds a dry-run notify-and-block scenario, then refreshed the overview logic so the `Observed Autonomous Outcomes` counters read those stored demo results correctly instead of staying at zero.
+- Updated the Security Operations Module and Alert Triage ML Module frontends so recent alerts show the recorded autonomous response state alongside triage scores and analyst feedback.
+- Added an `Autonomy Demo Inject` flow in the Alert Triage ML Module that seeds a dry-run notify-and-block scenario, then refreshed the overview logic so the `Observed Autonomous Outcomes` counters read those stored demo results correctly instead of staying at zero.
 - Added direct tests for the autonomy demo service, provider-and-action outcome aggregation in the ML overview, and the end-to-end flow where the ML overview changes after the demo injector runs.
-- The ML Module now carries more of the product's explainability burden: it is the place where runtime model provenance, label supply, confidence distribution, feature influence, and autonomy outcomes can be inspected together.
+- The Alert Triage ML Module now carries more of the product's explainability burden: it is the place where runtime model provenance, label supply, confidence distribution, feature influence, and autonomy outcomes can be inspected together.
 
 Documentation alignment work later on March 21, 2026 clarified the ML story further:
 - Reframed the top-level project description so the application is described not only as a note-taking tool, but also as a security-research and ML-assisted triage workspace.
-- Tightened the README's ML Module overview so new contributors can understand the module as a compact model-operations surface for training, runtime inspection, feedback loops, explainability, and autonomy proof.
-- Preserved a longer local-only paper on the ML Module architecture as a personal research artifact while keeping it outside version control.
+- Tightened the README's Alert Triage ML Module overview so new contributors can understand the module as a compact model-operations surface for training, runtime inspection, feedback loops, explainability, and autonomy proof.
+- Preserved a longer local-only paper on the Alert Triage ML Module architecture as a personal research artifact while keeping it outside version control.
 
 Later on March 21, 2026, the Research Workspace gained a Selenium-focused browser-automation surface:
-- Added a dedicated Selenium Module entry inside the Research Workspace so browser automation now sits beside the Security and ML module pages instead of living only in external tooling.
-- Implemented Selenium page and API routes that expose scenario metadata plus generated JavaScript WebDriver templates for workspace navigation, Security Module smoke coverage, ML Module smoke coverage, Selenium Module smoke coverage, and a full cross-module research suite.
-- Structured the Selenium Module as a planning-and-export surface rather than an in-browser runner: it explains browser prerequisites, route targets, assertion goals, and stable smoke-test coverage for the authenticated app.
-- Added dedicated service, controller, page-route, API-route, and integration coverage for the Selenium Module so the browser-automation surface is tested at the same depth as the Security and ML modules.
+- Added a dedicated Selenium Testing Module entry inside the Research Workspace so browser automation now sits beside the Security Operations and Alert Triage ML module pages instead of living only in external tooling.
+- Implemented Selenium page and API routes that expose scenario metadata plus generated JavaScript WebDriver templates for workspace navigation, Security Operations Module smoke coverage, Alert Triage ML Module smoke coverage, Selenium Testing Module smoke coverage, and a full cross-module research suite.
+- Structured the Selenium Testing Module as a planning-and-export surface rather than an in-browser runner: it explains browser prerequisites, route targets, assertion goals, and stable smoke-test coverage for the authenticated app.
+- Added dedicated service, controller, page-route, API-route, and integration coverage for the Selenium Testing Module so the browser-automation surface is tested at the same depth as the Security Operations and Alert Triage ML modules.
 - Updated the README to describe the project as note-taking plus security research, ML-assisted triage, and Selenium-based browser automation, aligning the docs with the current Research Workspace layout.
 
-Recent updates (March 20, 2026) focused on local developer experience and Security Module stability:
-- Reworked the Security Module realtime flow so the browser no longer tries to inspect the httpOnly session cookie; connection availability is derived from server state instead.
+Recent updates (March 20, 2026) focused on local developer experience and Security Operations Module stability:
+- Reworked the Security Operations Module realtime flow so the browser no longer tries to inspect the httpOnly session cookie; connection availability is derived from server state instead.
 - Added a lightweight realtime probe path so the UI can validate stream availability without opening a disposable SSE stream, and moved each connected client onto its own Redis subscriber to avoid cross-tab disconnect side effects.
 - Updated the realtime worker to fail fast when Redis is not configured, rather than spinning in a tight polling loop.
 - Tightened the development realtime toggle so it behaves like a JSON API and parses boolean enable-disable input safely.
@@ -140,13 +173,27 @@ Recent updates (March 5, 2026) hardened validation and authentication flows:
 
 RECENT ADDITIONS (as of March 28, 2026)
 
-- Added and stabilized the Mission Assurance, Hardware-First MFA, Session Management, Injection Prevention, XSS Defense, and Access Control modules, making security architecture visible and enforceable in both UI and backend.
+- Added and stabilized the Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, and Server Access Control modules, making security architecture visible and enforceable in both UI and backend.
 - Hardened Google OAuth and local startup, improved error handling, and made OAuth troubleshooting easier.
-- Improved browser-automation modules: Playwright and Selenium modules now reflect live test artifacts, show per-scenario status, and export stable test templates.
-- The Self-Healing Module now supports ML-assisted locator repair for Playwright and Selenium, with feedback-driven ranking and artifact-backed history.
+- Improved browser-automation modules: Playwright Testing and Selenium Testing modules now reflect live test artifacts, show per-scenario status, and export stable test templates.
+- The Self-Healing Locator Repair Module now supports ML-assisted locator repair for Playwright and Selenium, with feedback-driven ranking and artifact-backed history.
 - Security automation and CI: Integrated Falco/Trivy runners, improved artifact handling, and made security triage and reporting more reliable in CI.
-- The ML Module now acts as a full model-ops and explainability surface, with autonomous response proof and demo flows.
+- The Alert Triage ML Module now acts as a full model-ops and explainability surface, with autonomous response proof and demo flows.
 - All modules and APIs are now protected by global access gates, with stricter session, CSRF, and input validation defaults.
+
+MARCH 29, 2026 SECURITY ADDITIONS
+
+- TLS 1.3-only HTTPS transport enforcement is now in place for certificate-based server mode.
+- Response metadata and error-message sanitization now reduce version and platform leakage.
+- Immutable remote logging now supports append-only operational and audit forwarding.
+- Database telemetry now records request-scoped state changes across core persisted models and tracked bulk writes.
+- SIEM integration now supports both structured JSON and RFC 5424-style syslog formatting.
+- Dependency scanning now blocks high-severity known CVEs through local audit scripts and CI workflow enforcement.
+- SBOM generation now provides a committed manifest of third-party libraries derived from the current npm dependency graph.
+- Container hardening now uses a distroless non-root runtime image, with CI scanning the built application image instead of a placeholder container.
+- Local Docker Desktop validation now uses a host-aware MongoDB override rather than raw `localhost`, which is container-internal and not suitable for host MongoDB access.
+- The Research Workspace now exposes the March 29 supply-chain work as a dedicated Supply Chain Security Module rather than leaving that material only in scripts, CI, and documentation.
+- The Research Workspace now exposes the March 29 auditability work as a dedicated Audit Trail and Telemetry Module backed by a persisted audit-history API.
 
 
 
@@ -154,7 +201,9 @@ MAJOR CHALLENGES AND SOLUTIONS
 
 - Authentication/Authorization: Complex session management, role/attribute-based access, and secure OAuth required reusable middleware, strict user checks, and robust error handling.
 - Input Validation: Balancing security and usability led to centralized, layered validation and sanitization utilities, with clear separation for create/update flows.
-- Testing: Achieving 461 passing tests required extensive mocking, stubbing, and cleanup, especially for database and authentication logic.
+- Testing: Achieving 487 passing tests required extensive mocking, stubbing, and cleanup, especially for database, authentication, audit logging, and telemetry logic.
+- Dependency governance: keeping a generated SBOM in source control makes supply-chain review more concrete than relying on package manifests alone.
+- Containerization: local Docker validation on Windows required treating host services explicitly with `host.docker.internal`, and optional desktop keyring integrations had to be disabled in the minimal runtime image.
 - Deployment: Technical debt (hardcoded values, insecure cookies) was resolved with environment-driven config, secure defaults, and standardized scripts.
 - Error Handling: Centralized error utilities and async wrappers ensured consistent, user-friendly responses and robust test coverage.
 - Schema Design: Used ObjectId references, realistic constraints, and compound queries for secure, flexible data relationships.
@@ -212,6 +261,6 @@ FINAL REFLECTION (as of March 28, 2026)
 The project is now a robust, production-ready, security-focused, and test-driven application with modular architecture, strong authentication, comprehensive validation, encrypted data, and a full suite of research, automation, and browser-testing tools. The most important lesson: real progress comes from honest assessment, continuous improvement, and balancing shipping with technical debt management.
 
 ================================================================================
-Project: Note App | Developer: Ryan V | Date: March 26, 2026
+Project: Note App | Developer: Ryan V | Date: March 29, 2026
 Repository: https://github.com/k0jir0/note-app
 ================================================================================

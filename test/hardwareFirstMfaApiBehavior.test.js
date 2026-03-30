@@ -36,7 +36,7 @@ describe('Hardware-first MFA API controller behavior', () => {
         const res = makeRes();
         const fakeOverview = {
             module: {
-                name: 'Hardware-First MFA Module'
+                name: 'Hardware-Backed MFA Module'
             }
         };
 

@@ -53,7 +53,7 @@ describe('Playwright Page Routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/playwright-module.ejs');
         expect(res.render.firstCall.args[1]).to.deep.equal({
-            title: 'Playwright Module',
+            title: 'Playwright Testing Module',
             csrfToken: 'test-csrf-token'
         });
     });

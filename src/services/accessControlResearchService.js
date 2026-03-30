@@ -322,7 +322,7 @@ function buildAccessControlModuleOverview({ baseUrl, user } = {}) {
 
     return {
         module: {
-            name: 'Access Control Module',
+            name: 'Server Access Control Module',
             focus: 'Server-side identity verification and broken-access-control prevention',
             route: '/access-control/module',
             baseUrl: normalizeBaseUrl(baseUrl)

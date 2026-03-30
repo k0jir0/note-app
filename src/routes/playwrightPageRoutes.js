@@ -9,7 +9,7 @@ router.get('/playwright', requireAuth, (req, res) => {
 
 router.get('/playwright/module', requireAuth, (req, res) => {
     res.render('pages/playwright-module.ejs', {
-        title: 'Playwright Module',
+        title: 'Playwright Testing Module',
         csrfToken: res.locals.csrfToken
     });
 });

@@ -58,7 +58,7 @@ describe('XSS defense page routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/xss-defense-module');
         expect(res.render.firstCall.args[1]).to.deep.equal({
-            title: 'XSS Defense Module',
+            title: 'XSS and CSP Defense Module',
             csrfToken: 'test-csrf-token'
         });
     });

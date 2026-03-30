@@ -201,7 +201,7 @@ describe('Application end-to-end flows', function () {
         const moduleHtml = await modulePage.text();
 
         expect(modulePage.status).to.equal(200);
-        expect(moduleHtml).to.include('Security Module');
+        expect(moduleHtml).to.include('Security Operations Module');
         expect(moduleHtml).to.include('Server Realtime Enabled');
         expect(moduleHtml).to.include('Stream Disconnected');
 
@@ -297,16 +297,18 @@ describe('Application end-to-end flows', function () {
         expect(researchPage.status).to.equal(200);
         expect(researchPage.headers.get('content-security-policy')).to.include('script-src \'self\'');
         expect(researchPage.headers.get('content-security-policy')).to.include('script-src-attr \'none\'');
-        expect(researchHtml).to.include('ML Module');
-        expect(researchHtml).to.include('Selenium Module');
-        expect(researchHtml).to.include('Playwright Module');
-        expect(researchHtml).to.include('Injection Prevention Module');
-        expect(researchHtml).to.include('XSS Defense Module');
-        expect(researchHtml).to.include('Access Control Module');
-        expect(researchHtml).to.include('Self-Healing Module');
-        expect(researchHtml).to.include('Session Management Module');
-        expect(researchHtml).to.include('Hardware-First MFA Module');
-        expect(researchHtml).to.include('Mission Assurance Module');
+        expect(researchPage.headers.get('x-powered-by')).to.equal(null);
+        expect(researchPage.headers.get('server')).to.equal(null);
+        expect(researchHtml).to.include('Alert Triage ML Module');
+        expect(researchHtml).to.include('Selenium Testing Module');
+        expect(researchHtml).to.include('Playwright Testing Module');
+        expect(researchHtml).to.include('Query Injection Prevention Module');
+        expect(researchHtml).to.include('XSS and CSP Defense Module');
+        expect(researchHtml).to.include('Server Access Control Module');
+        expect(researchHtml).to.include('Self-Healing Locator Repair Module');
+        expect(researchHtml).to.include('Session Security Module');
+        expect(researchHtml).to.include('Hardware-Backed MFA Module');
+        expect(researchHtml).to.include('Mission Access Assurance Module');
         expect(researchHtml).to.include('/ml/module');
         expect(researchHtml).to.include('/selenium/module');
         expect(researchHtml).to.include('/playwright/module');
@@ -349,7 +351,7 @@ describe('Application end-to-end flows', function () {
         const mlHtml = await mlPage.text();
 
         expect(mlPage.status).to.equal(200);
-        expect(mlHtml).to.include('ML Module');
+        expect(mlHtml).to.include('Alert Triage ML Module');
         expect(mlHtml).to.include('/api/ml/overview');
         expect(mlHtml).to.include('/api/ml/autonomy-demo');
         expect(mlHtml).to.include('Score Buckets');
@@ -440,13 +442,13 @@ describe('Application end-to-end flows', function () {
         const seleniumHtml = await seleniumPage.text();
 
         expect(seleniumPage.status).to.equal(200);
-        expect(seleniumHtml).to.include('Selenium Module');
+        expect(seleniumHtml).to.include('Selenium Testing Module');
         expect(seleniumHtml).to.include('/api/selenium/overview');
         expect(seleniumHtml).to.include('/api/selenium/script');
         expect(seleniumHtml).to.include('Latest Suite Run');
         expect(seleniumHtml).to.include('Scenario Catalog');
         expect(seleniumHtml).to.include('Generated Script Preview');
-        expect(seleniumHtml).to.include('Open Playwright Module');
+        expect(seleniumHtml).to.include('Open Playwright Testing Module');
 
         const seleniumOverviewResponse = await client.request('/api/selenium/overview', {
             headers: { 'x-test-auth': '1' }
@@ -455,7 +457,7 @@ describe('Application end-to-end flows', function () {
 
         expect(seleniumOverviewResponse.status).to.equal(200);
         expect(seleniumOverviewPayload.success).to.equal(true);
-        expect(seleniumOverviewPayload.data.module.name).to.equal('Selenium Module');
+        expect(seleniumOverviewPayload.data.module.name).to.equal('Selenium Testing Module');
         expect(seleniumOverviewPayload.data.coverage.scenarioCount).to.equal(seleniumResearchService.getScenarioIds().length);
         expect(seleniumOverviewPayload.data.suite.implementedScenarioCount).to.equal(seleniumResearchService.getScenarioIds().length);
         expect(seleniumOverviewPayload.data.defaultScenarioId).to.equal('research-full-suite');
@@ -487,7 +489,7 @@ describe('Application end-to-end flows', function () {
         const playwrightHtml = await playwrightPage.text();
 
         expect(playwrightPage.status).to.equal(200);
-        expect(playwrightHtml).to.include('Playwright Module');
+        expect(playwrightHtml).to.include('Playwright Testing Module');
         expect(playwrightHtml).to.include('/api/playwright/overview');
         expect(playwrightHtml).to.include('/api/playwright/script');
         expect(playwrightHtml).to.include('Scenario Catalog');
@@ -500,7 +502,7 @@ describe('Application end-to-end flows', function () {
 
         expect(playwrightOverviewResponse.status).to.equal(200);
         expect(playwrightOverviewPayload.success).to.equal(true);
-        expect(playwrightOverviewPayload.data.module.name).to.equal('Playwright Module');
+        expect(playwrightOverviewPayload.data.module.name).to.equal('Playwright Testing Module');
         expect(playwrightOverviewPayload.data.coverage.scenarioCount).to.equal(playwrightResearchService.getScenarioIds().length);
         expect(playwrightOverviewPayload.data.defaultScenarioId).to.equal('research-full-suite');
 
@@ -531,7 +533,7 @@ describe('Application end-to-end flows', function () {
         const injectionPreventionHtml = await injectionPreventionPage.text();
 
         expect(injectionPreventionPage.status).to.equal(200);
-        expect(injectionPreventionHtml).to.include('Injection Prevention Module');
+        expect(injectionPreventionHtml).to.include('Query Injection Prevention Module');
         expect(injectionPreventionHtml).to.include('/api/injection-prevention/overview');
         expect(injectionPreventionHtml).to.include('/api/injection-prevention/evaluate');
         expect(injectionPreventionHtml).to.include('Structured Query Templates');
@@ -544,7 +546,7 @@ describe('Application end-to-end flows', function () {
 
         expect(injectionPreventionOverviewResponse.status).to.equal(200);
         expect(injectionPreventionOverviewPayload.success).to.equal(true);
-        expect(injectionPreventionOverviewPayload.data.module.name).to.equal('Injection Prevention Module');
+        expect(injectionPreventionOverviewPayload.data.module.name).to.equal('Query Injection Prevention Module');
         expect(injectionPreventionOverviewPayload.data.database.posture.sanitizeFilter).to.equal(true);
         expect(injectionPreventionOverviewPayload.data.database.posture.strictQuery).to.equal(true);
         expect(injectionPreventionOverviewPayload.data.controls).to.have.length(5);
@@ -598,7 +600,7 @@ describe('Application end-to-end flows', function () {
         const xssDefenseHtml = await xssDefensePage.text();
 
         expect(xssDefensePage.status).to.equal(200);
-        expect(xssDefenseHtml).to.include('XSS Defense Module');
+        expect(xssDefenseHtml).to.include('XSS and CSP Defense Module');
         expect(xssDefenseHtml).to.include('/api/xss-defense/overview');
         expect(xssDefenseHtml).to.include('/api/xss-defense/evaluate');
         expect(xssDefenseHtml).to.include('Rendering And Header Controls');
@@ -611,7 +613,7 @@ describe('Application end-to-end flows', function () {
 
         expect(xssDefenseOverviewResponse.status).to.equal(200);
         expect(xssDefenseOverviewPayload.success).to.equal(true);
-        expect(xssDefenseOverviewPayload.data.module.name).to.equal('XSS Defense Module');
+        expect(xssDefenseOverviewPayload.data.module.name).to.equal('XSS and CSP Defense Module');
         expect(xssDefenseOverviewPayload.data.csp.enforced).to.equal(true);
         expect(xssDefenseOverviewPayload.data.csp.directives.scriptSrc).to.deep.equal(['\'self\'']);
         expect(xssDefenseOverviewPayload.data.csp.directives.scriptSrcAttr).to.deep.equal(['\'none\'']);
@@ -643,7 +645,7 @@ describe('Application end-to-end flows', function () {
         const accessControlHtml = await accessControlPage.text();
 
         expect(accessControlPage.status).to.equal(200);
-        expect(accessControlHtml).to.include('Access Control Module');
+        expect(accessControlHtml).to.include('Server Access Control Module');
         expect(accessControlHtml).to.include('/api/access-control/overview');
         expect(accessControlHtml).to.include('/api/access-control/evaluate');
         expect(accessControlHtml).to.include('Protected API Catalog');
@@ -656,7 +658,7 @@ describe('Application end-to-end flows', function () {
 
         expect(accessControlOverviewResponse.status).to.equal(200);
         expect(accessControlOverviewPayload.success).to.equal(true);
-        expect(accessControlOverviewPayload.data.module.name).to.equal('Access Control Module');
+        expect(accessControlOverviewPayload.data.module.name).to.equal('Server Access Control Module');
         expect(accessControlOverviewPayload.data.coverage.protectedRouteCount).to.be.greaterThan(0);
         expect(accessControlOverviewPayload.data.guard.protectedPrefixes).to.include('/api/');
         expect(accessControlOverviewPayload.data.routeCatalog.some((route) => route.path === '/api/notes')).to.equal(true);
@@ -695,7 +697,7 @@ describe('Application end-to-end flows', function () {
         const locatorRepairHtml = await locatorRepairPage.text();
 
         expect(locatorRepairPage.status).to.equal(200);
-        expect(locatorRepairHtml).to.include('Self-Healing Module');
+        expect(locatorRepairHtml).to.include('Self-Healing Locator Repair Module');
         expect(locatorRepairHtml).to.include('/api/locator-repair/overview');
         expect(locatorRepairHtml).to.include('/api/locator-repair/history');
         expect(locatorRepairHtml).to.include('/api/locator-repair/suggest');
@@ -711,7 +713,7 @@ describe('Application end-to-end flows', function () {
 
         expect(locatorRepairOverviewResponse.status).to.equal(200);
         expect(locatorRepairOverviewPayload.success).to.equal(true);
-        expect(locatorRepairOverviewPayload.data.module.name).to.equal('Self-Healing Module');
+        expect(locatorRepairOverviewPayload.data.module.name).to.equal('Self-Healing Locator Repair Module');
         expect(locatorRepairOverviewPayload.data.coverage.sampleCaseCount).to.be.greaterThan(0);
         expect(locatorRepairOverviewPayload.data.defaultSampleId).to.be.a('string').and.not.equal('');
         expect(locatorRepairOverviewPayload.data.model.available).to.equal(true);
@@ -725,8 +727,8 @@ describe('Application end-to-end flows', function () {
                 'x-test-auth': '1'
             },
             body: JSON.stringify({
-                locator: 'By.linkText("Open ML Module")',
-                stepGoal: 'Open the ML Module from the Research Workspace',
+                locator: 'By.linkText("Open Alert Triage ML Module")',
+                stepGoal: 'Open the Alert Triage ML Module from the Research Workspace',
                 htmlSnippet: '<a href="/ml/module" data-testid="research-open-ml">Open ML Workspace</a>'
             })
         });
@@ -747,8 +749,8 @@ describe('Application end-to-end flows', function () {
                 'x-test-auth': '1'
             },
             body: JSON.stringify({
-                locator: 'By.linkText("Open ML Module")',
-                stepGoal: 'Open the ML Module from the Research Workspace',
+                locator: 'By.linkText("Open Alert Triage ML Module")',
+                stepGoal: 'Open the Alert Triage ML Module from the Research Workspace',
                 htmlSnippet: '<a href="/ml/module" data-testid="research-open-ml">Open ML Workspace</a>',
                 selectedFingerprint: locatorRepairSuggestPayload.data.suggestions[0].candidate.fingerprint,
                 feedbackLabel: 'accepted',
@@ -793,7 +795,7 @@ describe('Application end-to-end flows', function () {
         const sessionManagementHtml = await sessionManagementPage.text();
 
         expect(sessionManagementPage.status).to.equal(200);
-        expect(sessionManagementHtml).to.include('Session Management Module');
+        expect(sessionManagementHtml).to.include('Session Security Module');
         expect(sessionManagementHtml).to.include('/api/session-management/overview');
         expect(sessionManagementHtml).to.include('/api/session-management/evaluate');
         expect(sessionManagementHtml).to.include('Live Session State');
@@ -806,7 +808,7 @@ describe('Application end-to-end flows', function () {
 
         expect(sessionManagementOverviewResponse.status).to.equal(200);
         expect(sessionManagementOverviewPayload.success).to.equal(true);
-        expect(sessionManagementOverviewPayload.data.module.name).to.equal('Session Management Module');
+        expect(sessionManagementOverviewPayload.data.module.name).to.equal('Session Security Module');
         expect(sessionManagementOverviewPayload.data.policy.preventConcurrentLogins).to.equal(true);
         expect(sessionManagementOverviewPayload.data.controls).to.have.length(4);
         expect(sessionManagementOverviewPayload.data.scenarios).to.be.an('array').that.is.not.empty;
@@ -841,7 +843,7 @@ describe('Application end-to-end flows', function () {
         const hardwareMfaHtml = await hardwareMfaPage.text();
 
         expect(hardwareMfaPage.status).to.equal(200);
-        expect(hardwareMfaHtml).to.include('Hardware-First MFA Module');
+        expect(hardwareMfaHtml).to.include('Hardware-Backed MFA Module');
         expect(hardwareMfaHtml).to.include('/api/hardware-mfa/overview');
         expect(hardwareMfaHtml).to.include('/api/hardware-mfa/challenge');
         expect(hardwareMfaHtml).to.include('/api/hardware-mfa/verify');
@@ -856,7 +858,7 @@ describe('Application end-to-end flows', function () {
 
         expect(hardwareMfaOverviewResponse.status).to.equal(200);
         expect(hardwareMfaOverviewPayload.success).to.equal(true);
-        expect(hardwareMfaOverviewPayload.data.module.name).to.equal('Hardware-First MFA Module');
+        expect(hardwareMfaOverviewPayload.data.module.name).to.equal('Hardware-Backed MFA Module');
         expect(hardwareMfaOverviewPayload.data.registeredAuthenticators).to.have.length(2);
         expect(hardwareMfaOverviewPayload.data.sessionAssurance.hardwareFirst).to.equal(false);
 
@@ -928,7 +930,7 @@ describe('Application end-to-end flows', function () {
         const missionAssuranceHtml = await missionAssurancePage.text();
 
         expect(missionAssurancePage.status).to.equal(200);
-        expect(missionAssuranceHtml).to.include('Mission Assurance Module');
+        expect(missionAssuranceHtml).to.include('Mission Access Assurance Module');
         expect(missionAssuranceHtml).to.include('/api/mission-assurance/overview');
         expect(missionAssuranceHtml).to.include('/api/mission-assurance/evaluate');
         expect(missionAssuranceHtml).to.include('Policy Decision');
@@ -942,7 +944,7 @@ describe('Application end-to-end flows', function () {
 
         expect(missionAssuranceOverviewResponse.status).to.equal(200);
         expect(missionAssuranceOverviewPayload.success).to.equal(true);
-        expect(missionAssuranceOverviewPayload.data.module.name).to.equal('Mission Assurance Module');
+        expect(missionAssuranceOverviewPayload.data.module.name).to.equal('Mission Access Assurance Module');
         expect(missionAssuranceOverviewPayload.data.currentProfile.missionRole).to.equal('analyst');
         expect(missionAssuranceOverviewPayload.data.actions).to.be.an('array').that.is.not.empty;
         expect(missionAssuranceOverviewPayload.data.resources).to.be.an('array').that.is.not.empty;

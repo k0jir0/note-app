@@ -182,7 +182,7 @@ function buildSessionManagementModuleOverview({ user, session, runtimeConfig, ba
 
     return {
         module: {
-            name: 'Session Management Module',
+            name: 'Session Security Module',
             focus: 'Strict timeout and concurrent-login enforcement',
             route: '/session-management/module',
             baseUrl: normalizeBaseUrl(baseUrl)

@@ -602,7 +602,7 @@ async function initializeLocatorRepairModule() {
         await refreshModule(true);
         await refreshHistory();
         await analyzeLocatorRepairs();
-        renderStatus('Self-Healing Module ready. Analyze a failure, review the self-heal gate, and capture feedback to improve the reranker.', 'secondary');
+        renderStatus('Self-Healing Locator Repair Module ready. Analyze a failure, review the self-heal gate, and capture feedback to improve the reranker.', 'secondary');
     } catch (error) {
         renderStatus(error.message || 'Unable to initialize the self-healing module.', 'danger');
     }

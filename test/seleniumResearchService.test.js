@@ -17,7 +17,7 @@ describe('Selenium research service', () => {
             baseUrl: 'http://127.0.0.1:3000/'
         });
 
-        expect(overview.module.name).to.equal('Selenium Module');
+        expect(overview.module.name).to.equal('Selenium Testing Module');
         expect(overview.module.baseUrl).to.equal('http://127.0.0.1:3000');
         expect(overview.coverage.scenarioCount).to.equal(scenarioCount);
         expect(overview.coverage.authenticatedScenarioCount).to.equal(authenticatedScenarioCount);
@@ -160,7 +160,7 @@ describe('Selenium research service', () => {
                 },
                 {
                     scenarioId: 'selenium-module-overview',
-                    title: 'Selenium Module Overview',
+                    title: 'Selenium Testing Module Overview',
                     file: 'selenium-tests/selenium-module.test.js',
                     status: 'failed',
                     durationMs: 220

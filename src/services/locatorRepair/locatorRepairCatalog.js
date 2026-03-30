@@ -141,14 +141,14 @@ const SAMPLE_CASES = [
     {
         id: 'workspace-ml-link-text-drift',
         title: 'Research link text drift',
-        summary: 'A Selenium linkText locator broke after the ML card button text changed but the route and test id stayed stable.',
-        originalLocator: 'By.linkText("Open ML Module")',
-        stepGoal: 'Open the ML Module from the Research Workspace',
+        summary: 'A Selenium linkText locator broke after the Alert Triage ML card button text changed but the route and test id stayed stable.',
+        originalLocator: 'By.linkText("Open Alert Triage ML Module")',
+        stepGoal: 'Open the Alert Triage ML Module from the Research Workspace',
         htmlSnippet: [
             '<div class="d-flex gap-2">',
-            '    <a href="/security/module" class="btn btn-outline-dark" data-testid="research-open-security">Open Security Module</a>',
-            '    <a href="/ml/module" class="btn btn-outline-dark" data-testid="research-open-ml">Open ML Workspace</a>',
-            '    <a href="/playwright/module" class="btn btn-outline-dark" data-testid="research-open-playwright">Open Playwright Module</a>',
+            '    <a href="/security/module" class="btn btn-outline-dark" data-testid="research-open-security">Open Security Operations Module</a>',
+            '    <a href="/ml/module" class="btn btn-outline-dark" data-testid="research-open-ml">Open Alert Triage ML Module</a>',
+            '    <a href="/playwright/module" class="btn btn-outline-dark" data-testid="research-open-playwright">Open Playwright Testing Module</a>',
             '</div>'
         ].join('\n'),
         expectedCandidate: {
@@ -196,14 +196,14 @@ const SAMPLE_CASES = [
     {
         id: 'workspace-selenium-link-drift',
         title: 'Selenium workspace link drift',
-        summary: 'A text-driven workspace link broke after the Selenium card text changed but the href and test id stayed stable.',
-        originalLocator: 'By.linkText("Open Selenium Module")',
-        stepGoal: 'Open the Selenium Module from the Research Workspace',
+        summary: 'A text-driven workspace link broke after the Selenium Testing card text changed but the href and test id stayed stable.',
+        originalLocator: 'By.linkText("Open Selenium Testing Module")',
+        stepGoal: 'Open the Selenium Testing Module from the Research Workspace',
         htmlSnippet: [
             '<div class="d-flex gap-2">',
-            '    <a href="/ml/module" class="btn btn-outline-dark" data-testid="research-open-ml">Open ML Module</a>',
-            '    <a href="/selenium/module" class="btn btn-outline-dark" data-testid="research-open-selenium">Open Selenium Workspace</a>',
-            '    <a href="/playwright/module" class="btn btn-outline-dark" data-testid="research-open-playwright">Open Playwright Module</a>',
+            '    <a href="/ml/module" class="btn btn-outline-dark" data-testid="research-open-ml">Open Alert Triage ML Module</a>',
+            '    <a href="/selenium/module" class="btn btn-outline-dark" data-testid="research-open-selenium">Open Selenium Testing Module</a>',
+            '    <a href="/playwright/module" class="btn btn-outline-dark" data-testid="research-open-playwright">Open Playwright Testing Module</a>',
             '</div>'
         ].join('\n'),
         expectedCandidate: {

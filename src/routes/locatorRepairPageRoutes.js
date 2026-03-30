@@ -14,7 +14,7 @@ router.get(SELF_HEALING_ROUTE, requireAuth, (req, res) => {
 
 router.get(SELF_HEALING_MODULE_ROUTE, requireAuth, (req, res) => {
     res.render('pages/locator-repair-module.ejs', {
-        title: 'Self-Healing Module',
+        title: 'Self-Healing Locator Repair Module',
         csrfToken: res.locals.csrfToken
     });
 });

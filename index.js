@@ -31,6 +31,9 @@ const seleniumApiRoute = require('./src/routes/seleniumApiRoutes');
 const seleniumPageRoute = require('./src/routes/seleniumPageRoutes');
 const scanApiRoute = require('./src/routes/scanApiRoutes');
 const scanPageRoute = require('./src/routes/scanPageRoutes');
+const supplyChainPageRoute = require('./src/routes/supplyChainPageRoutes');
+const auditTelemetryPageRoute = require('./src/routes/auditTelemetryPageRoutes');
+const auditTelemetryApiRoute = require('./src/routes/auditTelemetryApiRoutes');
 const devRuntimeRoute = require('./src/routes/devRuntimeRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const settingsApiRoute = require('./src/routes/settingsApiRoutes');
@@ -45,13 +48,20 @@ const { enforceServerSideApiAccessControl } = require('./src/middleware/apiAcces
 const { enforceInjectionPrevention } = require('./src/middleware/injectionPrevention');
 const { enforceStrictSessionManagement } = require('./src/middleware/sessionManagement');
 const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
+const { sanitizeResponseMetadata } = require('./src/middleware/responseMetadataProtection');
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
 const { buildSeedResponseMessage, seedDevelopmentData } = require('./src/services/devSeedService');
 const injectionPreventionApiRoute = require('./src/routes/injectionPreventionApiRoutes');
 const injectionPreventionPageRoute = require('./src/routes/injectionPreventionPageRoutes');
 const { applyMongooseInjectionDefaults } = require('./src/services/injectionPreventionService');
 const { startApplication } = require('./src/utils/appStartup');
+const { handleUnhandledError } = require('./src/utils/errorHandler');
+const { createImmutableRequestAuditMiddleware } = require('./src/middleware/immutableRequestAudit');
+const { createImmutableLogClient, installGlobalConsoleMirror } = require('./src/utils/immutableLogService');
+const { requestContextMiddleware } = require('./src/utils/requestContext');
+const { configureDatabaseTelemetry } = require('./src/utils/databaseTelemetry');
 const { createServerFactory } = require('./src/utils/serverTransport');
+const { createPersistentAuditClient } = require('./src/services/persistentAuditService');
 
 const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
 
@@ -69,10 +79,15 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         const mongooseSecurity = applyMongooseInjectionDefaults(mongoose);
         require('./src/config/passport')(passport);
         const app = express();
+        const immutableRemoteClient = createImmutableLogClient(runtimeConfig);
+        const immutableLogClient = createPersistentAuditClient({ baseClient: immutableRemoteClient });
+        installGlobalConsoleMirror(immutableLogClient);
+        configureDatabaseTelemetry({ client: immutableLogClient });
         const isProduction = process.env.NODE_ENV === 'production';
         const useSecureCookies = isProduction || Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled);
         const realtimeAvailable = Boolean(process.env.REDIS_URL) && process.env.DISABLE_REDIS !== '1';
 
+        app.disable('x-powered-by');
         app.locals.runtimeConfig = runtimeConfig;
         app.locals.appBaseUrl = runtimeConfig.appBaseUrl;
         app.locals.realtimeAvailable = realtimeAvailable;
@@ -89,19 +104,27 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         // runtime toggle for realtime (can be changed without restarting when Redis is configured)
         app.locals.realtimeEnabled = realtimeAvailable && process.env.ENABLE_REALTIME === '1';
         app.locals.transportSecurity = runtimeConfig.transport;
+        app.locals.immutableLogging = runtimeConfig.immutableLogging;
+        app.locals.immutableLogClient = immutableLogClient;
 
-        if (runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders) {
-            app.set('trust proxy', 1);
+        const trustProxyHops = runtimeConfig.transport && Number.isInteger(runtimeConfig.transport.trustProxyHops)
+            ? runtimeConfig.transport.trustProxyHops
+            : 0;
+        if (trustProxyHops > 0 || (runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders)) {
+            app.set('trust proxy', Math.max(trustProxyHops, 1));
         }
 
         app.set('view engine', 'ejs');
         app.set('views', path.join(__dirname, 'src', 'views'));
 
+        app.use(sanitizeResponseMetadata);
         app.use(helmet(buildHelmetProtectionOptions({ isProduction })));
+        app.use(requestContextMiddleware);
 
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
         app.use(enforceInjectionPrevention);
+        app.use(createImmutableRequestAuditMiddleware({ client: immutableLogClient }));
         app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
         // Public fallback image for notes without an image URL.
@@ -179,7 +202,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
 
                     res.type('text/plain').send(buildSeedResponseMessage(seedSummary));
                 } catch (error) {
-                    res.status(500).send('Error seeding database: ' + error.message);
+                    console.error('Development seed failed:', error);
+                    res.status(500).send('Database seeding failed. Please try again later.');
                 }
             });
         }
@@ -210,10 +234,15 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.use(seleniumPageRoute);
         app.use(scanApiRoute);
         app.use(scanPageRoute);
+        app.use(auditTelemetryApiRoute);
+        app.use(supplyChainPageRoute);
+        app.use(auditTelemetryPageRoute);
 
         if (process.env.NODE_ENV !== 'production') {
             app.use(devRuntimeRoute);
         }
+
+        app.use(handleUnhandledError);
 
         const PORT = process.env.PORT || 3000;
         const serverFactory = createServerFactory({

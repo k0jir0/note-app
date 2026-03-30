@@ -1,6 +1,7 @@
 const { handleApiError } = require('../utils/errorHandler');
 const missionAssuranceResearchService = require('../services/missionAssuranceResearchService');
 const { isValidNetworkZone } = require('../services/missionAccessControlService');
+const { sanitizeClientErrorList } = require('../utils/metadataSanitization');
 
 function resolveBaseUrl(req) {
     if (req.app && req.app.locals && req.app.locals.appBaseUrl) {
@@ -86,7 +87,7 @@ exports.evaluateDecision = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
-                errors: [error.message]
+                errors: sanitizeClientErrorList([error.message], 'The requested mission assurance scenario is invalid.')
             });
         }
 

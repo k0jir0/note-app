@@ -23,7 +23,7 @@ describe('Locator repair research service', () => {
             historyPath: tempHistoryPath
         });
 
-        expect(overview.module.name).to.equal('Self-Healing Module');
+        expect(overview.module.name).to.equal('Self-Healing Locator Repair Module');
         expect(overview.module.baseUrl).to.equal('http://127.0.0.1:3000');
         expect(overview.coverage.sampleCaseCount).to.equal(locatorRepairResearchService.getSampleCaseIds().length);
         expect(overview.coverage.supportedLocatorFamilyCount).to.be.greaterThan(0);
@@ -39,9 +39,9 @@ describe('Locator repair research service', () => {
 
     it('suggests stable replacements for a text-driven workspace link drift', () => {
         const result = locatorRepairResearchService.suggestLocatorRepairs({
-            locator: 'By.linkText("Open ML Module")',
-            stepGoal: 'Open the ML Module from the Research Workspace',
-            htmlSnippet: '<a href="/ml/module" data-testid="research-open-ml">Open ML Workspace</a>'
+            locator: 'By.linkText("Open Alert Triage ML Module")',
+            stepGoal: 'Open the Alert Triage ML Module from the Research Workspace',
+            htmlSnippet: '<a href="/ml/module" data-testid="research-open-ml">Open Alert Triage ML Module</a>'
         });
 
         expect(result.analysis.locatorFamily).to.equal('selenium-link-text');
@@ -83,20 +83,20 @@ describe('Locator repair research service', () => {
     it('records feedback, stores history, and persists a trained model', () => {
         const htmlSnippet = [
             '<div class="d-flex gap-2">',
-            '    <a href="/security/module" data-testid="research-open-security">Open Security Module</a>',
-            '    <a href="/ml/module" data-testid="research-open-ml">Open ML Workspace</a>',
+            '    <a href="/security/module" data-testid="research-open-security">Open Security Operations Module</a>',
+            '    <a href="/ml/module" data-testid="research-open-ml">Open Alert Triage ML Module</a>',
             '</div>'
         ].join('\n');
         const suggestionResult = locatorRepairResearchService.suggestLocatorRepairs({
-            locator: 'By.linkText("Open ML Module")',
-            stepGoal: 'Open the ML Module from the Research Workspace',
+            locator: 'By.linkText("Open Alert Triage ML Module")',
+            stepGoal: 'Open the Alert Triage ML Module from the Research Workspace',
             htmlSnippet,
             modelPath: tempModelPath
         });
 
         const feedback = locatorRepairResearchService.recordLocatorRepairFeedback({
-            locator: 'By.linkText("Open ML Module")',
-            stepGoal: 'Open the ML Module from the Research Workspace',
+            locator: 'By.linkText("Open Alert Triage ML Module")',
+            stepGoal: 'Open the Alert Triage ML Module from the Research Workspace',
             htmlSnippet,
             selectedFingerprint: suggestionResult.suggestions[0].candidate.fingerprint,
             feedbackLabel: 'accepted',

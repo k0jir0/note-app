@@ -9,7 +9,7 @@ router.get('/selenium', requireAuth, (req, res) => {
 
 router.get('/selenium/module', requireAuth, (req, res) => {
     res.render('pages/selenium-module.ejs', {
-        title: 'Selenium Module',
+        title: 'Selenium Testing Module',
         csrfToken: res.locals.csrfToken
     });
 });

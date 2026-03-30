@@ -34,7 +34,7 @@ describe('Playwright API controller behavior', () => {
         const res = makeRes();
         const fakeOverview = {
             module: {
-                name: 'Playwright Module'
+                name: 'Playwright Testing Module'
             },
             coverage: {
                 scenarioCount: 6,

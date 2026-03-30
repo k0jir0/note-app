@@ -58,7 +58,7 @@ describe('Session management page routes', () => {
         expect(res.render.calledOnce).to.equal(true);
         expect(res.render.firstCall.args[0]).to.equal('pages/session-management-module.ejs');
         expect(res.render.firstCall.args[1]).to.deep.equal({
-            title: 'Session Management Module',
+            title: 'Session Security Module',
             csrfToken: 'test-csrf-token'
         });
     });

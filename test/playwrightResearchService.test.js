@@ -17,7 +17,7 @@ describe('Playwright research service', () => {
             baseUrl: 'http://127.0.0.1:3000/'
         });
 
-        expect(overview.module.name).to.equal('Playwright Module');
+        expect(overview.module.name).to.equal('Playwright Testing Module');
         expect(overview.module.baseUrl).to.equal('http://127.0.0.1:3000');
         expect(overview.coverage.scenarioCount).to.equal(scenarioCount);
         expect(overview.coverage.authenticatedScenarioCount).to.equal(authenticatedScenarioCount);
