@@ -6,9 +6,15 @@ function isPlainObject(value) {
 }
 
 function normalizeIp(req = {}) {
-    const forwardedFor = req.headers && req.headers['x-forwarded-for'];
-    if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
-        return forwardedFor.split(',')[0].trim();
+    if (typeof req.ip === 'string' && req.ip.trim()) {
+        return req.ip.trim();
+    }
+
+    if (Array.isArray(req.ips) && req.ips.length) {
+        const firstTrustedIp = String(req.ips[0] || '').trim();
+        if (firstTrustedIp) {
+            return firstTrustedIp;
+        }
     }
 
     return req.ip || (req.socket && req.socket.remoteAddress) || '';

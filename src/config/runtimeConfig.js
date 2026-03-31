@@ -282,6 +282,10 @@ function buildTransportConfig(env, errors) {
         errors.push('HTTPS_REQUEST_CLIENT_CERT and HTTPS_REQUIRE_CLIENT_CERT require HTTPS_ENABLED=true');
     }
 
+    if (trustProxyClientCertHeaders && trustProxyHops < 1) {
+        errors.push('TRUST_PROXY_CLIENT_CERT_HEADERS=true requires TRUST_PROXY_HOPS to be at least 1');
+    }
+
     if (httpsEnabled) {
         if (!keyPath) {
             errors.push('HTTPS_KEY_PATH is required when HTTPS_ENABLED=true');

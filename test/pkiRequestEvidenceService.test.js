@@ -17,12 +17,23 @@ describe('PKI request evidence service', () => {
 
     it('extracts trusted proxy certificate evidence in the test environment', () => {
         const headers = {
+            'x-client-cert-proxy-verified': '1',
             'x-client-cert-verified': 'SUCCESS',
             'x-client-cert-subject': 'CN=tester@example.com, OU=CAF Research',
             'x-client-cert-issuer': 'CN=CAF Root CA',
-            'x-client-cert-fingerprint': 'AA:BB:CC'
+            'x-client-cert-fingerprint': 'AA:BB:CC',
+            'x-forwarded-for': '203.0.113.15',
+            'x-forwarded-proto': 'https'
         };
         const req = {
+            app: {
+                get(setting) {
+                    return setting === 'trust proxy';
+                }
+            },
+            socket: {
+                remoteAddress: '127.0.0.1'
+            },
             get(headerName) {
                 return headers[headerName.toLowerCase()] || '';
             }
@@ -37,6 +48,30 @@ describe('PKI request evidence service', () => {
             issuer: 'CN=CAF Root CA',
             fingerprint256: 'AA:BB:CC'
         });
+    });
+
+    it('ignores proxy certificate headers when the request was not marked as trusted proxy traffic', () => {
+        const headers = {
+            'x-client-cert-verified': 'SUCCESS',
+            'x-client-cert-subject': 'CN=tester@example.com, OU=CAF Research',
+            'x-client-cert-issuer': 'CN=CAF Root CA',
+            'x-forwarded-for': '203.0.113.15'
+        };
+        const req = {
+            app: {
+                get(setting) {
+                    return setting === 'trust proxy';
+                }
+            },
+            socket: {
+                remoteAddress: '127.0.0.1'
+            },
+            get(headerName) {
+                return headers[headerName.toLowerCase()] || '';
+            }
+        };
+
+        expect(extractClientCertificateEvidence(req)).to.equal(null);
     });
 
     it('extracts an authorized peer certificate from a mutual-TLS request', () => {

@@ -2,10 +2,63 @@ const { expect } = require('chai');
 
 const { createPersistentAuditClient, listAuditEventsForUser } = require('../src/services/persistentAuditService');
 
+function createChainStateModel() {
+    const state = {
+        chainKey: 'default',
+        sequence: 0,
+        lastHash: ''
+    };
+
+    function wrap(value) {
+        return {
+            lean: async () => value
+        };
+    }
+
+    return {
+        findOneAndUpdate(filter, update = {}, options = {}) {
+            if (options.upsert && update.$setOnInsert) {
+                state.chainKey = update.$setOnInsert.chainKey || state.chainKey;
+                state.sequence = Number.isFinite(Number(state.sequence)) ? state.sequence : 0;
+                state.lastHash = String(state.lastHash || '');
+                return wrap({ ...state });
+            }
+
+            const matches = filter.chainKey === state.chainKey
+                && Number(filter.sequence) === state.sequence
+                && String(filter.lastHash || '') === state.lastHash;
+
+            if (!matches) {
+                return wrap(null);
+            }
+
+            Object.assign(state, update.$set || {});
+            return wrap({ ...state });
+        },
+        findOne(filter = {}) {
+            return wrap(filter.chainKey === state.chainKey ? { ...state } : null);
+        },
+        updateOne(filter = {}, update = {}) {
+            const matches = filter.chainKey === state.chainKey
+                && Number(filter.sequence) === state.sequence
+                && String(filter.lastHash || '') === state.lastHash;
+
+            if (matches) {
+                Object.assign(state, update.$set || {});
+            }
+
+            return Promise.resolve({
+                modifiedCount: matches ? 1 : 0
+            });
+        }
+    };
+}
+
 describe('persistent audit service', () => {
     it('persists events locally and forwards them to the base client', async () => {
         const createdDocs = [];
         const forwarded = [];
+        const chainStateModel = createChainStateModel();
         const client = createPersistentAuditClient({
             baseClient: {
                 enabled: true,
@@ -20,6 +73,7 @@ describe('persistent audit service', () => {
                     return doc;
                 }
             },
+            AuditChainStateModel: chainStateModel,
             osLib: { hostname: () => 'audit-host' },
             clock: () => new Date('2026-03-29T20:00:00.000Z')
         });
@@ -37,9 +91,47 @@ describe('persistent audit service', () => {
         expect(createdDocs[0].category).to.equal('db-state-change');
         expect(createdDocs[0].path).to.equal('/api/notes/507f1f77bcf86cd799439012');
         expect(createdDocs[0].correlationId).to.equal('corr-persist-11');
+        expect(createdDocs[0].sequence).to.equal(1);
+        expect(createdDocs[0].previousHash).to.equal('');
         expect(createdDocs[0].entryHash).to.be.a('string').with.length.greaterThan(10);
         expect(forwarded).to.have.length(1);
         expect(forwarded[0].level).to.equal('audit');
+    });
+
+    it('continues the persisted audit hash chain across client instances', async () => {
+        const createdDocs = [];
+        const chainStateModel = createChainStateModel();
+        const auditEventModel = {
+            create: async (doc) => {
+                createdDocs.push(doc);
+                return doc;
+            }
+        };
+
+        const firstClient = createPersistentAuditClient({
+            AuditEventModel: auditEventModel,
+            AuditChainStateModel: chainStateModel,
+            osLib: { hostname: () => 'audit-host' },
+            clock: () => new Date('2026-03-29T20:00:00.000Z')
+        });
+        const secondClient = createPersistentAuditClient({
+            AuditEventModel: auditEventModel,
+            AuditChainStateModel: chainStateModel,
+            osLib: { hostname: () => 'audit-host' },
+            clock: () => new Date('2026-03-29T20:01:00.000Z')
+        });
+
+        await firstClient.audit('First event', {
+            category: 'http-request'
+        });
+        await secondClient.audit('Second event', {
+            category: 'http-request'
+        });
+
+        expect(createdDocs).to.have.length(2);
+        expect(createdDocs[0].sequence).to.equal(1);
+        expect(createdDocs[1].sequence).to.equal(2);
+        expect(createdDocs[1].previousHash).to.equal(createdDocs[0].entryHash);
     });
 
     it('lists persisted events for a user with pagination', async () => {

@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
 const { getRequestContext } = require('./requestContext');
-const { buildDatabaseTelemetryMessage } = require('./semanticLogging');
+const { buildDatabaseTelemetryMessage, normalizeIp } = require('./semanticLogging');
 
 let telemetryClient = {
     enabled: false,
@@ -135,18 +135,13 @@ function resolveWhere(context) {
         };
     }
 
-    const forwardedFor = req.headers && req.headers['x-forwarded-for'];
-    const ip = typeof forwardedFor === 'string' && forwardedFor.trim()
-        ? forwardedFor.split(',')[0].trim()
-        : (req.ip || (req.socket && req.socket.remoteAddress) || '');
-
     return {
         channel: 'http',
         requestId: context && context.requestId ? context.requestId : '',
         correlationId: context && (context.correlationId || context.requestId) ? (context.correlationId || context.requestId) : '',
         method: String(req.method || 'GET').toUpperCase(),
         path: String(req.originalUrl || req.path || ''),
-        ip,
+        ip: normalizeIp(req),
         userAgent: typeof req.get === 'function' ? String(req.get('user-agent') || '') : ''
     };
 }

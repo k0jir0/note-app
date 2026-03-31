@@ -16,6 +16,22 @@ function makeRes() {
     };
 }
 
+function makeReq(overrides = {}) {
+    return {
+        user: {
+            _id: 'user-42',
+            email: 'user42@example.com'
+        },
+        app: {
+            locals: {
+                appBaseUrl: 'http://localhost:3000',
+                locatorRepairStorageRoot: 'C:\\temp\\locator-repair-tests'
+            }
+        },
+        ...overrides
+    };
+}
+
 describe('Locator repair API controller behavior', () => {
     let sandbox;
 
@@ -28,9 +44,7 @@ describe('Locator repair API controller behavior', () => {
     });
 
     it('returns the self-healing module overview', async () => {
-        const req = {
-            app: { locals: { appBaseUrl: 'http://localhost:3000' } }
-        };
+        const req = makeReq();
         const res = makeRes();
         const fakeOverview = {
             module: {
@@ -45,6 +59,10 @@ describe('Locator repair API controller behavior', () => {
 
         await locatorRepairApiController.getOverview(req, res);
 
+        expect(locatorRepairResearchService.buildLocatorRepairModuleOverview.calledWithMatch({
+            modelPath: sinon.match((value) => String(value).includes('user-42')),
+            historyPath: sinon.match((value) => String(value).includes('user-42'))
+        })).to.equal(true);
         expect(res.status.calledWith(200)).to.equal(true);
         expect(res._jsonSpy.firstCall.args[0]).to.deep.equal({
             success: true,
@@ -53,9 +71,9 @@ describe('Locator repair API controller behavior', () => {
     });
 
     it('returns locator repair history', async () => {
-        const req = {
+        const req = makeReq({
             query: { limit: '5' }
-        };
+        });
         const res = makeRes();
         const fakeHistory = {
             summary: {
@@ -68,7 +86,10 @@ describe('Locator repair API controller behavior', () => {
 
         await locatorRepairApiController.getHistory(req, res);
 
-        expect(locatorRepairResearchService.getLocatorRepairHistory.calledWithMatch({ limit: 5 })).to.equal(true);
+        expect(locatorRepairResearchService.getLocatorRepairHistory.calledWithMatch({
+            limit: 5,
+            historyPath: sinon.match((value) => String(value).includes('user-42'))
+        })).to.equal(true);
         expect(res.status.calledWith(200)).to.equal(true);
         expect(res._jsonSpy.firstCall.args[0]).to.deep.equal({
             success: true,
@@ -77,12 +98,12 @@ describe('Locator repair API controller behavior', () => {
     });
 
     it('validates locator repair request input before suggesting repairs', async () => {
-        const req = {
+        const req = makeReq({
             body: {
                 locator: '',
                 htmlSnippet: ''
             }
-        };
+        });
         const res = makeRes();
 
         await locatorRepairApiController.suggestRepairs(req, res);
@@ -95,13 +116,13 @@ describe('Locator repair API controller behavior', () => {
     });
 
     it('returns ranked locator repair suggestions for valid input', async () => {
-        const req = {
+        const req = makeReq({
             body: {
                 locator: 'By.linkText("Open ML Module")',
                 stepGoal: 'Open the ML Module from the Research Workspace',
                 htmlSnippet: '<a href="/ml/module" data-testid="research-open-ml">Open ML Workspace</a>'
             }
-        };
+        });
         const res = makeRes();
         const fakeSuggestions = {
             analysis: {
@@ -121,6 +142,9 @@ describe('Locator repair API controller behavior', () => {
 
         await locatorRepairApiController.suggestRepairs(req, res);
 
+        expect(locatorRepairResearchService.suggestLocatorRepairs.calledWithMatch({
+            modelPath: sinon.match((value) => String(value).includes('user-42'))
+        })).to.equal(true);
         expect(res.status.calledWith(200)).to.equal(true);
         expect(res._jsonSpy.firstCall.args[0]).to.deep.equal({
             success: true,
@@ -129,13 +153,13 @@ describe('Locator repair API controller behavior', () => {
     });
 
     it('validates feedback input before recording repair feedback', async () => {
-        const req = {
+        const req = makeReq({
             body: {
                 locator: '',
                 htmlSnippet: '',
                 feedbackLabel: ''
             }
-        };
+        });
         const res = makeRes();
 
         await locatorRepairApiController.recordFeedback(req, res);
@@ -149,7 +173,7 @@ describe('Locator repair API controller behavior', () => {
     });
 
     it('records locator repair feedback for valid input', async () => {
-        const req = {
+        const req = makeReq({
             body: {
                 locator: 'By.linkText("Open ML Module")',
                 stepGoal: 'Open the ML Module from the Research Workspace',
@@ -158,7 +182,7 @@ describe('Locator repair API controller behavior', () => {
                 feedbackLabel: 'accepted',
                 framework: 'playwright'
             }
-        };
+        });
         const res = makeRes();
         const fakeFeedback = {
             history: {
@@ -172,15 +196,19 @@ describe('Locator repair API controller behavior', () => {
 
         await locatorRepairApiController.recordFeedback(req, res);
 
+        expect(locatorRepairResearchService.recordLocatorRepairFeedback.calledWithMatch({
+            modelPath: sinon.match((value) => String(value).includes('user-42')),
+            historyPath: sinon.match((value) => String(value).includes('user-42'))
+        })).to.equal(true);
         expect(res.status.calledWith(200)).to.equal(true);
         expect(res._jsonSpy.firstCall.args[0].message).to.equal('Self-healing feedback recorded successfully');
         expect(res._jsonSpy.firstCall.args[0].data).to.deep.equal(fakeFeedback);
     });
 
     it('validates training mode before training the locator repair model', async () => {
-        const req = {
+        const req = makeReq({
             body: { mode: 'invalid' }
-        };
+        });
         const res = makeRes();
 
         await locatorRepairApiController.trainModel(req, res);
@@ -190,9 +218,9 @@ describe('Locator repair API controller behavior', () => {
     });
 
     it('trains the locator repair model and returns the training summary', async () => {
-        const req = {
+        const req = makeReq({
             body: { mode: 'bootstrap' }
-        };
+        });
         const res = makeRes();
         const fakeResult = {
             mode: 'bootstrap',
@@ -208,7 +236,9 @@ describe('Locator repair API controller behavior', () => {
         await locatorRepairApiController.trainModel(req, res);
 
         expect(locatorRepairResearchService.trainAndPersistLocatorRepairModel.calledWithMatch({
-            mode: 'bootstrap'
+            mode: 'bootstrap',
+            modelPath: sinon.match((value) => String(value).includes('user-42')),
+            historyPath: sinon.match((value) => String(value).includes('user-42'))
         })).to.equal(true);
         expect(res.status.calledWith(200)).to.equal(true);
         expect(res._jsonSpy.firstCall.args[0].message).to.equal('Bootstrap self-healing model trained successfully');

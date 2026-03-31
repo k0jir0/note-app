@@ -218,6 +218,20 @@ describe('Runtime Config Validation', () => {
         expect(config.transport.trustProxyClientCertHeaders).to.equal(false);
     });
 
+    it('requires explicit proxy-hop trust before client-certificate headers can be trusted', () => {
+        const env = createValidEnv();
+        env.TRUST_PROXY_CLIENT_CERT_HEADERS = 'true';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('TRUST_PROXY_CLIENT_CERT_HEADERS=true requires TRUST_PROXY_HOPS to be at least 1');
+
+        env.TRUST_PROXY_HOPS = '1';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.transport.trustProxyClientCertHeaders).to.equal(true);
+        expect(config.transport.trustProxyHops).to.equal(1);
+    });
+
     it('accepts valid break-glass runtime defaults and diagnostics', () => {
         const env = createValidEnv();
         env.BREAK_GLASS_MODE = 'offline';

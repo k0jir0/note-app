@@ -361,6 +361,7 @@ function createApp() {
     };
     app.locals.realtimeAvailable = true;
     app.locals.realtimeEnabled = true;
+    app.locals.locatorRepairStorageRoot = path.join(__dirname, '../.tmp-locator-repair-runtime');
     app.locals.breakGlass = {
         mode: 'disabled',
         enabled: false,

@@ -1,5 +1,6 @@
 const { handleApiError } = require('../utils/errorHandler');
 const locatorRepairResearchService = require('../services/locatorRepairResearchService');
+const { resolveUserScopedLocatorRepairPaths } = require('../utils/locatorRepairStorageScope');
 
 function resolveBaseUrl(req) {
     if (req.app && req.app.locals && req.app.locals.appBaseUrl) {
@@ -16,10 +17,19 @@ function resolveBaseUrl(req) {
     return 'http://localhost:3000';
 }
 
+function resolveLocatorRepairPaths(req = {}) {
+    return resolveUserScopedLocatorRepairPaths(req.user, {
+        rootDir: req.app && req.app.locals ? req.app.locals.locatorRepairStorageRoot : ''
+    });
+}
+
 exports.getOverview = async (req, res) => {
     try {
+        const storagePaths = resolveLocatorRepairPaths(req);
         const overview = locatorRepairResearchService.buildLocatorRepairModuleOverview({
-            baseUrl: resolveBaseUrl(req)
+            baseUrl: resolveBaseUrl(req),
+            modelPath: storagePaths.modelPath,
+            historyPath: storagePaths.historyPath
         });
 
         return res.status(200).json({
@@ -33,6 +43,7 @@ exports.getOverview = async (req, res) => {
 
 exports.suggestRepairs = async (req, res) => {
     try {
+        const storagePaths = resolveLocatorRepairPaths(req);
         const locator = typeof req.body?.locator === 'string' ? req.body.locator.trim() : '';
         const stepGoal = typeof req.body?.stepGoal === 'string' ? req.body.stepGoal.trim() : '';
         const htmlSnippet = typeof req.body?.htmlSnippet === 'string' ? req.body.htmlSnippet : '';
@@ -57,7 +68,8 @@ exports.suggestRepairs = async (req, res) => {
         const suggestions = locatorRepairResearchService.suggestLocatorRepairs({
             locator,
             stepGoal,
-            htmlSnippet
+            htmlSnippet,
+            modelPath: storagePaths.modelPath
         });
 
         return res.status(200).json({
@@ -71,8 +83,10 @@ exports.suggestRepairs = async (req, res) => {
 
 exports.getHistory = async (req, res) => {
     try {
+        const storagePaths = resolveLocatorRepairPaths(req);
         const history = locatorRepairResearchService.getLocatorRepairHistory({
-            limit: req.query && req.query.limit ? Number.parseInt(req.query.limit, 10) : 8
+            limit: req.query && req.query.limit ? Number.parseInt(req.query.limit, 10) : 8,
+            historyPath: storagePaths.historyPath
         });
 
         return res.status(200).json({
@@ -86,6 +100,7 @@ exports.getHistory = async (req, res) => {
 
 exports.recordFeedback = async (req, res) => {
     try {
+        const storagePaths = resolveLocatorRepairPaths(req);
         const locator = typeof req.body?.locator === 'string' ? req.body.locator.trim() : '';
         const stepGoal = typeof req.body?.stepGoal === 'string' ? req.body.stepGoal.trim() : '';
         const htmlSnippet = typeof req.body?.htmlSnippet === 'string' ? req.body.htmlSnippet : '';
@@ -123,7 +138,9 @@ exports.recordFeedback = async (req, res) => {
             framework: typeof req.body?.framework === 'string' ? req.body.framework.trim() : '',
             route: typeof req.body?.route === 'string' ? req.body.route.trim() : '',
             scenarioId: typeof req.body?.scenarioId === 'string' ? req.body.scenarioId.trim() : '',
-            notes: typeof req.body?.notes === 'string' ? req.body.notes.trim() : ''
+            notes: typeof req.body?.notes === 'string' ? req.body.notes.trim() : '',
+            modelPath: storagePaths.modelPath,
+            historyPath: storagePaths.historyPath
         });
 
         return res.status(200).json({
@@ -138,6 +155,7 @@ exports.recordFeedback = async (req, res) => {
 
 exports.trainModel = async (req, res) => {
     try {
+        const storagePaths = resolveLocatorRepairPaths(req);
         const mode = typeof req.body?.mode === 'string'
             ? req.body.mode.trim().toLowerCase()
             : 'hybrid';
@@ -151,7 +169,9 @@ exports.trainModel = async (req, res) => {
         }
 
         const result = locatorRepairResearchService.trainAndPersistLocatorRepairModel({
-            mode
+            mode,
+            modelPath: storagePaths.modelPath,
+            historyPath: storagePaths.historyPath
         });
 
         return res.status(200).json({

@@ -123,8 +123,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         const trustProxyHops = runtimeConfig.transport && Number.isInteger(runtimeConfig.transport.trustProxyHops)
             ? runtimeConfig.transport.trustProxyHops
             : 0;
-        if (trustProxyHops > 0 || (runtimeConfig.transport && runtimeConfig.transport.trustProxyClientCertHeaders)) {
-            app.set('trust proxy', Math.max(trustProxyHops, 1));
+        if (trustProxyHops > 0) {
+            app.set('trust proxy', trustProxyHops);
         }
 
         app.set('view engine', 'ejs');

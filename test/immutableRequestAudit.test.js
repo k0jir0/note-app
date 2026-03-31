@@ -20,6 +20,7 @@ describe('immutable request audit middleware', () => {
             method: 'POST',
             path: '/api/security/log-analysis',
             originalUrl: '/api/security/log-analysis',
+            ip: '203.0.113.99',
             headers: {
                 'user-agent': 'mocha-test',
                 'x-forwarded-for': '203.0.113.99',

@@ -2,8 +2,12 @@ const os = require('os');
 const mongoose = require('mongoose');
 
 const AuditEvent = require('../models/AuditEvent');
+const AuditChainState = require('../models/AuditChainState');
 const { buildEntryHash, DEFAULT_SOURCE } = require('../utils/immutableLogService');
 const { enrichMetadataWithRequestContext } = require('../utils/semanticLogging');
+
+const DEFAULT_CHAIN_KEY = 'default';
+const MAX_CHAIN_RESERVATION_ATTEMPTS = 5;
 
 function normalizeMetadata(value) {
     if (value instanceof Date) {
@@ -72,24 +76,184 @@ function buildPersistedEvent({ level, message, metadata, source, host, sequence,
     };
 }
 
-function createPersistentAuditClient({ baseClient, AuditEventModel = AuditEvent, clock = () => new Date(), osLib = os } = {}) {
-    let previousHash = '';
-    let sequence = 0;
+async function ensureChainStateDocument(AuditChainStateModel, chainKey = DEFAULT_CHAIN_KEY) {
+    if (!AuditChainStateModel || typeof AuditChainStateModel.findOneAndUpdate !== 'function') {
+        return {
+            chainKey,
+            sequence: 0,
+            lastHash: ''
+        };
+    }
 
+    let query = AuditChainStateModel.findOneAndUpdate(
+        { chainKey },
+        {
+            $setOnInsert: {
+                chainKey,
+                sequence: 0,
+                lastHash: ''
+            }
+        },
+        {
+            upsert: true,
+            new: true,
+            setDefaultsOnInsert: true
+        }
+    );
+
+    if (typeof query.lean === 'function') {
+        query = query.lean();
+    }
+
+    return query;
+}
+
+async function readChainState(AuditChainStateModel, chainKey = DEFAULT_CHAIN_KEY) {
+    if (!AuditChainStateModel || typeof AuditChainStateModel.findOne !== 'function') {
+        return {
+            chainKey,
+            sequence: 0,
+            lastHash: ''
+        };
+    }
+
+    let query = AuditChainStateModel.findOne({ chainKey });
+    if (query && typeof query.lean === 'function') {
+        query = query.lean();
+    }
+
+    return query;
+}
+
+async function reserveChainPosition({
+    AuditChainStateModel,
+    level,
+    message,
+    metadata,
+    source,
+    host,
+    clock,
+    chainKey = DEFAULT_CHAIN_KEY
+}) {
+    await ensureChainStateDocument(AuditChainStateModel, chainKey);
+
+    for (let attempt = 0; attempt < MAX_CHAIN_RESERVATION_ATTEMPTS; attempt += 1) {
+        const currentState = await readChainState(AuditChainStateModel, chainKey) || {
+            chainKey,
+            sequence: 0,
+            lastHash: ''
+        };
+        const currentSequence = Number.isFinite(Number(currentState.sequence))
+            ? Number(currentState.sequence)
+            : 0;
+        const previousHash = String(currentState.lastHash || '').trim();
+        const { entry, entryHash, eventTimestamp } = buildPersistedEvent({
+            level,
+            message,
+            metadata,
+            source,
+            host,
+            sequence: currentSequence + 1,
+            previousHash,
+            clock
+        });
+
+        if (!AuditChainStateModel || typeof AuditChainStateModel.findOneAndUpdate !== 'function') {
+            return {
+                entry,
+                entryHash,
+                eventTimestamp,
+                sequence: currentSequence + 1,
+                previousHash,
+                chainKey
+            };
+        }
+
+        let updateAttempt = AuditChainStateModel.findOneAndUpdate(
+            {
+                chainKey,
+                sequence: currentSequence,
+                lastHash: previousHash
+            },
+            {
+                $set: {
+                    sequence: currentSequence + 1,
+                    lastHash: entryHash
+                }
+            },
+            {
+                new: true
+            }
+        );
+
+        if (updateAttempt && typeof updateAttempt.lean === 'function') {
+            updateAttempt = updateAttempt.lean();
+        }
+
+        const updatedState = await updateAttempt;
+        if (updatedState) {
+            return {
+                entry,
+                entryHash,
+                eventTimestamp,
+                sequence: currentSequence + 1,
+                previousHash,
+                chainKey
+            };
+        }
+    }
+
+    throw new Error('Unable to reserve the next audit-chain position.');
+}
+
+async function rollbackChainReservation(AuditChainStateModel, reservedPosition) {
+    if (!AuditChainStateModel || typeof AuditChainStateModel.updateOne !== 'function' || !reservedPosition) {
+        return;
+    }
+
+    await AuditChainStateModel.updateOne(
+        {
+            chainKey: reservedPosition.chainKey || DEFAULT_CHAIN_KEY,
+            sequence: reservedPosition.sequence,
+            lastHash: reservedPosition.entryHash
+        },
+        {
+            $set: {
+                sequence: Math.max(0, reservedPosition.sequence - 1),
+                lastHash: reservedPosition.previousHash || ''
+            }
+        }
+    ).catch(() => null);
+}
+
+function createPersistentAuditClient({
+    baseClient,
+    AuditEventModel = AuditEvent,
+    AuditChainStateModel = AuditChainState,
+    clock = () => new Date(),
+    osLib = os
+} = {}) {
     async function persist(level, message, metadata = {}) {
         const normalizedMetadata = normalizeMetadata(enrichMetadataWithRequestContext(metadata));
         const normalizedMessage = typeof message === 'string' ? message : String(message || 'Application log event');
         const source = normalizedMetadata.source || DEFAULT_SOURCE;
-        const { entry, entryHash, eventTimestamp } = buildPersistedEvent({
-            level,
-            message: normalizedMessage,
-            metadata: normalizedMetadata,
-            source,
-            host: typeof osLib.hostname === 'function' ? osLib.hostname() : '',
-            sequence: sequence + 1,
-            previousHash,
-            clock
-        });
+        let reservedPosition;
+
+        try {
+            reservedPosition = await reserveChainPosition({
+                AuditChainStateModel,
+                level,
+                message: normalizedMessage,
+                metadata: normalizedMetadata,
+                source,
+                host: typeof osLib.hostname === 'function' ? osLib.hostname() : '',
+                clock
+            });
+        } catch (_error) {
+            return false;
+        }
+
+        const { entry, entryHash, eventTimestamp, previousHash, sequence } = reservedPosition;
 
         try {
             await AuditEventModel.create({
@@ -110,14 +274,13 @@ function createPersistentAuditClient({ baseClient, AuditEventModel = AuditEvent,
                 userAgent: normalizedMetadata.userAgent || (normalizedMetadata.where && normalizedMetadata.where.userAgent) || '',
                 entryHash,
                 previousHash,
-                sequence: sequence + 1,
+                sequence,
                 eventTimestamp,
                 metadata: entry.metadata
             });
-            previousHash = entryHash;
-            sequence += 1;
             return true;
         } catch (_error) {
+            await rollbackChainReservation(AuditChainStateModel, reservedPosition);
             return false;
         }
     }

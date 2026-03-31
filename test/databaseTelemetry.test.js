@@ -36,7 +36,8 @@ describe('Database telemetry', () => {
         const event = await runWithRequestContext({
             method: 'patch',
             originalUrl: '/api/alerts/alert-1',
-            ip: '10.0.0.5',
+            ip: '203.0.113.15',
+            ips: ['203.0.113.15', '10.0.0.5'],
             headers: {
                 'x-forwarded-for': '203.0.113.15, 10.0.0.5',
                 'x-correlation-id': 'corr-db-42',
