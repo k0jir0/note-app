@@ -168,4 +168,79 @@ describe('Passport configuration', () => {
             }
         );
     });
+
+    it('creates externally scoped Google users when auto-provisioning is allowed', (done) => {
+        process.env.GOOGLE_CLIENT_ID = 'google-client-id';
+        process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+
+        const fakePassport = createFakePassport();
+        passportConfig(fakePassport, {
+            identityLifecycle: {
+                protectedRuntime: false,
+                selfSignupEnabled: true,
+                googleAutoProvisionEnabled: true
+            }
+        });
+
+        sinon.stub(User, 'findOne')
+            .onFirstCall()
+            .resolves(null)
+            .onSecondCall()
+            .resolves(null);
+        sinon.stub(User.prototype, 'save').callsFake(function () {
+            return Promise.resolve(this);
+        });
+
+        fakePassport.googleStrategy._verify(
+            'https://accounts.google.com',
+            {
+                id: 'google-subject-3',
+                displayName: 'External User',
+                emails: [{ value: 'external@example.com' }]
+            },
+            (error, user) => {
+                expect(error).to.equal(null);
+                expect(user.email).to.equal('external@example.com');
+                expect(user.accessProfile.missionRole).to.equal('external');
+                expect(user.accessProfile.clearance).to.equal('unclassified');
+                expect(user.accessProfile.networkZones).to.deep.equal(['public']);
+                done();
+            }
+        );
+    });
+
+    it('blocks Google auto-provisioning in protected runtimes', (done) => {
+        process.env.GOOGLE_CLIENT_ID = 'google-client-id';
+        process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+
+        const fakePassport = createFakePassport();
+        passportConfig(fakePassport, {
+            identityLifecycle: {
+                protectedRuntime: true,
+                selfSignupEnabled: false,
+                googleAutoProvisionEnabled: false
+            }
+        });
+
+        sinon.stub(User, 'findOne')
+            .onFirstCall()
+            .resolves(null)
+            .onSecondCall()
+            .resolves(null);
+
+        fakePassport.googleStrategy._verify(
+            'https://accounts.google.com',
+            {
+                id: 'google-subject-4',
+                displayName: 'Protected User',
+                emails: [{ value: 'protected@example.com' }]
+            },
+            (error, user, info) => {
+                expect(error).to.equal(null);
+                expect(user).to.equal(false);
+                expect(info.code).to.equal('IDENTITY_NOT_PROVISIONED');
+                done();
+            }
+        );
+    });
 });

@@ -8,6 +8,7 @@ const {
 } = require('../utils/sensitiveModelEncryption');
 
 const MISSION_ROLES = [
+    'external',
     'operator',
     'analyst',
     'mission_lead',

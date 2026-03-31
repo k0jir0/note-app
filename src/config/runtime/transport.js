@@ -1,4 +1,10 @@
-const { isNonEmptyString, parseBooleanEnv, parseIntegerEnv } = require('./helpers');
+const {
+    isNonEmptyString,
+    normalizeAppBaseUrl,
+    parseBooleanEnv,
+    parseIntegerEnv
+} = require('./helpers');
+const { isProtectedRuntimeEnvironment } = require('./database');
 
 function buildTransportConfig(env, errors) {
     const httpsEnabled = parseBooleanEnv('HTTPS_ENABLED', env, errors);
@@ -14,6 +20,12 @@ function buildTransportConfig(env, errors) {
     const keyPath = isNonEmptyString(env.HTTPS_KEY_PATH) ? env.HTTPS_KEY_PATH.trim() : '';
     const certPath = isNonEmptyString(env.HTTPS_CERT_PATH) ? env.HTTPS_CERT_PATH.trim() : '';
     const caPath = isNonEmptyString(env.HTTPS_CA_PATH) ? env.HTTPS_CA_PATH.trim() : '';
+    const protectedRuntime = isProtectedRuntimeEnvironment(env);
+    const appBaseUrl = normalizeAppBaseUrl(env.APP_BASE_URL);
+    const publicOriginHttps = appBaseUrl.startsWith('https://');
+    const proxyTlsTerminated = trustProxyHops >= 1 && publicOriginHttps;
+    const secureTransportRequired = protectedRuntime;
+    const secureTransportConfigured = httpsEnabled || proxyTlsTerminated;
 
     if (requireClientCertificate && !requestClientCertificate) {
         errors.push('HTTPS_REQUIRE_CLIENT_CERT=true also requires HTTPS_REQUEST_CLIENT_CERT=true');
@@ -41,8 +53,20 @@ function buildTransportConfig(env, errors) {
         errors.push('HTTPS_CA_PATH is required when HTTPS_REQUEST_CLIENT_CERT=true');
     }
 
+    if (protectedRuntime && !secureTransportConfigured) {
+        errors.push('Protected runtime deployments require HTTPS_ENABLED=true or a trusted TLS-terminating proxy with TRUST_PROXY_HOPS>=1 and APP_BASE_URL=https://...');
+    }
+
+    if (protectedRuntime && trustProxyHops >= 1 && !publicOriginHttps) {
+        errors.push('APP_BASE_URL must use https:// when TRUST_PROXY_HOPS is configured for protected runtime transport');
+    }
+
+    if (protectedRuntime && httpsEnabled && isNonEmptyString(env.APP_BASE_URL) && !publicOriginHttps) {
+        errors.push('APP_BASE_URL must use https:// when HTTPS_ENABLED=true in protected runtime environments');
+    }
+
     return {
-        protocol: httpsEnabled ? 'https' : 'http',
+        protocol: httpsEnabled || proxyTlsTerminated ? 'https' : 'http',
         httpsEnabled,
         requestClientCertificate,
         requireClientCertificate,
@@ -52,7 +76,10 @@ function buildTransportConfig(env, errors) {
         tlsMaxVersion: httpsEnabled ? 'TLSv1.3' : '',
         keyPath,
         certPath,
-        caPath
+        caPath,
+        secureTransportRequired,
+        proxyTlsTerminated,
+        publicOriginHttps
     };
 }
 

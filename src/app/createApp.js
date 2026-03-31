@@ -18,6 +18,7 @@ const { enforceInjectionPrevention } = require('../middleware/injectionPreventio
 const { enforceStrictSessionManagement } = require('../middleware/sessionManagement');
 const { sanitizeResponseMetadata } = require('../middleware/responseMetadataProtection');
 const { createImmutableRequestAuditMiddleware } = require('../middleware/immutableRequestAudit');
+const { enforceSecureTransport } = require('../middleware/secureTransport');
 const { requestContextMiddleware } = require('../utils/requestContext');
 const { handleUnhandledError } = require('../utils/errorHandler');
 
@@ -99,6 +100,11 @@ function createApp({
     app.locals.immutableLogClient = immutableLogClient || null;
     app.locals.breakGlass = breakGlassLocals;
     app.locals.breakGlassStateStore = breakGlassStateStore || null;
+    app.locals.identityLifecycle = runtimeConfig && runtimeConfig.identityLifecycle ? runtimeConfig.identityLifecycle : {
+        protectedRuntime: false,
+        selfSignupEnabled: true,
+        googleAutoProvisionEnabled: true
+    };
     app.locals.privilegedDevToolsEnabled = Boolean(privilegedDevToolsEnabled);
 
     Object.assign(app.locals, additionalLocals);
@@ -106,6 +112,7 @@ function createApp({
     app.use(sanitizeResponseMetadata);
     app.use(helmet(buildHelmetProtectionOptions({ isProduction })));
     app.use(requestContextMiddleware);
+    app.use(enforceSecureTransport);
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
     app.use(enforceInjectionPrevention);

@@ -30,7 +30,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
 
         const runtimeConfig = validateRuntimeConfig();
         const mongooseSecurity = applyMongooseInjectionDefaults(mongoose);
-        require('./src/config/passport')(passport);
+        require('./src/config/passport')(passport, runtimeConfig);
 
         const immutableRemoteClient = createImmutableLogClient(runtimeConfig);
         let requiredAuditFailureTriggered = false;

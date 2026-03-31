@@ -4,8 +4,8 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 
 ## Features
 
-- Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, AES-256 encryption at rest for selected sensitive user, alert, and scan fields, per-user authorization, and same-origin managed note images that are fetched server-side and re-served through authenticated note routes.
-- Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, route-specific rate limiting, account-level login lockout for repeated failures, and HTTPS transport pinned to TLS 1.3 when certificate-based transport is enabled.
+- Accounts and notes: invite-first identity provisioning for protected runtimes, local/test self-signup with low-trust external access defaults, optional Google sign-in for pre-provisioned or locally auto-provisioned accounts, encrypted note CRUD, AES-256 encryption at rest for selected sensitive user, alert, and scan fields, per-user authorization, and same-origin managed note images that are fetched server-side and re-served through authenticated note routes.
+- Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, route-specific rate limiting, account-level login lockout for repeated failures, and protected-runtime transport enforcement that requires either TLS 1.3 server mode or a trusted HTTPS reverse-proxy posture.
 - Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security architecture, automation, and browser-testing tools.
 - ML and response: an Alert Triage ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
 - Mission-grade assurance: dedicated modules for RBAC-plus-ABAC mission access decisions, hardware-first MFA and PKI step-up, strict session timeout and concurrent-login control, and server-side access-control verification for protected APIs.
@@ -93,6 +93,7 @@ Security CI notes:
 - SAST runs Semgrep with the repo's custom rules and fails the workflow on `ERROR` findings.
 - Dependency audit runs alongside Semgrep and fails on high-severity npm advisories.
 - DAST starts the app with CI-only secrets, waits for `/healthz`, then runs an OWASP ZAP baseline scan against `/auth/login` through `zaproxy/action-baseline@v0.15.0`.
+- A dedicated protected-runtime controls job now validates the hardened runtime posture separately, covering secure inbound transport, immutable logging requirements, and invite-first identity provisioning before changes are merged.
 - The ZAP baseline artifact is published as `zap-baseline-report`, and warning-level findings are still reviewable without failing the workflow.
 
 Server: `http://localhost:3000`
@@ -177,12 +178,12 @@ Notes:
 - For production scraping, set `METRICS_AUTH_TOKEN` through your deployment secret manager rather than committing a value into `.env`.
 
 Current local verification (March 31, 2026):
-- the full Mocha suite passes with 575 tests
+- the full Mocha suite passes with 591 tests
 - `npm run lint` passes with 0 errors
 - `npm run audit:deps` and `npm run audit:prod` both report 0 vulnerabilities
 - `npm run test:e2e` passes in Chromium with 21 passing browser tests
 - `GET /healthz` on `http://127.0.0.1:3000` returns `{"ok":true,"breakGlass":{"mode":"disabled","enabled":false}}`
-- focused March 31 hardening regressions pass with `82 passing` across the strict audit, break-glass persistence, federated lockout, and runtime-config slices
+- focused March 31 hardening regressions pass with `81 passing` across the identity-provisioning, secure-transport, continuity, and runtime-config slices
 - focused March 29 module coverage passes with `13 passing` across the new Supply Chain and Audit/Telemetry page routes plus the persisted audit-history service and API tests
 - focused sandbox runtime coverage passes with `20 passing` in `test/runtimeConfig.test.js`
 - `docker build -t note-app:hardened .` completes successfully
@@ -222,9 +223,13 @@ Additional hardening updates (March 31, 2026):
 - Strict break-glass persistence now fails safe to an offline posture when the state store cannot be read and rejects runtime mutations when the new state cannot be durably persisted.
 - Google sign-in now honors the same account lockout state as local authentication, including existing linked accounts and email-based account-linking attempts.
 - MongoDB runtime classification no longer treats arbitrary `*.local` hosts as local-only deployments, which keeps TLS requirements from being bypassed by broad hostname matching.
+- Protected runtimes now keep self-service identity creation disabled, while locally allowed self-registered identities are provisioned into an explicit `external` / `unclassified` / `public` posture instead of inheriting an internal analyst profile.
+- Protected-runtime transport now fails closed unless the app is served through built-in HTTPS or a trusted TLS-terminating proxy posture (`TRUST_PROXY_HOPS>=1` plus `APP_BASE_URL=https://...`), and insecure direct requests are redirected or rejected.
+- Repo-native continuity commands now cover backup export, destructive restore with explicit confirmation, and post-restore reconstitution checks for core singleton state.
+- The `Security CI` workflow now validates the protected-runtime control surface in addition to the existing ZAP baseline scan against the development surface.
 
 4. **Create Account & Use**
-- Navigate to `/auth/signup` to create an account
+- In local/test environments, navigate to `/auth/signup` to create an account. In protected runtimes, use a pre-provisioned account instead of self-service signup.
 - Login and start creating notes
 - Use `/research` to access the unified Research Workspace for Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Playwright Testing, Selenium Testing, and Self-Healing Locator Repair
 - Use the Security Operations Module link inside `/research` to run `Inject Automation Sample` and populate Alerts, Scans, and Correlations with demo data for the signed-in account
@@ -942,10 +947,12 @@ git push
 **Production Checklist:**
 - [ ] Strong `SESSION_SECRET` (32+ random chars)
 - [ ] Dedicated `NOTE_ENCRYPTION_KEY` (32 bytes, separate from `SESSION_SECRET`)
-- [ ] HTTPS enabled with `cookie.secure: true`
+- [ ] Protected-runtime transport configured through `HTTPS_ENABLED=true` or a trusted TLS-terminating proxy (`TRUST_PROXY_HOPS>=1` with `APP_BASE_URL=https://...`)
+- [ ] `SELF_SIGNUP_ENABLED=false` and `GOOGLE_AUTO_PROVISION_ENABLED=false` for protected runtimes
 - [x] Rate limiting (`express-rate-limit`) on authentication and destructive development actions
 - [x] Security headers (`helmet`) with CSP and frame protections
 - [x] Production dependency audit currently clean (`npm audit --omit=dev`)
+- [ ] Immutable logging sink configured for the protected runtime
 - [ ] Regular dependency updates
 - [ ] MongoDB connection with TLS
 
@@ -967,7 +974,13 @@ GOOGLE_CLIENT_ID=<google-oauth-client-id>
 GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
 ```
 
+Protected-runtime identity provisioning:
+- Leave `SELF_SIGNUP_ENABLED=false` and `GOOGLE_AUTO_PROVISION_ENABLED=false` so new identities must be provisioned before use.
+- Google sign-in is still supported for pre-provisioned or already linked accounts.
+
 When `HTTPS_ENABLED=true`, the server pins inbound HTTPS transport to TLS 1.3 and will not negotiate SSLv3, TLS 1.0, TLS 1.1, or TLS 1.2.
+
+When `HTTPS_ENABLED=false` in a protected runtime, the app now requires a trusted TLS-terminating proxy posture with `TRUST_PROXY_HOPS>=1` and `APP_BASE_URL=https://...`; otherwise startup validation fails and insecure direct requests are rejected.
 
 When `IMMUTABLE_LOGGING_ENABLED=true`, the app mirrors operational logs and security-relevant request audit events to a separate append-only HTTP(S) endpoint using authenticated `POST` requests only. The remote log service should be configured as write-only for the app identity and should reject read, update, and delete operations. Outside local development and test environments, immutable logging is required and the remote sink must use HTTPS.
 
@@ -987,6 +1000,12 @@ Dependency scanning support:
 - Run `npm run audit:prod` to check the production dependency graph only.
 - The GitHub Actions dependency-audit workflow now uploads a JSON audit report and fails builds on high-severity findings in both the full and production dependency graphs.
 
+Continuity support:
+- Run `npm run backup:export -- --out=artifacts/backups/note-app-backup.json.gz` to export a BSON-safe logical backup of the core persisted collections.
+- Run `npm run backup:restore -- --dry-run --in=artifacts/backups/note-app-backup.json.gz` to validate a restore plan before touching data.
+- Run `npm run backup:restore -- --confirm-restore --in=artifacts/backups/note-app-backup.json.gz` to restore the archive into the configured MongoDB database.
+- Run `npm run backup:reconstitute -- --require-users` after a restore to verify the runtime can read the recovered collections and that singleton state such as audit-chain and break-glass records is sane.
+
 **Optional Migration Variables:**
 ```env
 LEGACY_NOTE_ENCRYPTION_KEY=<previous-32-byte-key>
@@ -995,6 +1014,7 @@ ALLOW_LEGACY_SESSION_SECRET_FALLBACK=false
 
 **One-Time Encryption Backfill:**
 ```bash
+npm run backup:export -- --out=artifacts/backups/pre-encryption-backfill.json.gz
 npm run migrate:encrypt-at-rest
 npm run migrate:encrypt-at-rest -- --dry-run
 ```

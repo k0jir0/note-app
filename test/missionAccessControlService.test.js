@@ -21,6 +21,23 @@ describe('Mission access control service', () => {
         expect(profile.mfaVerified).to.equal(false);
     });
 
+    it('preserves an explicitly external profile without backfilling mission assignments', () => {
+        const profile = normalizeUserAccessProfile({
+            email: 'external@example.com',
+            accessProfile: {
+                missionRole: 'external',
+                clearance: 'unclassified',
+                assignedMissions: [],
+                deviceTier: 'unknown',
+                networkZones: ['public']
+            }
+        });
+
+        expect(profile.missionRole).to.equal('external');
+        expect(profile.assignedMissions).to.deep.equal([]);
+        expect(profile.networkZones).to.deep.equal(['public']);
+    });
+
     it('allows a mission lead with hardened context to approve a block action', () => {
         const result = evaluateMissionAccess({
             subject: {

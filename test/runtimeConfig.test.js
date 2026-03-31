@@ -30,6 +30,11 @@ describe('Runtime Config Validation', () => {
             local: true
         });
         expect(config.googleAuthEnabled).to.equal(false);
+        expect(config.identityLifecycle).to.deep.equal({
+            protectedRuntime: false,
+            selfSignupEnabled: true,
+            googleAutoProvisionEnabled: true
+        });
         expect(config.cipherAlgo).to.equal('aes-256-gcm');
     });
 
@@ -131,7 +136,15 @@ describe('Runtime Config Validation', () => {
             tlsMaxVersion: '',
             keyPath: '',
             certPath: '',
-            caPath: ''
+            caPath: '',
+            secureTransportRequired: false,
+            proxyTlsTerminated: false,
+            publicOriginHttps: false
+        });
+        expect(config.identityLifecycle).to.deep.equal({
+            protectedRuntime: false,
+            selfSignupEnabled: true,
+            googleAutoProvisionEnabled: true
         });
         expect(config.breakGlass).to.deep.equal({
             mode: 'disabled',
@@ -244,7 +257,10 @@ describe('Runtime Config Validation', () => {
             tlsMaxVersion: 'TLSv1.3',
             keyPath: 'C:\\tls\\server.key',
             certPath: 'C:\\tls\\server.crt',
-            caPath: 'C:\\tls\\ca.crt'
+            caPath: 'C:\\tls\\ca.crt',
+            secureTransportRequired: false,
+            proxyTlsTerminated: false,
+            publicOriginHttps: false
         });
     });
 
@@ -256,6 +272,7 @@ describe('Runtime Config Validation', () => {
 
         expect(config.transport.trustProxyHops).to.equal(1);
         expect(config.transport.trustProxyClientCertHeaders).to.equal(false);
+        expect(config.transport.proxyTlsTerminated).to.equal(false);
     });
 
     it('requires explicit proxy-hop trust before client-certificate headers can be trusted', () => {
@@ -309,6 +326,54 @@ describe('Runtime Config Validation', () => {
         env.HTTPS_CERT_PATH = 'C:\\tls\\server.crt';
 
         expect(() => validateRuntimeConfig(env)).to.throw('HTTPS_CA_PATH is required when HTTPS_REQUEST_CLIENT_CERT=true');
+    });
+
+    it('requires protected runtimes to configure secure inbound transport', () => {
+        const env = createValidEnv();
+        env.NODE_ENV = 'production';
+        env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('Protected runtime deployments require HTTPS_ENABLED=true or a trusted TLS-terminating proxy');
+    });
+
+    it('accepts a trusted HTTPS proxy posture for protected runtimes', () => {
+        const env = createValidEnv();
+        env.NODE_ENV = 'production';
+        env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
+        env.APP_BASE_URL = 'https://note-app.example.com';
+        env.TRUST_PROXY_HOPS = '1';
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.transport.protocol).to.equal('https');
+        expect(config.transport.secureTransportRequired).to.equal(true);
+        expect(config.transport.proxyTlsTerminated).to.equal(true);
+        expect(config.transport.publicOriginHttps).to.equal(true);
+        expect(config.identityLifecycle).to.deep.equal({
+            protectedRuntime: true,
+            selfSignupEnabled: false,
+            googleAutoProvisionEnabled: false
+        });
+    });
+
+    it('rejects self-service identity provisioning in protected runtimes', () => {
+        const env = createValidEnv();
+        env.NODE_ENV = 'production';
+        env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
+        env.APP_BASE_URL = 'https://note-app.example.com';
+        env.TRUST_PROXY_HOPS = '1';
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
+        env.SELF_SIGNUP_ENABLED = 'true';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('SELF_SIGNUP_ENABLED must remain false in protected runtime environments');
     });
 
     it('accepts custom session-timeout settings and concurrent-login policy', () => {

@@ -23,51 +23,64 @@
                             </div>
                         <% } %>
                         
-                        <form action="/auth/signup" method="POST">
-                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <input 
-                                    type="email" 
-                                    class="form-control" 
-                                    id="email" 
-                                    name="email" 
-                                    required
-                                    placeholder="Enter your email"
-                                >
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
-                                <input 
-                                    type="password" 
-                                    class="form-control" 
-                                    id="password" 
-                                    name="password" 
-                                    required
-                                    minlength="8"
-                                    placeholder="Minimum 8 characters"
-                                    pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}"
-                                    title="Password must contain at least one uppercase letter, one lowercase letter, and one number"
-                                >
-                                <div class="form-text">
-                                    Password requirements:
-                                    <ul class="mb-0 small">
-                                        <li>At least 8 characters long</li>
-                                        <li>Contains at least one uppercase letter (A-Z)</li>
-                                        <li>Contains at least one lowercase letter (a-z)</li>
-                                        <li>Contains at least one number (0-9)</li>
-                                    </ul>
+                        <% if (!identityLifecycle || identityLifecycle.selfSignupEnabled) { %>
+                            <form action="/auth/signup" method="POST">
+                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input 
+                                        type="email" 
+                                        class="form-control" 
+                                        id="email" 
+                                        name="email" 
+                                        required
+                                        placeholder="Enter your email"
+                                    >
                                 </div>
+                                
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Password</label>
+                                    <input 
+                                        type="password" 
+                                        class="form-control" 
+                                        id="password" 
+                                        name="password" 
+                                        required
+                                        minlength="8"
+                                        placeholder="Minimum 8 characters"
+                                        pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}"
+                                        title="Password must contain at least one uppercase letter, one lowercase letter, and one number"
+                                    >
+                                    <div class="form-text">
+                                        Password requirements:
+                                        <ul class="mb-0 small">
+                                            <li>At least 8 characters long</li>
+                                            <li>Contains at least one uppercase letter (A-Z)</li>
+                                            <li>Contains at least one lowercase letter (a-z)</li>
+                                            <li>Contains at least one number (0-9)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-dark">Sign Up</button>
+                                    <a href="<%= appBaseUrl ? `${appBaseUrl}/auth/login/federated/google` : '/auth/login/federated/google' %>" class="btn btn-outline-secondary">
+                                        Sign up with Google
+                                    </a>
+                                </div>
+                            </form>
+                        <% } else { %>
+                            <div class="alert alert-warning" role="alert">
+                                Self-service signup is disabled in this environment.
                             </div>
-                            
+                            <p class="text-muted">Ask an administrator to create or link your account before using this environment.</p>
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-dark">Sign Up</button>
                                 <a href="<%= appBaseUrl ? `${appBaseUrl}/auth/login/federated/google` : '/auth/login/federated/google' %>" class="btn btn-outline-secondary">
-                                    Sign up with Google
+                                    Sign in with Google
                                 </a>
+                                <a href="/auth/login" class="btn btn-dark">Return to Login</a>
                             </div>
-                        </form>
+                        <% } %>
                         
                         <hr class="my-4">
                         

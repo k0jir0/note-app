@@ -9,6 +9,7 @@ const {
 } = require('../utils/validation');
 const { handleAuthFailure } = require('../utils/errorHandler');
 const authService = require('../services/authService');
+const { isSelfSignupEnabled } = require('../services/identityProvisioningService');
 
 const AUTH_PAYLOAD_FIELDS = ['email', 'password', CSRF_BODY_FIELD];
 
@@ -116,6 +117,15 @@ function handleLogin(req, res, next) {
 
 async function handleSignup(req, res) {
     try {
+        const runtimeConfig = req.app && req.app.locals ? req.app.locals.runtimeConfig || {} : {};
+        if (!isSelfSignupEnabled(runtimeConfig)) {
+            return res.status(403).render('pages/signup', {
+                title: 'Sign Up',
+                error: authService.SELF_SIGNUP_DISABLED_ERROR,
+                csrfToken: res.locals.csrfToken
+            });
+        }
+
         const { email, password } = sanitizeAuthPayload(req.body);
 
         if (hasUnexpectedAuthFields(req.body)) {
@@ -225,7 +235,9 @@ function handleGoogleCallback(req, res, next) {
             return authService.renderLoginPage(res, {
                 error: info && info.code === 'ACCOUNT_LOCKED'
                     ? authService.ACCOUNT_LOCKED_ERROR
-                    : null
+                    : (info && info.code === 'IDENTITY_NOT_PROVISIONED'
+                        ? authService.GOOGLE_IDENTITY_PROVISIONING_ERROR
+                        : null)
             });
         }
 

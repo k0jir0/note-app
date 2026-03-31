@@ -44,7 +44,7 @@ function isValidNetworkZone(value) {
     return NETWORK_ZONES.includes(String(value || '').trim().toLowerCase());
 }
 
-function normalizeMissionList(items, fallback = DEFAULT_USER_PROFILE.assignedMissions) {
+function normalizeMissionList(items, fallback = DEFAULT_USER_PROFILE.assignedMissions, allowEmpty = false) {
     const values = Array.isArray(items)
         ? items
         : (typeof items === 'string' && items.trim()
@@ -55,7 +55,15 @@ function normalizeMissionList(items, fallback = DEFAULT_USER_PROFILE.assignedMis
         .map((value) => String(value || '').trim())
         .filter(Boolean)));
 
-    return normalized.length ? normalized : [...fallback];
+    if (normalized.length) {
+        return normalized;
+    }
+
+    if (allowEmpty && Array.isArray(items)) {
+        return [];
+    }
+
+    return [...fallback];
 }
 
 function normalizeNetworkZoneList(items, fallback = DEFAULT_USER_PROFILE.networkZones) {
@@ -82,6 +90,7 @@ function normalizeUserAccessProfile(user = {}) {
     const deviceTier = String(source.deviceTier || DEFAULT_USER_PROFILE.deviceTier).trim().toLowerCase();
     const normalizedMfaMethod = normalizeMfaMethod(source.mfaMethod || DEFAULT_USER_PROFILE.mfaMethod);
     const mfaHardwareFirst = Boolean(source.mfaHardwareFirst || isHardwareFirstMfaMethod(normalizedMfaMethod));
+    const allowEmptyMissionAssignments = missionRole === 'external';
 
     return {
         id: user && user._id ? String(user._id) : '',
@@ -90,7 +99,11 @@ function normalizeUserAccessProfile(user = {}) {
         missionRole: isValidMissionRole(missionRole) ? missionRole : DEFAULT_USER_PROFILE.missionRole,
         clearance: isValidClearance(clearance) ? clearance : DEFAULT_USER_PROFILE.clearance,
         unit: String(source.unit || DEFAULT_USER_PROFILE.unit).trim() || DEFAULT_USER_PROFILE.unit,
-        assignedMissions: normalizeMissionList(source.assignedMissions, DEFAULT_USER_PROFILE.assignedMissions),
+        assignedMissions: normalizeMissionList(
+            source.assignedMissions,
+            DEFAULT_USER_PROFILE.assignedMissions,
+            allowEmptyMissionAssignments
+        ),
         deviceTier: isValidDeviceTier(deviceTier) ? deviceTier : DEFAULT_USER_PROFILE.deviceTier,
         networkZones: normalizeNetworkZoneList(source.networkZones, DEFAULT_USER_PROFILE.networkZones),
         mfaVerified: Boolean(source.mfaVerified || source.mfaVerifiedAt),

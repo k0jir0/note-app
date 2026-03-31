@@ -24,6 +24,17 @@ const getHandler = (method, path, stackIndex = 0) => {
 };
 
 const buildRes = () => ({
+    app: {
+        locals: {
+            runtimeConfig: {
+                identityLifecycle: {
+                    protectedRuntime: false,
+                    selfSignupEnabled: true,
+                    googleAutoProvisionEnabled: true
+                }
+            }
+        }
+    },
     locals: { csrfToken: 'test-csrf-token' },
     render: sinon.stub(),
     redirect: sinon.stub(),
@@ -376,6 +387,47 @@ describe('Auth Routes', () => {
                 }
             }
         });
+
+        it('renders the provisioning-required message when Google sign-in is not allowed to auto-provision', () => {
+            const handler = getHandler('get', '/oauth2/redirect/google');
+            const originalClientId = process.env.GOOGLE_CLIENT_ID;
+            const originalClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+            try {
+                process.env.GOOGLE_CLIENT_ID = 'client-id';
+                process.env.GOOGLE_CLIENT_SECRET = 'client-secret';
+
+                sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
+                    expect(strategy).to.equal('google');
+                    return () => callback(null, false, { code: 'IDENTITY_NOT_PROVISIONED', message: 'Provisioned identity required.' });
+                });
+
+                const req = {};
+                const res = buildRes();
+                const next = sinon.stub();
+
+                handler(req, res, next);
+
+                expect(res.render.calledWith('pages/login', {
+                    title: 'Login',
+                    error: 'Your Google identity is not provisioned for this environment. Ask an administrator to create or link your account before signing in.',
+                    csrfToken: 'test-csrf-token'
+                })).to.equal(true);
+                expect(next.called).to.equal(false);
+            } finally {
+                if (originalClientId === undefined) {
+                    delete process.env.GOOGLE_CLIENT_ID;
+                } else {
+                    process.env.GOOGLE_CLIENT_ID = originalClientId;
+                }
+
+                if (originalClientSecret === undefined) {
+                    delete process.env.GOOGLE_CLIENT_SECRET;
+                } else {
+                    process.env.GOOGLE_CLIENT_SECRET = originalClientSecret;
+                }
+            }
+        });
     });
 
     describe('POST /login', () => {
@@ -655,7 +707,42 @@ describe('Auth Routes', () => {
             await handler(req, res);
 
             expect(User.findOne.calledWith({ email: 'newuser@example.com' })).to.be.true;
+            expect(User.prototype.save.firstCall.thisValue.accessProfile.missionRole).to.equal('external');
+            expect(User.prototype.save.firstCall.thisValue.accessProfile.clearance).to.equal('unclassified');
+            expect(User.prototype.save.firstCall.thisValue.accessProfile.networkZones).to.deep.equal(['public']);
             expect(res.redirect.calledWith('/auth/login')).to.be.true;
+        });
+
+        it('rejects signup when self-service provisioning is disabled for the runtime', async () => {
+            const handler = getHandler('post', '/signup', 1);
+
+            const req = {
+                app: {
+                    locals: {
+                        runtimeConfig: {
+                            identityLifecycle: {
+                                protectedRuntime: true,
+                                selfSignupEnabled: false,
+                                googleAutoProvisionEnabled: false
+                            }
+                        }
+                    }
+                },
+                body: {
+                    email: 'newuser@example.com',
+                    password: 'ValidPass123'
+                }
+            };
+            const res = buildRes();
+
+            await handler(req, res);
+
+            expect(res.status.calledWith(403)).to.equal(true);
+            expect(res.render.calledWith('pages/signup', {
+                title: 'Sign Up',
+                error: 'Self-service signup is disabled in this environment. Ask an administrator to provision your account first.',
+                csrfToken: 'test-csrf-token'
+            })).to.equal(true);
         });
 
         it('should allow the csrf field in signup submissions', async () => {

@@ -1,4 +1,5 @@
 const MISSION_ROLES = [
+    'external',
     'operator',
     'analyst',
     'mission_lead',

@@ -232,8 +232,14 @@ MARCH 29, 2026 SECURITY ADDITIONS
 MAJOR CHALLENGES AND SOLUTIONS
 
 - Authentication/Authorization: Complex session management, role/attribute-based access, and secure OAuth required reusable middleware, strict user checks, and robust error handling.
+- March 31, 2026 follow-up hardening pass:
+  - Protected runtimes now disable self-service signup and Google auto-provisioning, while locally allowed self-registered identities are created with an explicit low-trust `external` / `unclassified` / `public` access profile instead of inheriting analyst defaults.
+  - Protected-runtime transport now requires either the built-in HTTPS listener or a trusted TLS-terminating proxy posture, and insecure direct requests are redirected or rejected instead of being silently served.
+  - Added repo-native continuity tooling with `backup:export`, `backup:restore`, and `backup:reconstitute` commands so backup, restore, and post-restore reconstitution checks are no longer only procedural notes.
+  - Expanded the `Security CI` workflow with a protected-runtime controls job so CI validates hardened runtime posture alongside the development-surface ZAP baseline.
+  - March 31 verification now stands at `591 passing` in the full Mocha suite, `81 passing` in the focused auth/transport/continuity/runtime slice, and `npm run lint` passing cleanly.
 - Input Validation: Balancing security and usability led to centralized, layered validation and sanitization utilities, with clear separation for create/update flows.
-- Testing: Achieving and then extending the suite to 575 passing tests required extensive mocking, stubbing, and cleanup, especially for database, authentication, audit logging, telemetry logic, and the newer platform-composition seams.
+- Testing: Achieving and then extending the suite to 591 passing tests required extensive mocking, stubbing, and cleanup, especially for database, authentication, audit logging, telemetry logic, protected-runtime controls, and the newer platform-composition seams.
 - Dependency governance: keeping a generated SBOM in source control makes supply-chain review more concrete than relying on package manifests alone.
 - Containerization: local Docker validation on Windows required treating host services explicitly with `host.docker.internal`, and optional desktop keyring integrations had to be disabled in the minimal runtime image.
 - Deployment: Technical debt (hardcoded values, insecure cookies) was resolved with environment-driven config, secure defaults, and standardized scripts.

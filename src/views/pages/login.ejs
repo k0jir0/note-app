@@ -60,7 +60,11 @@
                         <hr class="my-4">
                         
                         <div class="text-center">
-                            <p class="mb-0">Don't have an account? <a href="/auth/signup">Sign up</a></p>
+                            <% if (!identityLifecycle || identityLifecycle.selfSignupEnabled) { %>
+                                <p class="mb-0">Don't have an account? <a href="/auth/signup">Sign up</a></p>
+                            <% } else { %>
+                                <p class="mb-0 text-muted">New accounts must be provisioned by an administrator before sign-in.</p>
+                            <% } %>
                         </div>
                     </div>
                 </div>
