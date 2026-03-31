@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 
 const { getRequestContext } = require('./requestContext');
+const { buildDatabaseTelemetryMessage } = require('./semanticLogging');
 
 let telemetryClient = {
     enabled: false,
@@ -126,6 +127,7 @@ function resolveWhere(context) {
         return {
             channel: 'system',
             requestId: context && context.requestId ? context.requestId : '',
+            correlationId: context && (context.correlationId || context.requestId) ? (context.correlationId || context.requestId) : '',
             method: '',
             path: '',
             ip: '',
@@ -141,6 +143,7 @@ function resolveWhere(context) {
     return {
         channel: 'http',
         requestId: context && context.requestId ? context.requestId : '',
+        correlationId: context && (context.correlationId || context.requestId) ? (context.correlationId || context.requestId) : '',
         method: String(req.method || 'GET').toUpperCase(),
         path: String(req.originalUrl || req.path || ''),
         ip,
@@ -153,6 +156,8 @@ function buildTelemetryEvent({ modelName, action, operation, documentId, before,
 
     return {
         category: 'db-state-change',
+        requestId: context && context.requestId ? context.requestId : '',
+        correlationId: context && (context.correlationId || context.requestId) ? (context.correlationId || context.requestId) : '',
         who: resolveActor(context),
         what: {
             model: modelName,
@@ -176,7 +181,7 @@ async function emitTelemetryEvent(event) {
         return false;
     }
 
-    return telemetryClient.audit('Database state changed', event);
+    return telemetryClient.audit(buildDatabaseTelemetryMessage(event), event);
 }
 
 async function findDocumentsByIds(model, ids = []) {

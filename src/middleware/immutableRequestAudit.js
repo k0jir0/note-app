@@ -1,11 +1,4 @@
-function normalizeIp(req = {}) {
-    const forwardedFor = req.headers && req.headers['x-forwarded-for'];
-    if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
-        return forwardedFor.split(',')[0].trim();
-    }
-
-    return req.ip || (req.socket && req.socket.remoteAddress) || '';
-}
+const { buildRequestAuditEntry } = require('../utils/semanticLogging');
 
 function shouldAuditRequest(req, res) {
     const method = String(req.method || 'GET').toUpperCase();
@@ -38,16 +31,8 @@ function createImmutableRequestAuditMiddleware({ client } = {}) {
                 return;
             }
 
-            void client.audit('HTTP request completed', {
-                category: 'http-request',
-                method: String(req.method || 'GET').toUpperCase(),
-                path: String(req.path || req.originalUrl || ''),
-                statusCode: res.statusCode,
-                durationMs: Date.now() - startedAt,
-                userId: req.user && req.user._id ? String(req.user._id) : '',
-                ip: normalizeIp(req),
-                userAgent: typeof req.get === 'function' ? String(req.get('user-agent') || '') : ''
-            });
+            const entry = buildRequestAuditEntry(req, res, Date.now() - startedAt);
+            void client.audit(entry.message, entry.metadata);
         });
 
         return next();

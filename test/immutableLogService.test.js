@@ -4,6 +4,7 @@ const {
     createImmutableLogClient,
     installGlobalConsoleMirror
 } = require('../src/utils/immutableLogService');
+const { requestContextMiddleware } = require('../src/utils/requestContext');
 
 describe('immutable log service', () => {
     it('sends append-only log entries to the remote sink', async () => {
@@ -106,5 +107,47 @@ describe('immutable log service', () => {
         expect(sentEntries[0].level).to.equal('error');
         expect(sentEntries[0].message).to.include('Security incident observed');
         expect(sentEntries[0].metadata.channel).to.equal('console');
+    });
+
+    it('adds request and correlation ids from the active request context', async () => {
+        const calls = [];
+        const client = createImmutableLogClient({
+            immutableLogging: {
+                enabled: true,
+                endpoint: 'https://logs.example.com/append',
+                token: 'write-only-token',
+                timeoutMs: 2000,
+                source: 'note-app-web',
+                format: 'json'
+            }
+        }, {
+            fetchImpl: async (_url, options) => {
+                calls.push(JSON.parse(options.body));
+                return { ok: true, status: 202 };
+            },
+            osLib: { hostname: () => 'host-a' }
+        });
+
+        const req = {
+            headers: {
+                'x-correlation-id': 'corr-log-77'
+            }
+        };
+
+        await new Promise((resolve, reject) => {
+            requestContextMiddleware(req, {}, async (error) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+
+                await client.audit('Structured audit event', { category: 'http-request' });
+                resolve();
+            });
+        });
+
+        expect(calls).to.have.length(1);
+        expect(calls[0].metadata.correlationId).to.equal('corr-log-77');
+        expect(calls[0].metadata.requestId).to.be.a('string').and.not.empty;
     });
 });

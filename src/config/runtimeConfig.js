@@ -6,6 +6,10 @@ const MAX_IMMUTABLE_LOG_TIMEOUT_MS = 1000 * 30;
 const IMMUTABLE_LOG_FORMATS = ['json', 'syslog'];
 const VALID_BREAK_GLASS_MODES = ['disabled', 'read_only', 'offline'];
 
+const { DEFAULT_CIPHER_ALGO, listSupportedCipherAlgos, normalizeCipherAlgo } = require('../utils/cryptoSuite');
+
+const SUPPORTED_CIPHER_ALGOS = listSupportedCipherAlgos();
+
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
 }
@@ -47,6 +51,16 @@ function validateEncryptionKeyFormat(name, rawValue, errors) {
     }
 
     errors.push(`${name} must be a 64-character hex string or base64 for 32 bytes`);
+}
+
+function parseCipherAlgo(env = process.env, errors = []) {
+    const normalized = normalizeCipherAlgo(env.CIPHER_ALGO || DEFAULT_CIPHER_ALGO) || DEFAULT_CIPHER_ALGO;
+    if (!SUPPORTED_CIPHER_ALGOS.includes(normalized)) {
+        errors.push(`CIPHER_ALGO must be one of: ${SUPPORTED_CIPHER_ALGOS.join(', ')}`);
+        return DEFAULT_CIPHER_ALGO;
+    }
+
+    return normalized;
 }
 
 function hasGoogleAuthCredentials(env = process.env) {
@@ -443,6 +457,7 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
         dbConfigured: isNonEmptyString(runtimeConfig.dbURI),
         sessionSecretConfigured: isNonEmptyString(runtimeConfig.sessionSecret),
         noteEncryptionConfigured: isNonEmptyString(runtimeConfig.noteEncryptionKey),
+        cipherAlgo: isNonEmptyString(runtimeConfig.cipherAlgo) ? runtimeConfig.cipherAlgo.trim() : DEFAULT_CIPHER_ALGO,
         appBaseUrl: isNonEmptyString(runtimeConfig.appBaseUrl) ? runtimeConfig.appBaseUrl.trim() : '',
         googleAuthEnabled: Boolean(runtimeConfig.googleAuthEnabled),
         sessionManagement: {
@@ -508,6 +523,7 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
 
 function validateRuntimeConfig(env = process.env) {
     const errors = [];
+    const cipherAlgo = parseCipherAlgo(env, errors);
 
     if (!isNonEmptyString(env.MONGODB_URI)) {
         errors.push('MONGODB_URI is required');
@@ -581,6 +597,7 @@ function validateRuntimeConfig(env = process.env) {
         dbURI: env.MONGODB_URI.trim(),
         sessionSecret: env.SESSION_SECRET.trim(),
         noteEncryptionKey: env.NOTE_ENCRYPTION_KEY.trim(),
+        cipherAlgo,
         appBaseUrl: getConfiguredAppBaseUrl(env),
         googleAuthEnabled: hasGoogleAuthCredentials(env),
         sessionManagement,
@@ -598,6 +615,7 @@ function validateRuntimeConfig(env = process.env) {
 module.exports = {
     IMMUTABLE_LOG_FORMATS,
     MIN_SESSION_SECRET_LENGTH,
+    SUPPORTED_CIPHER_ALGOS,
     getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,
     toDiagnosticRuntimeConfig,

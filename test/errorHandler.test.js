@@ -1,6 +1,7 @@
 const { expect } = require('chai');
 
 const {
+    handleAuthFailure,
     handleApiError,
     handlePageError
 } = require('../src/utils/errorHandler');
@@ -62,5 +63,22 @@ describe('errorHandler sanitization', () => {
 
         expect(res.statusCode).to.equal(400);
         expect(res.body).to.equal('Request could not be completed.');
+    });
+
+    it('returns generic auth failure payloads for api requests', () => {
+        const res = createJsonResponseDouble();
+
+        handleAuthFailure(res, {
+            api: true,
+            statusCode: 401,
+            errors: ['Authentication could not be completed. Please try again.']
+        });
+
+        expect(res.statusCode).to.equal(401);
+        expect(res.payload).to.deep.equal({
+            success: false,
+            message: 'Unauthorized',
+            errors: ['Authentication could not be completed. Please try again.']
+        });
     });
 });

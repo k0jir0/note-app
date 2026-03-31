@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const AuditEvent = require('../models/AuditEvent');
 const { buildEntryHash, DEFAULT_SOURCE } = require('../utils/immutableLogService');
+const { enrichMetadataWithRequestContext } = require('../utils/semanticLogging');
 
 function normalizeMetadata(value) {
     if (value instanceof Date) {
@@ -76,7 +77,7 @@ function createPersistentAuditClient({ baseClient, AuditEventModel = AuditEvent,
     let sequence = 0;
 
     async function persist(level, message, metadata = {}) {
-        const normalizedMetadata = normalizeMetadata(metadata);
+        const normalizedMetadata = normalizeMetadata(enrichMetadataWithRequestContext(metadata));
         const normalizedMessage = typeof message === 'string' ? message : String(message || 'Application log event');
         const source = normalizedMetadata.source || DEFAULT_SOURCE;
         const { entry, entryHash, eventTimestamp } = buildPersistedEvent({
@@ -101,6 +102,7 @@ function createPersistentAuditClient({ baseClient, AuditEventModel = AuditEvent,
                 actorType: normalizedMetadata.who && normalizedMetadata.who.type ? String(normalizedMetadata.who.type) : '',
                 actorEmail: normalizedMetadata.who && normalizedMetadata.who.email ? String(normalizedMetadata.who.email) : '',
                 requestId: normalizedMetadata.requestId || (normalizedMetadata.where && normalizedMetadata.where.requestId) || '',
+                correlationId: normalizedMetadata.correlationId || (normalizedMetadata.where && normalizedMetadata.where.correlationId) || '',
                 method: normalizedMetadata.method || (normalizedMetadata.where && normalizedMetadata.where.method) || '',
                 path: normalizedMetadata.path || (normalizedMetadata.where && normalizedMetadata.where.path) || '',
                 statusCode: Number.isFinite(normalizedMetadata.statusCode) ? normalizedMetadata.statusCode : null,

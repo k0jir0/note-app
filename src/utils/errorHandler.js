@@ -26,6 +26,40 @@ function isApiRequest(req = {}) {
     return path.startsWith('/api/') || acceptHeader.includes('application/json');
 }
 
+function handleAuthFailure(res, options = {}) {
+    const {
+        api = true,
+        pageTitle = 'Login',
+        pageError = 'Authentication is temporarily unavailable. Please try again.',
+        statusCode = 401,
+        redirectPath = '/auth/login',
+        csrfToken = undefined,
+        errors = ['Authentication could not be completed. Please try again.']
+    } = options;
+
+    if (api) {
+        return res.status(statusCode).json({
+            success: false,
+            message: statusCode === 403 ? 'Forbidden' : 'Unauthorized',
+            errors: sanitizeClientErrorList(errors, 'Authentication could not be completed.')
+        });
+    }
+
+    if (typeof res.render === 'function') {
+        return res.status(statusCode).render('pages/login', {
+            title: pageTitle,
+            error: pageError,
+            csrfToken
+        });
+    }
+
+    if (typeof res.redirect === 'function') {
+        return res.redirect(redirectPath);
+    }
+
+    return res.status(statusCode).send(pageError);
+}
+
 /**
  * Handle API errors with JSON response
  * @param {Object} res - Express response object
@@ -119,6 +153,7 @@ const handleUnhandledError = (error, req, res, next) => {
 };
 
 module.exports = {
+    handleAuthFailure,
     handleApiError,
     handlePageError,
     handleUnhandledError

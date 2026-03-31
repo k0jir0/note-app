@@ -39,6 +39,7 @@ describe('Database telemetry', () => {
             ip: '10.0.0.5',
             headers: {
                 'x-forwarded-for': '203.0.113.15, 10.0.0.5',
+                'x-correlation-id': 'corr-db-42',
                 'user-agent': 'telemetry-test'
             },
             get(headerName) {
@@ -71,7 +72,9 @@ describe('Database telemetry', () => {
         expect(event.where.path).to.equal('/api/alerts/alert-1');
         expect(event.where.ip).to.equal('203.0.113.15');
         expect(event.where.userAgent).to.equal('telemetry-test');
+        expect(event.correlationId).to.equal('corr-db-42');
         expect(event.where.requestId).to.be.a('string').and.not.empty;
+        expect(event.where.correlationId).to.equal('corr-db-42');
         expect(event.how).to.deep.equal({
             mechanism: 'updateOne',
             telemetryVersion: 1
@@ -137,7 +140,7 @@ describe('Database telemetry', () => {
 
         expect(model.bulkWrite.calledOnce).to.equal(true);
         expect(audit.calledOnce).to.equal(true);
-        expect(audit.firstCall.args[0]).to.equal('Database state changed');
+        expect(audit.firstCall.args[0]).to.equal('User analyst-7 updated SecurityAlert alert-9 via bulkWrite.updateOne.');
         expect(audit.firstCall.args[1].what).to.include({
             model: 'SecurityAlert',
             action: 'update',
@@ -148,6 +151,7 @@ describe('Database telemetry', () => {
         expect(audit.firstCall.args[1].what.after.id).to.equal('alert-9');
         expect(audit.firstCall.args[1].who.userId).to.equal('analyst-7');
         expect(audit.firstCall.args[1].where.path).to.equal('/api/automation/respond');
+        expect(audit.firstCall.args[1].correlationId).to.be.a('string').and.not.empty;
     });
 
     it('still executes bulkWrite when the caller does not expose query helpers', async () => {

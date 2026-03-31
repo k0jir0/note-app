@@ -3,6 +3,7 @@ const { expect } = require('chai');
 const {
     IMMUTABLE_LOG_FORMATS,
     MIN_SESSION_SECRET_LENGTH,
+    SUPPORTED_CIPHER_ALGOS,
     getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,
     toDiagnosticRuntimeConfig,
@@ -23,6 +24,24 @@ describe('Runtime Config Validation', () => {
 
         expect(config.dbURI).to.equal('mongodb://localhost:27017/noteApp');
         expect(config.googleAuthEnabled).to.equal(false);
+        expect(config.cipherAlgo).to.equal('aes-256-gcm');
+    });
+
+    it('accepts a supported cipher algorithm override', () => {
+        const env = createValidEnv();
+        env.CIPHER_ALGO = 'AES-256-GCM';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(SUPPORTED_CIPHER_ALGOS).to.include('aes-256-gcm');
+        expect(config.cipherAlgo).to.equal('aes-256-gcm');
+    });
+
+    it('rejects unsupported cipher algorithms', () => {
+        const env = createValidEnv();
+        env.CIPHER_ALGO = 'kyber-mlkem';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('CIPHER_ALGO');
     });
 
     it('rejects weak or placeholder secrets', () => {
@@ -302,6 +321,7 @@ describe('Runtime Config Validation', () => {
             dbURI: 'mongodb://localhost:27017/noteApp',
             sessionSecret: 'super-secret-value',
             noteEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            cipherAlgo: 'aes-256-gcm',
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true,
             sessionManagement: {
@@ -345,6 +365,7 @@ describe('Runtime Config Validation', () => {
             dbConfigured: true,
             sessionSecretConfigured: true,
             noteEncryptionConfigured: true,
+            cipherAlgo: 'aes-256-gcm',
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true
         });

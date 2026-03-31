@@ -53,6 +53,7 @@ describe('Dev Runtime Routes', () => {
                         dbURI: 'mongodb://localhost:27017/noteApp',
                         sessionSecret: 'super-secret-value',
                         noteEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                        cipherAlgo: 'aes-256-gcm',
                         appBaseUrl: 'http://localhost:3000',
                         googleAuthEnabled: true
                     }
@@ -68,6 +69,7 @@ describe('Dev Runtime Routes', () => {
             dbConfigured: true,
             sessionSecretConfigured: true,
             noteEncryptionConfigured: true,
+            cipherAlgo: 'aes-256-gcm',
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true
         });

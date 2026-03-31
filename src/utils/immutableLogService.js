@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const os = require('os');
 
+const { enrichMetadataWithRequestContext } = require('./semanticLogging');
+
 const DEFAULT_TIMEOUT_MS = 2000;
 const DEFAULT_SOURCE = 'note-app';
 const DEFAULT_FORMAT = 'json';
@@ -170,6 +172,7 @@ function createImmutableLogClient(runtimeConfig = {}, options = {}) {
     async function capture(level, message, metadata = {}) {
         const timestamp = clock();
         const format = immutableLogging.format === 'syslog' ? 'syslog' : DEFAULT_FORMAT;
+        const enrichedMetadata = enrichMetadataWithRequestContext(metadata);
         const entry = {
             schemaVersion: 1,
             application: 'note-app',
@@ -177,7 +180,7 @@ function createImmutableLogClient(runtimeConfig = {}, options = {}) {
             host: typeof osLib.hostname === 'function' ? osLib.hostname() : '',
             level,
             message: truncateString(message || 'Application log event'),
-            metadata: serializeLogValue(metadata),
+            metadata: serializeLogValue(enrichedMetadata),
             timestamp: timestamp instanceof Date ? timestamp.toISOString() : new Date(timestamp).toISOString(),
             sequence: sequence + 1,
             previousHash
