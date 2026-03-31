@@ -4,7 +4,7 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 
 ## Features
 
-- Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, AES-256 encryption at rest for selected sensitive user, alert, and scan fields, and per-user authorization.
+- Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, AES-256 encryption at rest for selected sensitive user, alert, and scan fields, per-user authorization, and same-origin managed note images that are fetched server-side and re-served through authenticated note routes.
 - Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, route-specific rate limiting, and HTTPS transport pinned to TLS 1.3 when certificate-based transport is enabled.
 - Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security architecture, automation, and browser-testing tools.
 - ML and response: an Alert Triage ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
@@ -89,8 +89,8 @@ npm run sbom:generate # Regenerate the CycloneDX dependency manifest
 Security CI notes:
 - SAST runs Semgrep with the repo's custom rules and fails the workflow on `ERROR` findings.
 - Dependency audit runs alongside Semgrep and fails on high-severity npm advisories.
-- DAST starts the app with CI-only secrets, waits for `/healthz`, then runs an OWASP ZAP baseline scan against `/auth/login` and uploads the HTML and JSON reports as workflow artifacts.
-- ZAP warnings are published for review without blocking the pipeline; confirmed failure-level findings still fail the DAST job.
+- DAST starts the app with CI-only secrets, waits for `/healthz`, then runs an OWASP ZAP baseline scan against `/auth/login` through `zaproxy/action-baseline@v0.15.0`.
+- The ZAP baseline artifact is published as `zap-baseline-report`, and warning-level findings are still reviewable without failing the workflow.
 
 Server: `http://localhost:3000`
 
@@ -171,9 +171,12 @@ Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
 
-Current local verification (March 30, 2026):
-- `npm test` passes with 500 tests
+Current local verification (March 31, 2026):
+- `npm test --silent` passes with 543 tests
 - `npm run lint` passes with 0 errors
+- `npm run audit:deps` and `npm run audit:prod` both report 0 vulnerabilities
+- `npm run test:e2e` passes in Chromium with 21 passing browser tests
+- `GET /healthz` on `http://127.0.0.1:3000` returns `{"ok":true,"breakGlass":{"mode":"disabled","enabled":false}}`
 - focused March 29 module coverage passes with `13 passing` across the new Supply Chain and Audit/Telemetry page routes plus the persisted audit-history service and API tests
 - focused sandbox runtime coverage passes with `20 passing` in `test/runtimeConfig.test.js`
 - `docker build -t note-app:hardened .` completes successfully
@@ -182,8 +185,10 @@ Current local verification (March 30, 2026):
 - Live app checks on `http://localhost:3000` confirm the current protected module routes are mounted
 - authenticated live checks confirm `GET /audit-telemetry/module` returns HTTP 200 and includes the persisted history grid plus the client loader wired to `/api/audit-telemetry/events`
 - authenticated live checks against `/api/audit-telemetry/events` show the persisted audit feed growing from 2 to 3 events, with the newest event recording `HTTP request completed` for `/api/audit-telemetry/events`
-- Latest `artifacts/playwright-results.json` on disk shows 13 expected / 0 unexpected in Chromium
+- Latest March 31 Chromium Playwright smoke run completes with 21 passing tests
 - Latest `artifacts/selenium-results.json` on disk shows 11 passing / 0 failing
+- Note images now render through authenticated same-origin routes (`/notes/:id/image`) backed by server-managed assets, which restores note thumbnails under the strict CSP posture without trusting third-party image hosts in the browser.
+- The Security CI DAST workflow now uses the maintained ZAP baseline GitHub Action after the earlier manual Docker invocation proved fragile in GitHub-hosted runners.
 
 Recent security hardening progress (March 29, 2026):
 - inbound HTTPS transport is pinned to TLS 1.3 only when certificate-based transport is enabled
@@ -485,6 +490,7 @@ PUT /api/notes/:id
 | `GET /notes` | Notes list | Yes |
 | `GET /notes/new` | Create note form | Yes |
 | `GET /notes/:id` | View note | Yes |
+| `GET /notes/:id/image` | Stream the authenticated same-origin note image asset | Yes |
 | `GET /notes/:id/edit` | Edit note form | Yes |
 | `GET /research` | Unified Research Workspace | Yes |
 | `GET /ml` | Redirects to the dedicated Alert Triage ML Module page | Yes |
