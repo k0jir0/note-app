@@ -160,15 +160,40 @@ function encryptNoteUpdatePayload(update) {
     return update;
 }
 
+function readDocumentField(target, fieldName) {
+    if (!target) {
+        return undefined;
+    }
+
+    if (typeof target.get === 'function') {
+        return target.get(fieldName);
+    }
+
+    return target[fieldName];
+}
+
+function writeDocumentField(target, fieldName, value) {
+    if (!target) {
+        return;
+    }
+
+    if (typeof target.set === 'function') {
+        target.set(fieldName, value);
+        return;
+    }
+
+    target[fieldName] = value;
+}
+
 function decryptNoteDocumentFields(doc) {
     if (!doc) {
         return doc;
     }
 
     ENCRYPTED_NOTE_FIELDS.forEach((fieldName) => {
-        const currentValue = doc.get(fieldName);
+        const currentValue = readDocumentField(doc, fieldName);
         if (typeof currentValue === 'string' && currentValue.length > 0) {
-            doc.set(fieldName, decryptText(currentValue));
+            writeDocumentField(doc, fieldName, decryptText(currentValue));
         }
     });
 

@@ -5,7 +5,8 @@ const {
     isEncryptedValue,
     encryptText,
     decryptText,
-    encryptNoteUpdatePayload
+    encryptNoteUpdatePayload,
+    decryptNoteDocumentFields
 } = require('../src/utils/noteEncryption');
 
 describe('Note Encryption Utility', () => {
@@ -108,5 +109,20 @@ describe('Note Encryption Utility', () => {
         expect(decryptText(legacyCiphertext)).to.equal('Legacy note payload');
 
         delete process.env.ALLOW_LEGACY_SESSION_SECRET_FALLBACK;
+    });
+
+    it('decrypts plain-object note payloads returned from query hooks', () => {
+        const note = {
+            title: encryptText('Updated title'),
+            content: encryptText('Updated content'),
+            image: encryptText('https://example.com/updated.png')
+        };
+
+        const decryptedNote = decryptNoteDocumentFields(note);
+
+        expect(decryptedNote).to.equal(note);
+        expect(note.title).to.equal('Updated title');
+        expect(note.content).to.equal('Updated content');
+        expect(note.image).to.equal('https://example.com/updated.png');
     });
 });

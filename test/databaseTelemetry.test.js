@@ -4,6 +4,7 @@ const sinon = require('sinon');
 const {
     buildTelemetryEvent,
     configureDatabaseTelemetry,
+    findDocumentsByIds,
     runTelemetryAwareBulkWrite
 } = require('../src/utils/databaseTelemetry');
 const { requestContextMiddleware } = require('../src/utils/requestContext');
@@ -96,6 +97,9 @@ describe('Database telemetry', () => {
                 .returns({
                     lean: async () => ([{ _id: 'alert-9', status: 'closed', severity: 'high' }])
                 }),
+            findById: sinon.stub().returns({
+                lean: async () => ({ _id: 'alert-9', status: 'closed', severity: 'high' })
+            }),
             bulkWrite: sinon.stub().resolves({ modifiedCount: 1 })
         };
 
@@ -178,5 +182,25 @@ describe('Database telemetry', () => {
         expect(result).to.deep.equal({ modifiedCount: 1 });
         expect(model.bulkWrite.calledOnce).to.equal(true);
         expect(audit.called).to.equal(false);
+    });
+
+    it('re-fetches updated documents by id without building a $in filter', async () => {
+        const model = {
+            findById: sinon.stub()
+                .onFirstCall()
+                .returns({ lean: async () => ({ _id: 'user-1', status: 'open' }) })
+                .onSecondCall()
+                .returns({ lean: async () => ({ _id: 'user-2', status: 'closed' }) })
+        };
+
+        const documents = await findDocumentsByIds(model, ['user-1', 'user-2']);
+
+        expect(model.findById.calledTwice).to.equal(true);
+        expect(model.findById.firstCall.args[0]).to.equal('user-1');
+        expect(model.findById.secondCall.args[0]).to.equal('user-2');
+        expect(documents).to.deep.equal([
+            { _id: 'user-1', status: 'open' },
+            { _id: 'user-2', status: 'closed' }
+        ]);
     });
 });

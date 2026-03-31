@@ -179,6 +179,25 @@ async function emitTelemetryEvent(event) {
     return telemetryClient.audit('Database state changed', event);
 }
 
+async function findDocumentsByIds(model, ids = []) {
+    if (!model || typeof model.findById !== 'function' || !Array.isArray(ids) || ids.length === 0) {
+        return [];
+    }
+
+    const documents = await Promise.all(ids.map(async (id) => {
+        const query = model.findById(id);
+        if (!query) {
+            return null;
+        }
+
+        return typeof query.lean === 'function'
+            ? query.lean()
+            : query;
+    }));
+
+    return documents.filter(Boolean);
+}
+
 function attachTelemetryLocals(target, value) {
     if (!target) {
         return;
@@ -267,9 +286,7 @@ function applyDatabaseTelemetry(schema, { modelName } = {}) {
                 const telemetry = readTelemetryLocals(this) || {};
                 const beforeDocs = Array.isArray(telemetry.beforeDocs) ? telemetry.beforeDocs : [];
                 const ids = beforeDocs.map((document) => String(document._id));
-                const afterDocs = ids.length > 0
-                    ? await this.model.find({ _id: { $in: ids } }).lean()
-                    : [];
+                const afterDocs = await findDocumentsByIds(this.model, ids);
                 const afterById = new Map(afterDocs.map((document) => [String(document._id), document]));
 
                 await Promise.all(beforeDocs.map((beforeDoc) => emitTelemetryEvent(buildTelemetryEvent({
@@ -420,9 +437,7 @@ async function runTelemetryAwareBulkWrite({ model, modelName, operations = [], b
         }
 
         const ids = context.beforeDocs.map((document) => String(document._id));
-        const afterDocs = ids.length > 0
-            ? await model.find({ _id: { $in: ids } }).lean()
-            : [];
+        const afterDocs = await findDocumentsByIds(model, ids);
         const afterById = new Map(afterDocs.map((document) => [String(document._id), document]));
 
         await Promise.all(context.beforeDocs.map((beforeDoc) => emitTelemetryEvent(buildTelemetryEvent({
@@ -445,6 +460,7 @@ module.exports = {
     applyDatabaseTelemetry,
     buildTelemetryEvent,
     configureDatabaseTelemetry,
+    findDocumentsByIds,
     runTelemetryAwareBulkWrite,
     summarizeDocument,
     summarizeUpdate
