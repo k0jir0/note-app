@@ -21,7 +21,7 @@
     "component": {
       "bom-ref": "note-app@0.1.0",
       "type": "library",
-      "name": "workspace",
+      "name": "note-app",
       "version": "0.1.0",
       "scope": "required",
       "author": "Ryan V",
