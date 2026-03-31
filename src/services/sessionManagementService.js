@@ -10,7 +10,8 @@ const SESSION_LOCK_REASONS = {
     IDLE_TIMEOUT: 'idle_timeout',
     ABSOLUTE_TIMEOUT: 'absolute_timeout',
     CONCURRENT_LOGIN: 'concurrent_login',
-    MANUAL_LOCKDOWN: 'manual_lockdown'
+    MANUAL_LOCKDOWN: 'manual_lockdown',
+    ACCOUNT_DISABLED: 'account_disabled'
 };
 
 function toIso(timestamp) {
@@ -101,6 +102,8 @@ function describeLockReason(lockReason = '') {
             return 'The account authenticated in another browser session, so this session was locked.';
         case SESSION_LOCK_REASONS.MANUAL_LOCKDOWN:
             return 'The session was locked manually.';
+        case SESSION_LOCK_REASONS.ACCOUNT_DISABLED:
+            return 'The account has been disabled and the session was revoked.';
         default:
             return 'The session is active.';
     }
@@ -376,6 +379,8 @@ function getLoginReasonMessage(reason = '') {
             return 'This session was locked because the account signed in somewhere else.';
         case SESSION_LOCK_REASONS.MANUAL_LOCKDOWN:
             return 'Your session was locked. Please sign in again.';
+        case SESSION_LOCK_REASONS.ACCOUNT_DISABLED:
+            return 'This account has been disabled. Contact an administrator to restore access.';
         default:
             return '';
     }

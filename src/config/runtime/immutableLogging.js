@@ -5,11 +5,11 @@ const {
     parseBooleanEnv,
     parseIntegerEnv
 } = require('./helpers');
-const { isProtectedRuntimeEnvironment } = require('./database');
+const { buildRuntimePosture } = require('./database');
 
 function buildImmutableLoggingConfig(env, errors) {
     const enabled = parseBooleanEnv('IMMUTABLE_LOGGING_ENABLED', env, errors);
-    const required = isProtectedRuntimeEnvironment(env);
+    const required = buildRuntimePosture(env).protectedRuntime;
     const timeoutMs = parseIntegerEnv('IMMUTABLE_LOGGING_TIMEOUT_MS', env, {
         defaultValue: 2000,
         min: 250,

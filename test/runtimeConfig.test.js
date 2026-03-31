@@ -23,6 +23,11 @@ describe('Runtime Config Validation', () => {
         const config = validateRuntimeConfig(createValidEnv());
 
         expect(config.dbURI).to.equal('mongodb://localhost:27017/noteApp');
+        expect(config.runtimePosture).to.deep.equal({
+            profile: 'local',
+            protectedRuntime: false,
+            source: 'heuristic_local'
+        });
         expect(config.database).to.deep.equal({
             uri: 'mongodb://localhost:27017/noteApp',
             tlsRequired: false,
@@ -107,6 +112,26 @@ describe('Runtime Config Validation', () => {
         env.APP_BASE_URL = 'not-a-url';
 
         expect(() => validateRuntimeConfig(env)).to.throw('APP_BASE_URL must be a valid http or https URL when set');
+    });
+
+    it('infers a protected runtime when NODE_ENV is omitted but remote deployment signals are present', () => {
+        const env = createValidEnv();
+        env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
+        env.APP_BASE_URL = 'https://note-app.example.com';
+        env.TRUST_PROXY_HOPS = '1';
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.runtimePosture).to.deep.equal({
+            profile: 'protected',
+            protectedRuntime: true,
+            source: 'heuristic_protected'
+        });
+        expect(config.transport.secureTransportRequired).to.equal(true);
+        expect(config.identityLifecycle.protectedRuntime).to.equal(true);
     });
 
     it('returns disabled automation config by default', () => {
@@ -438,6 +463,11 @@ describe('Runtime Config Validation', () => {
     it('builds a sanitized runtime diagnostic view without secrets', () => {
         const diagnostics = toDiagnosticRuntimeConfig({
             dbURI: 'mongodb://localhost:27017/noteApp',
+            runtimePosture: {
+                profile: 'protected',
+                protectedRuntime: true,
+                source: 'runtime_posture'
+            },
             database: {
                 uri: 'mongodb://localhost:27017/noteApp',
                 tlsRequired: true,
@@ -496,6 +526,11 @@ describe('Runtime Config Validation', () => {
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true
         });
+        expect(diagnostics.runtimePosture).to.deep.equal({
+            profile: 'protected',
+            protectedRuntime: true,
+            source: 'runtime_posture'
+        });
         expect(diagnostics.database).to.deep.equal({
             tlsRequired: true,
             tlsEnabled: true,
@@ -508,6 +543,8 @@ describe('Runtime Config Validation', () => {
             requireClientCertificate: false,
             trustProxyClientCertHeaders: true,
             trustProxyHops: 1,
+            secureTransportRequired: false,
+            proxyTlsTerminated: false,
             tlsMinVersion: 'TLSv1.3',
             tlsMaxVersion: 'TLSv1.3'
         });

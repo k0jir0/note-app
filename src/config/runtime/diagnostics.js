@@ -9,6 +9,15 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
     const automation = runtimeConfig.automation || {};
 
     return {
+        runtimePosture: {
+            profile: runtimeConfig.runtimePosture && runtimeConfig.runtimePosture.profile
+                ? String(runtimeConfig.runtimePosture.profile)
+                : 'local',
+            protectedRuntime: Boolean(runtimeConfig.runtimePosture && runtimeConfig.runtimePosture.protectedRuntime),
+            source: runtimeConfig.runtimePosture && runtimeConfig.runtimePosture.source
+                ? String(runtimeConfig.runtimePosture.source)
+                : ''
+        },
         dbConfigured: isNonEmptyString(runtimeConfig.dbURI),
         database: {
             tlsRequired: Boolean(runtimeConfig.database && runtimeConfig.database.tlsRequired),
@@ -36,7 +45,14 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
             preventConcurrentLogins: Boolean(runtimeConfig.sessionManagement && runtimeConfig.sessionManagement.preventConcurrentLogins)
         },
         transport: {
-            protocol: runtimeConfig.transport && runtimeConfig.transport.httpsEnabled ? 'https' : 'http',
+            protocol: runtimeConfig.transport && runtimeConfig.transport.protocol
+                ? String(runtimeConfig.transport.protocol)
+                : ((runtimeConfig.transport && (
+                    runtimeConfig.transport.httpsEnabled
+                    || runtimeConfig.transport.proxyTlsTerminated
+                ))
+                    ? 'https'
+                    : 'http'),
             httpsEnabled: Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled),
             requestClientCertificate: Boolean(runtimeConfig.transport && runtimeConfig.transport.requestClientCertificate),
             requireClientCertificate: Boolean(runtimeConfig.transport && runtimeConfig.transport.requireClientCertificate),
@@ -44,6 +60,8 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
             trustProxyHops: Number.isInteger(runtimeConfig.transport && runtimeConfig.transport.trustProxyHops)
                 ? runtimeConfig.transport.trustProxyHops
                 : 0,
+            secureTransportRequired: Boolean(runtimeConfig.transport && runtimeConfig.transport.secureTransportRequired),
+            proxyTlsTerminated: Boolean(runtimeConfig.transport && runtimeConfig.transport.proxyTlsTerminated),
             tlsMinVersion: runtimeConfig.transport && runtimeConfig.transport.httpsEnabled
                 ? String(runtimeConfig.transport.tlsMinVersion || 'TLSv1.3')
                 : '',

@@ -16,20 +16,18 @@ function buildTimestamp() {
 function parseArgs(argv = []) {
     const outPathArg = argv.find((value) => value.startsWith('--out='));
     const reasonArg = argv.find((value) => value.startsWith('--reason='));
-    const gzip = !argv.includes('--no-gzip');
-    const defaultExtension = gzip ? 'json.gz' : 'json';
 
     return {
-        gzip,
         reason: reasonArg ? reasonArg.split('=').slice(1).join('=') : '',
         outPath: outPathArg
             ? path.resolve(rootDir, outPathArg.split('=').slice(1).join('='))
-            : path.join(rootDir, 'artifacts', 'backups', `note-app-backup-${buildTimestamp()}.${defaultExtension}`)
+            : path.join(rootDir, 'artifacts', 'backups', `note-app-backup-${buildTimestamp()}.json`)
     };
 }
 
 async function run() {
     const options = parseArgs(process.argv.slice(2));
+    const backupProtectionSecret = String(process.env.BACKUP_ENCRYPTION_KEY || runtimeConfig.noteEncryptionKey || '').trim();
 
     await mongoose.connect(runtimeConfig.dbURI);
 
@@ -41,7 +39,12 @@ async function run() {
             }
         });
 
-        writeBackupArchive(options.outPath, archive, { gzip: options.gzip });
+        writeBackupArchive(options.outPath, archive, {
+            protection: {
+                rawSecret: backupProtectionSecret,
+                cipherAlgo: runtimeConfig.cipherAlgo
+            }
+        });
 
         console.log(`[backup] Wrote backup archive to ${options.outPath}`);
         archive.summary.forEach((entry) => {

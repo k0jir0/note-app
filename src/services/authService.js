@@ -10,6 +10,7 @@ const {
 } = require('./sessionManagementService');
 
 const GENERIC_LOGIN_ERROR = 'Invalid email or password';
+const ACCOUNT_DISABLED_ERROR = 'This account has been disabled. Contact an administrator to restore access.';
 const ACCOUNT_LOCKED_ERROR = 'This account is temporarily locked after repeated failed sign-in attempts. Please wait and try again.';
 const GOOGLE_OAUTH_EXCHANGE_ERROR_MESSAGE = 'Google sign-in could not be completed. Verify the configured Google OAuth client secret and redirect URI for this environment.';
 const GOOGLE_IDENTITY_PROVISIONING_ERROR = 'Your Google identity is not provisioned for this environment. Ask an administrator to create or link your account before signing in.';
@@ -280,6 +281,7 @@ async function createLocalUser({ email, password }) {
 }
 
 module.exports = {
+    ACCOUNT_DISABLED_ERROR,
     ACCOUNT_LOCKED_ERROR,
     GENERIC_AUTH_SERVICE_ERROR,
     GENERIC_LOGIN_ERROR,

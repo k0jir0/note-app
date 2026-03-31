@@ -67,10 +67,16 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         installGlobalConsoleMirror(immutableLogClient);
         configureDatabaseTelemetry({ client: immutableLogClient });
 
+        const protectedRuntime = Boolean(runtimeConfig.runtimePosture && runtimeConfig.runtimePosture.protectedRuntime);
         const isProduction = process.env.NODE_ENV === 'production';
-        const useSecureCookies = isProduction || Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled);
+        const useSecureCookies = protectedRuntime
+            || Boolean(runtimeConfig.transport && (
+                runtimeConfig.transport.httpsEnabled
+                || runtimeConfig.transport.proxyTlsTerminated
+                || runtimeConfig.transport.secureTransportRequired
+            ));
         const realtimeAvailable = Boolean(process.env.REDIS_URL) && process.env.DISABLE_REDIS !== '1';
-        const privilegedDevToolsEnabled = !isProduction
+        const privilegedDevToolsEnabled = !protectedRuntime
             && String(process.env.ENABLE_PRIVILEGED_DEV_TOOLS || '').trim().toLowerCase() === 'true';
         const SESSION_COOKIE_MAX_AGE = 1000 * 60 * 60 * 24;
         const dbURI = runtimeConfig.dbURI;

@@ -1,5 +1,5 @@
 const { parseBooleanEnv } = require('./helpers');
-const { isProtectedRuntimeEnvironment } = require('./database');
+const { buildRuntimePosture } = require('./database');
 
 function resolveBooleanSetting(name, env, errors, defaultValue) {
     if (env[name] === undefined) {
@@ -10,7 +10,7 @@ function resolveBooleanSetting(name, env, errors, defaultValue) {
 }
 
 function buildIdentityLifecycleConfig(env = process.env, errors = []) {
-    const protectedRuntime = isProtectedRuntimeEnvironment(env);
+    const protectedRuntime = buildRuntimePosture(env).protectedRuntime;
     const selfSignupEnabled = resolveBooleanSetting(
         'SELF_SIGNUP_ENABLED',
         env,

@@ -4,7 +4,7 @@ const {
     parseBooleanEnv,
     parseIntegerEnv
 } = require('./helpers');
-const { isProtectedRuntimeEnvironment } = require('./database');
+const { buildRuntimePosture } = require('./database');
 
 function buildTransportConfig(env, errors) {
     const httpsEnabled = parseBooleanEnv('HTTPS_ENABLED', env, errors);
@@ -20,7 +20,7 @@ function buildTransportConfig(env, errors) {
     const keyPath = isNonEmptyString(env.HTTPS_KEY_PATH) ? env.HTTPS_KEY_PATH.trim() : '';
     const certPath = isNonEmptyString(env.HTTPS_CERT_PATH) ? env.HTTPS_CERT_PATH.trim() : '';
     const caPath = isNonEmptyString(env.HTTPS_CA_PATH) ? env.HTTPS_CA_PATH.trim() : '';
-    const protectedRuntime = isProtectedRuntimeEnvironment(env);
+    const protectedRuntime = buildRuntimePosture(env).protectedRuntime;
     const appBaseUrl = normalizeAppBaseUrl(env.APP_BASE_URL);
     const publicOriginHttps = appBaseUrl.startsWith('https://');
     const proxyTlsTerminated = trustProxyHops >= 1 && publicOriginHttps;

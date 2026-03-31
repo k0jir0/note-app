@@ -105,6 +105,30 @@ describe('API access control middleware', () => {
         expect(res.json.firstCall.args[0].message).to.include('Server-side access control');
     });
 
+    it('rejects protected api requests for disabled authenticated accounts', () => {
+        const req = {
+            method: 'GET',
+            path: '/api/notes',
+            originalUrl: '/api/notes',
+            isAuthenticated: () => true,
+            user: {
+                _id: '507f1f77bcf86cd799439011',
+                email: 'disabled@example.com',
+                accountState: {
+                    status: 'disabled'
+                }
+            }
+        };
+        const res = buildRes();
+        const next = sinon.spy();
+
+        enforceServerSideApiAccessControl(req, res, next);
+
+        expect(next.called).to.equal(false);
+        expect(res.status.calledWith(401)).to.equal(true);
+        expect(res.json.firstCall.args[0].message).to.include('Server-side access control');
+    });
+
     it('attaches verified identity context for protected api requests', () => {
         const req = {
             method: 'POST',

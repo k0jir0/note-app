@@ -84,9 +84,11 @@ function handleLogin(req, res, next) {
 
         if (!user) {
             return authService.renderLoginPage(res, {
-                error: info && info.code === 'ACCOUNT_LOCKED'
-                    ? authService.ACCOUNT_LOCKED_ERROR
-                    : authService.GENERIC_LOGIN_ERROR
+                error: info && info.code === 'ACCOUNT_DISABLED'
+                    ? authService.ACCOUNT_DISABLED_ERROR
+                    : (info && info.code === 'ACCOUNT_LOCKED'
+                        ? authService.ACCOUNT_LOCKED_ERROR
+                        : authService.GENERIC_LOGIN_ERROR)
             });
         }
 
@@ -233,11 +235,13 @@ function handleGoogleCallback(req, res, next) {
 
         if (!user) {
             return authService.renderLoginPage(res, {
-                error: info && info.code === 'ACCOUNT_LOCKED'
-                    ? authService.ACCOUNT_LOCKED_ERROR
-                    : (info && info.code === 'IDENTITY_NOT_PROVISIONED'
-                        ? authService.GOOGLE_IDENTITY_PROVISIONING_ERROR
-                        : null)
+                error: info && info.code === 'ACCOUNT_DISABLED'
+                    ? authService.ACCOUNT_DISABLED_ERROR
+                    : (info && info.code === 'ACCOUNT_LOCKED'
+                        ? authService.ACCOUNT_LOCKED_ERROR
+                        : (info && info.code === 'IDENTITY_NOT_PROVISIONED'
+                            ? authService.GOOGLE_IDENTITY_PROVISIONING_ERROR
+                            : null))
             });
         }
 

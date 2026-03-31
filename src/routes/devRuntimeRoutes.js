@@ -28,6 +28,17 @@ function parseEnabledFlag(value) {
     return null;
 }
 
+function isProtectedRuntime(req = {}) {
+    return Boolean(
+        req
+        && req.app
+        && req.app.locals
+        && req.app.locals.runtimeConfig
+        && req.app.locals.runtimeConfig.runtimePosture
+        && req.app.locals.runtimeConfig.runtimePosture.protectedRuntime
+    );
+}
+
 router.get('/__runtime-config', requireAuthAPI, requirePrivilegedDevToolsEnabled(), requirePrivilegedRuntimeReadAccess(), (req, res) => {
     try {
         return res.status(200).json({
@@ -59,10 +70,10 @@ router.post(
     requireRecentPrivilegedStepUp(),
     (req, res) => {
         try {
-            if (process.env.NODE_ENV === 'production') {
+            if (isProtectedRuntime(req)) {
                 return res.status(403).json({
                     success: false,
-                    message: 'Runtime toggles are disabled in production'
+                    message: 'Runtime toggles are disabled in protected environments'
                 });
             }
 

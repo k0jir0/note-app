@@ -9,6 +9,7 @@ const {
     isAccountLocked,
     recordFailedLoginAttempt
 } = require('../services/authLockoutService');
+const { isAccountDisabled } = require('../services/accountLifecycleService');
 const {
     buildSelfRegisteredAccessProfile,
     isGoogleAutoProvisionEnabled
@@ -23,6 +24,10 @@ module.exports = function (passport, runtimeConfig = {}) {
             const normalizedEmail = String(email || '').trim().toLowerCase();
             // Get the user from the database
             const user = await User.findOne({ email: normalizedEmail });
+
+            if (user && isAccountDisabled(user)) {
+                return done(null, false, { code: 'ACCOUNT_DISABLED', message: 'Account disabled.' });
+            }
 
             if (user && isAccountLocked(user)) {
                 return done(null, false, { code: 'ACCOUNT_LOCKED', message: 'Account locked.' });
@@ -79,6 +84,10 @@ module.exports = function (passport, runtimeConfig = {}) {
                 // Check if user already exists with Google ID
                 let user = await User.findOne({ googleId: profile.id });
                 if (user) {
+                    if (isAccountDisabled(user)) {
+                        return cb(null, false, { code: 'ACCOUNT_DISABLED', message: 'Account disabled.' });
+                    }
+
                     if (isAccountLocked(user)) {
                         return cb(null, false, { code: 'ACCOUNT_LOCKED', message: 'Account locked.' });
                     }
@@ -103,6 +112,10 @@ module.exports = function (passport, runtimeConfig = {}) {
                 if (email) {
                     user = await User.findOne({ email: email });
                     if (user) {
+                        if (isAccountDisabled(user)) {
+                            return cb(null, false, { code: 'ACCOUNT_DISABLED', message: 'Account disabled.' });
+                        }
+
                         if (isAccountLocked(user)) {
                             return cb(null, false, { code: 'ACCOUNT_LOCKED', message: 'Account locked.' });
                         }

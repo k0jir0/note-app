@@ -1,6 +1,7 @@
 const PROTECTED_API_PATH_PREFIXES = ['/api/'];
 const PROTECTED_API_PATHS = ['/__runtime-config', '/__realtime-status'];
 const PUBLIC_API_PATHS = ['/__test/csrf'];
+const { isAccountDisabled } = require('./accountLifecycleService');
 
 const {
     canManageBreakGlassRuntime,
@@ -218,6 +219,7 @@ function hasVerifiedRequestIdentity(req) {
         && req.isAuthenticated()
         && req.user
         && req.user._id
+        && !isAccountDisabled(req.user)
     );
 }
 

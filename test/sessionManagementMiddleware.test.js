@@ -136,4 +136,44 @@ describe('Session management middleware', () => {
         expect(next.called).to.equal(false);
         expect(res.redirect.calledWith('/auth/login?reason=concurrent_login')).to.equal(true);
     });
+
+    it('locks and rejects disabled accounts on authenticated API requests', async () => {
+        const req = {
+            path: '/api/notes',
+            session: {
+                sessionManagement: {
+                    sessionId: 'sess-disabled',
+                    userId: '507f1f77bcf86cd799439011'
+                },
+                destroy: (callback) => callback(null)
+            },
+            user: {
+                _id: '507f1f77bcf86cd799439011',
+                email: 'disabled@example.com',
+                accessProfile: {
+                    networkZones: ['corp']
+                },
+                accountState: {
+                    status: 'disabled'
+                }
+            },
+            app: {
+                locals: {
+                    runtimeConfig: {}
+                }
+            },
+            isAuthenticated: () => true,
+            logout: (callback) => callback(null),
+            get: (header) => (header === 'accept' ? 'application/json' : '')
+        };
+        const res = buildRes();
+        const next = sinon.spy();
+
+        await enforceStrictSessionManagement(req, res, next);
+
+        expect(next.called).to.equal(false);
+        expect(res.clearCookie.calledWith('connect.sid')).to.equal(true);
+        expect(res.status.calledWith(403)).to.equal(true);
+        expect(res.json.firstCall.args[0].data.reason).to.equal('account_disabled');
+    });
 });

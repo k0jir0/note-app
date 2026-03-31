@@ -1,7 +1,14 @@
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { EJSON } = require('bson');
+const {
+    buildEncryptedPayload,
+    decryptEncryptedPayload,
+    getCryptoSuite,
+    isEncryptedPayload
+} = require('../utils/cryptoSuite');
 
 const Note = require('../models/Notes');
 const User = require('../models/User');
@@ -13,6 +20,9 @@ const BreakGlassState = require('../models/BreakGlassState');
 
 const BACKUP_SCHEMA_VERSION = 1;
 const BACKUP_APPLICATION_ID = 'note-app';
+const BACKUP_ENVELOPE_SCHEMA_VERSION = 1;
+const BACKUP_ENVELOPE_APPLICATION_ID = 'note-app-backup-envelope';
+const BACKUP_PROTECTION_CONTEXT = 'note-app-backup-protection-v1';
 
 function listContinuityCollectionDefinitions(models = {}) {
     return [
@@ -85,6 +95,50 @@ function parseBackupArchivePayload(rawPayload) {
     return validateParsedArchive(EJSON.parse(String(rawPayload || '')));
 }
 
+function buildProtectionKey(protection = {}) {
+    const rawSecret = String(protection.rawSecret || protection.secret || '').trim();
+    if (!rawSecret) {
+        return null;
+    }
+
+    const suite = getCryptoSuite(protection.cipherAlgo);
+    const expectedHexLength = suite.keyLengthBytes * 2;
+    let baseKey = null;
+
+    if (new RegExp(`^[a-fA-F0-9]{${expectedHexLength}}$`).test(rawSecret)) {
+        baseKey = Buffer.from(rawSecret, 'hex');
+    } else {
+        const decoded = Buffer.from(rawSecret, 'base64');
+        if (decoded.length === suite.keyLengthBytes) {
+            baseKey = decoded;
+        }
+    }
+
+    if (!baseKey || baseKey.length !== suite.keyLengthBytes) {
+        throw new Error(`Backup archive protection secret must be a ${expectedHexLength}-character hex string or base64 for ${suite.keyLengthBytes} bytes`);
+    }
+
+    const derivedKey = typeof crypto.hkdfSync === 'function'
+        ? crypto.hkdfSync(
+            'sha256',
+            baseKey,
+            Buffer.from(BACKUP_APPLICATION_ID, 'utf8'),
+            Buffer.from(BACKUP_PROTECTION_CONTEXT, 'utf8'),
+            suite.keyLengthBytes
+        )
+        : crypto.createHash('sha256')
+            .update(baseKey)
+            .update(BACKUP_APPLICATION_ID)
+            .update(BACKUP_PROTECTION_CONTEXT)
+            .digest()
+            .subarray(0, suite.keyLengthBytes);
+
+    return {
+        suite,
+        key: Buffer.from(derivedKey)
+    };
+}
+
 function isGzipBuffer(buffer) {
     return Buffer.isBuffer(buffer)
         && buffer.length >= 2
@@ -92,39 +146,91 @@ function isGzipBuffer(buffer) {
         && buffer[1] === 0x8b;
 }
 
-function encodeBackupArchive(archive, { gzip = true } = {}) {
+function encodeBackupArchive(archive, { gzip = true, protection = null } = {}) {
+    const resolvedProtection = buildProtectionKey(protection);
+    if (!resolvedProtection) {
+        throw new Error('Backup archive protection secret is required to encode backup archives.');
+    }
+
     const serializedArchive = Buffer.from(serializeBackupArchive(archive), 'utf8');
-    return gzip ? zlib.gzipSync(serializedArchive) : serializedArchive;
+    const archivePayload = gzip ? zlib.gzipSync(serializedArchive) : serializedArchive;
+    const encryptedPayload = buildEncryptedPayload({
+        suite: resolvedProtection.suite,
+        plaintext: archivePayload.toString('base64'),
+        key: resolvedProtection.key
+    });
+
+    return Buffer.from(JSON.stringify({
+        schemaVersion: BACKUP_ENVELOPE_SCHEMA_VERSION,
+        application: BACKUP_ENVELOPE_APPLICATION_ID,
+        archiveApplication: BACKUP_APPLICATION_ID,
+        generatedAt: new Date().toISOString(),
+        cipherAlgo: resolvedProtection.suite.id,
+        compression: gzip ? 'gzip' : 'none',
+        payload: encryptedPayload
+    }, null, 2), 'utf8');
 }
 
-function decodeBackupArchive(buffer) {
+function decodeBackupArchive(buffer, { protection = null, allowPlaintextArchive = false } = {}) {
     const normalizedBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
     const rawPayload = isGzipBuffer(normalizedBuffer)
         ? zlib.gunzipSync(normalizedBuffer).toString('utf8')
         : normalizedBuffer.toString('utf8');
 
-    return parseBackupArchivePayload(rawPayload);
+    const parsedPayload = EJSON.parse(String(rawPayload || ''));
+    if (parsedPayload && parsedPayload.application === BACKUP_ENVELOPE_APPLICATION_ID) {
+        const resolvedProtection = buildProtectionKey({
+            rawSecret: protection && protection.rawSecret ? protection.rawSecret : protection && protection.secret,
+            cipherAlgo: parsedPayload.cipherAlgo || (protection && protection.cipherAlgo)
+        });
+        if (!resolvedProtection) {
+            throw new Error('Backup archive protection secret is required to read protected backup archives.');
+        }
+
+        if (!isEncryptedPayload(parsedPayload.payload)) {
+            throw new Error('Protected backup archive payload is invalid.');
+        }
+
+        const decryptedPayload = decryptEncryptedPayload(parsedPayload.payload, resolvedProtection.key);
+        const archiveBuffer = Buffer.from(decryptedPayload, 'base64');
+        const serializedArchive = parsedPayload.compression === 'gzip'
+            ? zlib.gunzipSync(archiveBuffer).toString('utf8')
+            : archiveBuffer.toString('utf8');
+
+        return parseBackupArchivePayload(serializedArchive);
+    }
+
+    if (!allowPlaintextArchive) {
+        throw new Error('Plaintext backup archives are not accepted by default. Re-export the archive or opt in explicitly.');
+    }
+
+    return validateParsedArchive(parsedPayload);
 }
 
 function ensureBackupDirectory(filePath, fsLib = fs) {
     fsLib.mkdirSync(path.dirname(filePath), { recursive: true });
 }
 
-function writeBackupArchive(filePath, archive, { gzip = true, fsLib = fs } = {}) {
+function writeBackupArchive(filePath, archive, { gzip = true, protection = null, fsLib = fs } = {}) {
     ensureBackupDirectory(filePath, fsLib);
-    fsLib.writeFileSync(filePath, encodeBackupArchive(archive, { gzip }));
+    const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+    fsLib.writeFileSync(tempPath, encodeBackupArchive(archive, { gzip, protection }));
+    fsLib.renameSync(tempPath, filePath);
     return filePath;
 }
 
-function readBackupArchive(filePath, { fsLib = fs } = {}) {
-    return decodeBackupArchive(fsLib.readFileSync(filePath));
+function readBackupArchive(filePath, { fsLib = fs, protection = null, allowPlaintextArchive = false } = {}) {
+    return decodeBackupArchive(fsLib.readFileSync(filePath), {
+        protection,
+        allowPlaintextArchive
+    });
 }
 
-async function restoreBackupArchive({
+async function applyRestoreArchive({
     backupArchive,
     collectionDefinitions = listContinuityCollectionDefinitions(),
-    dryRun = false,
-    clearExisting = true
+    clearExisting = true,
+    session = null
 } = {}) {
     const archive = validateParsedArchive(backupArchive);
     const summary = [];
@@ -134,14 +240,17 @@ async function restoreBackupArchive({
             ? archive.collections[definition.id]
             : [];
 
-        if (!dryRun) {
-            if (clearExisting) {
-                await definition.Model.collection.deleteMany({});
-            }
+        if (clearExisting) {
+            await definition.Model.collection.deleteMany({}, session ? { session } : undefined);
+        }
 
-            if (documents.length > 0) {
-                await definition.Model.collection.insertMany(documents, { ordered: true });
-            }
+        if (documents.length > 0) {
+            await definition.Model.collection.insertMany(documents, session ? {
+                ordered: true,
+                session
+            } : {
+                ordered: true
+            });
         }
 
         summary.push({
@@ -152,6 +261,67 @@ async function restoreBackupArchive({
     }
 
     return summary;
+}
+
+async function runRestoreTransaction(mongooseConnection, handler) {
+    if (!mongooseConnection || typeof mongooseConnection.startSession !== 'function') {
+        throw new Error('Transactional restore requires a Mongoose connection with session support.');
+    }
+
+    const session = await mongooseConnection.startSession();
+    try {
+        if (typeof session.withTransaction !== 'function') {
+            throw new Error('Transactional restore requires MongoDB transaction support.');
+        }
+
+        let result = null;
+        await session.withTransaction(async () => {
+            result = await handler(session);
+        });
+        return result;
+    } finally {
+        if (typeof session.endSession === 'function') {
+            await session.endSession();
+        }
+    }
+}
+
+async function restoreBackupArchive({
+    backupArchive,
+    collectionDefinitions = listContinuityCollectionDefinitions(),
+    dryRun = false,
+    clearExisting = true,
+    mongooseConnection = null,
+    allowNonTransactionalRestore = false
+} = {}) {
+    if (dryRun) {
+        return applyRestoreArchive({
+            backupArchive,
+            collectionDefinitions,
+            clearExisting,
+            session: null
+        });
+    }
+
+    if (mongooseConnection) {
+        return runRestoreTransaction(mongooseConnection, (session) => applyRestoreArchive({
+            backupArchive,
+            collectionDefinitions,
+            clearExisting,
+            session
+        }));
+    }
+
+    if (!allowNonTransactionalRestore) {
+        throw new Error('Transactional restore support is required before applying a destructive restore.');
+    }
+
+    return applyRestoreArchive({
+        backupArchive,
+        collectionDefinitions,
+        clearExisting,
+        session: null
+    });
 }
 
 async function collectReconstitutionStatus({
@@ -205,7 +375,10 @@ async function collectReconstitutionStatus({
 
 module.exports = {
     BACKUP_APPLICATION_ID,
+    BACKUP_ENVELOPE_APPLICATION_ID,
+    BACKUP_ENVELOPE_SCHEMA_VERSION,
     BACKUP_SCHEMA_VERSION,
+    buildProtectionKey,
     collectReconstitutionStatus,
     decodeBackupArchive,
     encodeBackupArchive,

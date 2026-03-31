@@ -4,6 +4,8 @@ const { ObjectId } = require('bson');
 
 const {
     collectReconstitutionStatus,
+    decodeBackupArchive,
+    encodeBackupArchive,
     exportBackupArchive,
     parseBackupArchivePayload,
     restoreBackupArchive,
@@ -43,6 +45,10 @@ function createCountingModel(count) {
 }
 
 describe('continuity service', () => {
+    const backupProtection = {
+        secret: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+    };
+
     afterEach(() => {
         sinon.restore();
     });
@@ -75,6 +81,27 @@ describe('continuity service', () => {
         expect(parsed.collections.notes[0].createdAt).to.be.instanceOf(Date);
     });
 
+    it('encodes and decodes protected backup archives', () => {
+        const archive = {
+            schemaVersion: 1,
+            application: 'note-app',
+            collections: {
+                users: [{ _id: new ObjectId('507f1f77bcf86cd799439012'), email: 'restored@example.com' }]
+            }
+        };
+
+        const encoded = encodeBackupArchive(archive, {
+            protection: backupProtection
+        });
+        const decoded = decodeBackupArchive(encoded, {
+            protection: backupProtection
+        });
+
+        expect(decoded.collections.users).to.have.lengthOf(1);
+        expect(decoded.collections.users[0].email).to.equal('restored@example.com');
+        expect(() => decodeBackupArchive(Buffer.from(serializeBackupArchive(archive), 'utf8'))).to.throw('Plaintext backup archives are not accepted by default');
+    });
+
     it('restores collections from a parsed archive', async () => {
         const backupArchive = {
             schemaVersion: 1,
@@ -94,12 +121,38 @@ describe('continuity service', () => {
 
         const summary = await restoreBackupArchive({
             backupArchive,
-            collectionDefinitions: definitions
+            collectionDefinitions: definitions,
+            allowNonTransactionalRestore: true
         });
 
-        expect(model.collection.deleteMany.calledOnceWithExactly({})).to.equal(true);
+        expect(model.collection.deleteMany.calledOnce).to.equal(true);
+        expect(model.collection.deleteMany.firstCall.args[0]).to.deep.equal({});
         expect(model.collection.insertMany.calledOnce).to.equal(true);
         expect(summary[0].restoredCount).to.equal(1);
+    });
+
+    it('requires explicit transactional support before destructive restore', async () => {
+        const backupArchive = {
+            schemaVersion: 1,
+            application: 'note-app',
+            collections: {
+                users: []
+            }
+        };
+
+        try {
+            await restoreBackupArchive({
+                backupArchive,
+                collectionDefinitions: [{
+                    id: 'users',
+                    label: 'Users',
+                    Model: createExportModel()
+                }]
+            });
+            throw new Error('Expected restoreBackupArchive to reject without transactional support');
+        } catch (error) {
+            expect(error.message).to.include('Transactional restore support is required before applying a destructive restore.');
+        }
     });
 
     it('reports reconstitution issues for missing users and duplicated singleton state', async () => {

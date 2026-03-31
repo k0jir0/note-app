@@ -19,7 +19,7 @@ const {
 } = require('./runtime/automation');
 const { buildSessionManagementConfig } = require('./runtime/sessionManagement');
 const { buildTransportConfig } = require('./runtime/transport');
-const { buildDatabaseConfig } = require('./runtime/database');
+const { buildDatabaseConfig, buildRuntimePosture } = require('./runtime/database');
 const { buildIdentityLifecycleConfig } = require('./runtime/identityLifecycle');
 const { buildImmutableLoggingConfig } = require('./runtime/immutableLogging');
 const { buildBreakGlassConfig } = require('./runtime/breakGlass');
@@ -29,6 +29,7 @@ function validateRuntimeConfig(env = process.env) {
     const errors = [];
     const cipherAlgo = parseCipherAlgo(env, errors);
     const activeCipherSuite = getActiveCipherSuite(cipherAlgo);
+    const runtimePosture = buildRuntimePosture(env, errors);
     const database = buildDatabaseConfig(env, errors);
 
     if (!isNonEmptyString(env.SESSION_SECRET)) {
@@ -96,6 +97,7 @@ function validateRuntimeConfig(env = process.env) {
 
     return {
         dbURI: database.uri,
+        runtimePosture,
         database,
         sessionSecret: env.SESSION_SECRET.trim(),
         noteEncryptionKey: env.NOTE_ENCRYPTION_KEY.trim(),

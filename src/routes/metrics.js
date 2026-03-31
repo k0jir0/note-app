@@ -1,6 +1,7 @@
 const express = require('express');
 const client = require('prom-client');
 const crypto = require('crypto');
+const { isAccountDisabled } = require('../services/accountLifecycleService');
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ function isAuthenticatedSession(req) {
         && req.isAuthenticated()
         && req.user
         && req.user._id
+        && !isAccountDisabled(req.user)
     );
 }
 

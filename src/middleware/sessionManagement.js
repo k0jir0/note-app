@@ -4,6 +4,7 @@ const {
     recordSessionLock,
     refreshAuthenticatedSession
 } = require('../services/sessionManagementService');
+const { isAccountDisabled } = require('../services/accountLifecycleService');
 
 function isApiRequest(req = {}) {
     return String(req.path || '').startsWith('/api/')
@@ -73,6 +74,24 @@ async function enforceStrictSessionManagement(req, res, next) {
                 runtimeConfig
             });
             return next();
+        }
+
+        if (isAccountDisabled(req.user)) {
+            const lockState = await lockDownSession(req, res, 'account_disabled', runtimeConfig);
+            const reasonMessage = getLoginReasonMessage('account_disabled');
+
+            if (isApiRequest(req)) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Account disabled',
+                    errors: [reasonMessage || lockState.lockReasonDescription],
+                    data: {
+                        reason: 'account_disabled'
+                    }
+                });
+            }
+
+            return res.redirect('/auth/login?reason=account_disabled');
         }
 
         const currentState = await refreshAuthenticatedSession({

@@ -14,7 +14,9 @@ function parseArgs(argv = []) {
     return {
         inputPath: inputArg ? path.resolve(rootDir, inputArg.split('=').slice(1).join('=')) : '',
         dryRun: argv.includes('--dry-run'),
-        confirmRestore: argv.includes('--confirm-restore')
+        confirmRestore: argv.includes('--confirm-restore'),
+        allowNonTransactionalRestore: argv.includes('--allow-non-transactional-restore'),
+        allowUnprotectedArchive: argv.includes('--allow-unprotected-archive')
     };
 }
 
@@ -29,14 +31,25 @@ async function run() {
         throw new Error('Restoring data is destructive. Re-run with --confirm-restore or use --dry-run first.');
     }
 
-    const archive = readBackupArchive(options.inputPath);
+    const backupProtectionSecret = String(process.env.BACKUP_ENCRYPTION_KEY || runtimeConfig.noteEncryptionKey || '').trim();
+    const archive = readBackupArchive(options.inputPath, {
+        protection: backupProtectionSecret
+            ? {
+                rawSecret: backupProtectionSecret,
+                cipherAlgo: runtimeConfig.cipherAlgo
+            }
+            : null,
+        allowPlaintextArchive: options.allowUnprotectedArchive
+    });
 
     await mongoose.connect(runtimeConfig.dbURI);
 
     try {
         const summary = await restoreBackupArchive({
             backupArchive: archive,
-            dryRun: options.dryRun
+            dryRun: options.dryRun,
+            mongooseConnection: mongoose.connection,
+            allowNonTransactionalRestore: options.allowNonTransactionalRestore
         });
 
         console.log(`[restore] ${options.dryRun ? 'Validated' : 'Restored'} archive ${options.inputPath}`);

@@ -169,6 +169,63 @@ describe('Passport configuration', () => {
         );
     });
 
+    it('blocks Google authentication when the linked account is disabled', (done) => {
+        process.env.GOOGLE_CLIENT_ID = 'google-client-id';
+        process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+
+        const fakePassport = createFakePassport();
+        passportConfig(fakePassport);
+
+        sinon.stub(User, 'findOne').resolves({
+            email: 'disabled@example.com',
+            googleId: 'google-subject-disabled',
+            accountState: {
+                status: 'disabled'
+            }
+        });
+
+        fakePassport.googleStrategy._verify(
+            'https://accounts.google.com',
+            {
+                id: 'google-subject-disabled',
+                emails: [{ value: 'disabled@example.com' }]
+            },
+            (error, user, info) => {
+                expect(error).to.equal(null);
+                expect(user).to.equal(false);
+                expect(info.code).to.equal('ACCOUNT_DISABLED');
+                done();
+            }
+        );
+    });
+
+    it('blocks local authentication when the account is disabled', (done) => {
+        const fakePassport = createFakePassport();
+
+        passportConfig(fakePassport);
+
+        sinon.stub(User, 'findOne').resolves({
+            email: 'disabled@example.com',
+            accountState: {
+                status: 'disabled'
+            }
+        });
+        const compareStub = sinon.stub(bcrypt, 'compare');
+
+        fakePassport.localStrategy._verify(
+            { ip: '203.0.113.25' },
+            'disabled@example.com',
+            'password123',
+            (error, user, info) => {
+                expect(error).to.equal(null);
+                expect(user).to.equal(false);
+                expect(info.code).to.equal('ACCOUNT_DISABLED');
+                expect(compareStub.called).to.equal(false);
+                done();
+            }
+        );
+    });
+
     it('creates externally scoped Google users when auto-provisioning is allowed', (done) => {
         process.env.GOOGLE_CLIENT_ID = 'google-client-id';
         process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';

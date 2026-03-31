@@ -169,6 +169,25 @@ const userSchema = new mongoose.Schema({
             default: null
         }
     },
+    accountState: {
+        status: {
+            type: String,
+            enum: ['active', 'disabled'],
+            default: 'active'
+        },
+        disabledAt: {
+            type: Date,
+            default: null
+        },
+        disabledReason: {
+            type: String,
+            default: ''
+        },
+        disabledBy: {
+            type: String,
+            default: ''
+        }
+    },
     authenticationState: {
         failedLoginAttempts: {
             type: Number,
