@@ -51,6 +51,7 @@ Edit `.env` for shared local settings:
 MONGODB_URI=<your-mongodb-connection-string>
 SESSION_SECRET=your-strong-random-secret-32-chars-minimum
 NOTE_ENCRYPTION_KEY=64-char-hex-key-for-note-and-sensitive-field-encryption
+METRICS_AUTH_TOKEN=long-random-token-for-metrics-scrapers
 NODE_ENV=development
 PORT=3000
 ```
@@ -170,6 +171,8 @@ Notes:
 Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
+- `/metrics` is no longer publicly readable in app code. Access now requires either an authenticated session or a token provided through `METRICS_AUTH_TOKEN` via `Authorization: Bearer <token>` or `X-Metrics-Token`.
+- For production scraping, set `METRICS_AUTH_TOKEN` through your deployment secret manager rather than committing a value into `.env`.
 
 Current local verification (March 31, 2026):
 - `npm test --silent` passes with 543 tests
@@ -271,6 +274,15 @@ Notes:
 - In development, `POST /api/runtime/realtime` can toggle realtime on or off at runtime, but Redis still needs to be configured first.
 - The Security Operations Module page now shows two realtime states: a server badge for feature availability and a browser badge for the current tab's live stream state.
 - `Disconnect Realtime` only closes the current browser tab's SSE stream; it does not disable realtime globally on the server.
+
+### Metrics Endpoint Access
+
+Prometheus-style metrics remain available at `/metrics`, but the route is now protected.
+
+- Browser access works when you already have an authenticated app session.
+- Non-browser scrapers must send a token using either `Authorization: Bearer <token>` or `X-Metrics-Token: <token>`.
+- Configure that token with `METRICS_AUTH_TOKEN` in the runtime environment.
+- Keep the token in your deployment secret store or local `.env.local`; do not commit a real value to source control.
 
 ### Security Operations Module Demo Sample
 

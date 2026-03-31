@@ -1,10 +1,13 @@
 const crypto = require('crypto');
+const dns = require('dns').promises;
 const fs = require('fs/promises');
+const net = require('net');
 const path = require('path');
 
 const NOTE_IMAGE_STORAGE_DIR = path.resolve(__dirname, '../../storage/note-images');
 const MAX_IMAGE_DOWNLOAD_BYTES = 5 * 1024 * 1024;
 const IMAGE_DOWNLOAD_TIMEOUT_MS = 10000;
+const MAX_IMAGE_REDIRECTS = 3;
 const SUPPORTED_IMAGE_TYPES = new Map([
     ['image/jpeg', 'jpg'],
     ['image/png', 'png'],
@@ -19,6 +22,170 @@ function normalizeImageContentType(value = '') {
 
 function buildAssetFileName(noteId, extension) {
     return `${String(noteId)}-${crypto.randomBytes(8).toString('hex')}.${extension}`;
+}
+
+function normalizeHostname(value = '') {
+    return String(value || '').trim().replace(/\.+$/, '').toLowerCase();
+}
+
+function isDisallowedHostname(hostname = '') {
+    const normalizedHostname = normalizeHostname(hostname);
+    return normalizedHostname === 'localhost' || normalizedHostname.endsWith('.localhost');
+}
+
+function isPublicIpv4Address(address) {
+    const octets = String(address || '').split('.').map((entry) => Number.parseInt(entry, 10));
+    if (octets.length !== 4 || octets.some((entry) => !Number.isInteger(entry) || entry < 0 || entry > 255)) {
+        return false;
+    }
+
+    const [first, second, third] = octets;
+
+    if (first === 0 || first === 10 || first === 127 || first >= 224) {
+        return false;
+    }
+
+    if (first === 100 && second >= 64 && second <= 127) {
+        return false;
+    }
+
+    if (first === 169 && second === 254) {
+        return false;
+    }
+
+    if (first === 172 && second >= 16 && second <= 31) {
+        return false;
+    }
+
+    if (first === 192 && second === 0 && third === 0) {
+        return false;
+    }
+
+    if (first === 192 && second === 168) {
+        return false;
+    }
+
+    if (first === 198 && (second === 18 || second === 19)) {
+        return false;
+    }
+
+    if (first >= 240) {
+        return false;
+    }
+
+    return true;
+}
+
+function isPublicIpv6Address(address) {
+    const normalizedAddress = String(address || '').trim().toLowerCase();
+    if (!normalizedAddress) {
+        return false;
+    }
+
+    if (normalizedAddress === '::' || normalizedAddress === '::1') {
+        return false;
+    }
+
+    if (normalizedAddress.startsWith('::ffff:')) {
+        return isPublicIpv4Address(normalizedAddress.slice('::ffff:'.length));
+    }
+
+    if (normalizedAddress.startsWith('fc') || normalizedAddress.startsWith('fd')) {
+        return false;
+    }
+
+    if (/^fe[89ab]/.test(normalizedAddress)) {
+        return false;
+    }
+
+    return true;
+}
+
+function isPublicIpAddress(address = '') {
+    const ipVersion = net.isIP(String(address || '').trim());
+    if (ipVersion === 4) {
+        return isPublicIpv4Address(address);
+    }
+
+    if (ipVersion === 6) {
+        return isPublicIpv6Address(address);
+    }
+
+    return false;
+}
+
+async function assertPublicRemoteUrl(parsedUrl, dnsLookupImpl = dns.lookup) {
+    const hostname = normalizeHostname(parsedUrl && parsedUrl.hostname ? parsedUrl.hostname : '');
+    if (!hostname) {
+        throw new Error('Image must be a valid URL (http:// or https://).');
+    }
+
+    if (isDisallowedHostname(hostname)) {
+        throw new Error('Image downloads from local or private network hosts are not allowed.');
+    }
+
+    if (net.isIP(hostname)) {
+        if (!isPublicIpAddress(hostname)) {
+            throw new Error('Image downloads from local or private network hosts are not allowed.');
+        }
+
+        return;
+    }
+
+    const addresses = await dnsLookupImpl(hostname, { all: true, verbatim: true });
+    if (!Array.isArray(addresses) || addresses.length === 0) {
+        throw new Error('Unable to resolve the image host.');
+    }
+
+    if (addresses.some((entry) => !isPublicIpAddress(entry && entry.address ? entry.address : ''))) {
+        throw new Error('Image downloads from local or private network hosts are not allowed.');
+    }
+}
+
+function isRedirectResponse(response) {
+    return Boolean(response && response.status >= 300 && response.status < 400);
+}
+
+async function fetchRemoteImageResponse(initialUrl, options = {}) {
+    const {
+        fetchImpl,
+        dnsLookupImpl = dns.lookup,
+        controller,
+        maxRedirects = MAX_IMAGE_REDIRECTS
+    } = options;
+
+    let currentUrl = initialUrl;
+
+    for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
+        await assertPublicRemoteUrl(currentUrl, dnsLookupImpl);
+
+        const response = await fetchImpl(currentUrl.toString(), {
+            redirect: 'manual',
+            signal: controller ? controller.signal : undefined,
+            headers: {
+                Accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.9,*/*;q=0.1'
+            }
+        });
+
+        if (!isRedirectResponse(response)) {
+            return response;
+        }
+
+        const location = response.headers && response.headers.get
+            ? response.headers.get('location') || ''
+            : '';
+        if (!location) {
+            throw new Error('Unable to download the image from the provided URL.');
+        }
+
+        if (redirectCount === maxRedirects) {
+            throw new Error('Image URL redirected too many times.');
+        }
+
+        currentUrl = new URL(location, currentUrl);
+    }
+
+    throw new Error('Unable to download the image from the provided URL.');
 }
 
 async function ensureStorageDirectory(storageDir = NOTE_IMAGE_STORAGE_DIR) {
@@ -63,9 +230,11 @@ async function persistRemoteNoteImage(options = {}) {
         noteId,
         sourceUrl,
         fetchImpl = global.fetch,
+        dnsLookupImpl = dns.lookup,
         storageDir = NOTE_IMAGE_STORAGE_DIR,
         timeoutMs = IMAGE_DOWNLOAD_TIMEOUT_MS,
-        maxBytes = MAX_IMAGE_DOWNLOAD_BYTES
+        maxBytes = MAX_IMAGE_DOWNLOAD_BYTES,
+        maxRedirects = MAX_IMAGE_REDIRECTS
     } = options;
 
     if (!noteId) {
@@ -93,12 +262,11 @@ async function persistRemoteNoteImage(options = {}) {
         : null;
 
     try {
-        const response = await fetchImpl(parsedUrl.toString(), {
-            redirect: 'follow',
-            signal: controller ? controller.signal : undefined,
-            headers: {
-                Accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.9,*/*;q=0.1'
-            }
+        const response = await fetchRemoteImageResponse(parsedUrl, {
+            fetchImpl,
+            dnsLookupImpl,
+            controller,
+            maxRedirects
         });
 
         if (!response || !response.ok) {
@@ -156,11 +324,15 @@ async function persistRemoteNoteImage(options = {}) {
 
 module.exports = {
     IMAGE_DOWNLOAD_TIMEOUT_MS,
+    MAX_IMAGE_REDIRECTS,
     MAX_IMAGE_DOWNLOAD_BYTES,
     NOTE_IMAGE_STORAGE_DIR,
+    assertPublicRemoteUrl,
     buildNoteImagePublicPath,
     deleteNoteImageAsset,
     ensureStorageDirectory,
+    fetchRemoteImageResponse,
+    isPublicIpAddress,
     persistRemoteNoteImage,
     resolveStoredAssetPath
 };
