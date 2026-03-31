@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <%- include('../partials/head-assets') %>
+</head>
+<body>
+    <main class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card border-danger shadow-sm">
+                    <div class="card-body p-4 p-lg-5">
+                        <span class="badge text-bg-danger mb-3">Emergency Control Active</span>
+                        <h1 class="display-6 mb-3">Application neutralized for incident response</h1>
+                        <p class="lead mb-4">
+                            <% if (breakGlass && breakGlass.offline) { %>
+                                The application is temporarily offline while operators contain an active cyber event.
+                            <% } else { %>
+                                The application is temporarily operating in read-only mode while operators stabilize the environment.
+                            <% } %>
+                        </p>
+                        <dl class="row mb-4">
+                            <dt class="col-sm-4">Current mode</dt>
+                            <dd class="col-sm-8"><code><%= breakGlass && breakGlass.mode ? breakGlass.mode : 'disabled' %></code></dd>
+                            <dt class="col-sm-4">Activated by</dt>
+                            <dd class="col-sm-8"><%= breakGlass && breakGlass.activatedBy ? breakGlass.activatedBy : 'system' %></dd>
+                            <dt class="col-sm-4">Activated at</dt>
+                            <dd class="col-sm-8"><%= breakGlass && breakGlass.activatedAt ? breakGlass.activatedAt : 'unknown' %></dd>
+                            <dt class="col-sm-4">Reason</dt>
+                            <dd class="col-sm-8"><%= breakGlass && breakGlass.reason ? breakGlass.reason : 'Emergency control requested by operator.' %></dd>
+                        </dl>
+                        <p class="text-muted mb-0">
+                            Data remains intact. Access will resume when the break-glass control is cleared by an authorized operator.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

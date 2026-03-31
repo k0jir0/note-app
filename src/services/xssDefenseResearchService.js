@@ -60,6 +60,11 @@ const CONTROL_GUIDANCE = [
         id: 'input sanitization for note fields',
         label: 'Input sanitization for note fields',
         description: 'User-controlled note titles should be scrubbed so obvious script payloads are not stored as-is.'
+    },
+    {
+        id: 'self-hosted-browser-assets',
+        label: 'Self-hosted browser assets',
+        description: 'Stylesheets, scripts, and fonts should be served from local paths so the browser does not make phone-home requests to external CDNs.'
     }
 ];
 
@@ -156,6 +161,47 @@ function auditClientRendering(rootDir = process.cwd()) {
     };
 }
 
+function auditAssetSovereignty(rootDir = process.cwd()) {
+    const partialFiles = readUtf8Files(path.join(rootDir, 'src', 'views', 'partials'));
+    const pageFiles = readUtf8Files(path.join(rootDir, 'src', 'views', 'pages'));
+    const clientFiles = readUtf8Files(path.join(rootDir, 'src', 'views', 'public', 'js'));
+    const cssFiles = readUtf8Files(path.join(rootDir, 'src', 'views', 'public', 'css'));
+
+    const allFiles = [...partialFiles, ...pageFiles, ...clientFiles, ...cssFiles];
+    const externalAssetReferences = [];
+    const externalClientCalls = [];
+    const inlineStyleAllowances = [];
+
+    allFiles.forEach((file) => {
+        if (/<(?:script|link|img)\b[^>]+\b(?:src|href)=['"](?:https?:)?\/\//iu.test(file.content)) {
+            externalAssetReferences.push(file.name);
+        }
+
+        if (/\b(?:fetch|EventSource|WebSocket)\(\s*['"]https?:\/\//iu.test(file.content) || /url\(\s*['"]?(?:https?:)?\/\//iu.test(file.content)) {
+            externalClientCalls.push(file.name);
+        }
+
+        if (/<style\b/iu.test(file.content) || /\sstyle=/iu.test(file.content)) {
+            inlineStyleAllowances.push(file.name);
+        }
+    });
+
+    const headAssets = partialFiles.find((file) => file.name === 'head-assets.ejs');
+    const selfHostedPaths = headAssets
+        ? Array.from(headAssets.content.matchAll(/(?:href|src)=['"]([^'"]+)['"]/gu)).map((match) => match[1])
+        : [];
+
+    return {
+        sharedHeadAssetCount: selfHostedPaths.length,
+        selfHostedPaths,
+        externalAssetReferences,
+        externalClientCalls,
+        inlineStyleAllowances,
+        selfHostedAssetsOnly: externalAssetReferences.length === 0 && externalClientCalls.length === 0,
+        inlineStyleAllowanceCount: inlineStyleAllowances.length
+    };
+}
+
 function listXssScenarios() {
     return SAMPLE_SCENARIOS.map((scenario) => ({ ...scenario }));
 }
@@ -241,6 +287,7 @@ function buildXssDefenseModuleOverview({ baseUrl } = {}) {
     const directives = buildContentSecurityPolicyDirectives();
     const templateAudit = auditPageTemplates();
     const clientAudit = auditClientRendering();
+    const sovereigntyAudit = auditAssetSovereignty();
     const scenarios = listXssScenarios();
     const defaultScenario = scenarios[0];
 
@@ -266,6 +313,7 @@ function buildXssDefenseModuleOverview({ baseUrl } = {}) {
             directives,
             directiveList: summarizeDirectiveList(directives)
         },
+        sovereignty: sovereigntyAudit,
         controls: CONTROL_GUIDANCE.map((control) => ({ ...control })),
         scenarios,
         defaultScenarioId: defaultScenario.id,
@@ -277,6 +325,7 @@ function buildXssDefenseModuleOverview({ baseUrl } = {}) {
 
 module.exports = {
     auditClientRendering,
+    auditAssetSovereignty,
     auditPageTemplates,
     buildXssDefenseModuleOverview,
     evaluateXssScenario,

@@ -237,6 +237,17 @@ const ACTION_CATALOG = [
         sensitivity: 'moderate'
     },
     {
+        id: 'view_break_glass_module',
+        label: 'View Break-Glass Module',
+        description: 'Inspect the current kill-switch state, health posture, and emergency-control workflow.',
+        allowedRoles: ['operator', 'analyst', 'mission_lead', 'auditor', 'admin', 'break_glass'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none',
+        breakGlassEligible: true,
+        allowedNetworkZones: ['corp', 'mission'],
+        sensitivity: 'high'
+    },
+    {
         id: 'perform_hardware_mfa_step_up',
         label: 'Perform Hardware-First Step-Up',
         description: 'Request and verify a hardware-token or PKI-backed step-up challenge.',
@@ -336,6 +347,19 @@ const RESOURCE_CATALOG = [
         allowedUnits: [],
         requiredDeviceTier: 'managed',
         allowedNetworkZones: ['public', 'corp', 'mission'],
+        requiresMfa: false,
+        requiredMfaMethod: 'none'
+    },
+    {
+        id: 'break-glass-control-center',
+        title: 'Break-Glass Control Center',
+        summary: 'A research surface for read-only failover, emergency shutdown posture, and kill-switch governance.',
+        classification: 'protected_b',
+        missionId: 'research-workspace',
+        allowedActions: ['view_break_glass_module'],
+        allowedUnits: [],
+        requiredDeviceTier: 'managed',
+        allowedNetworkZones: ['corp', 'mission'],
         requiresMfa: false,
         requiredMfaMethod: 'none'
     },

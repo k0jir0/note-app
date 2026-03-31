@@ -4,6 +4,7 @@ const MONGODB_OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
 const MAX_AUTOMATION_INTERVAL_MS = 1000 * 60 * 60 * 24;
 const MAX_IMMUTABLE_LOG_TIMEOUT_MS = 1000 * 30;
 const IMMUTABLE_LOG_FORMATS = ['json', 'syslog'];
+const VALID_BREAK_GLASS_MODES = ['disabled', 'read_only', 'offline'];
 
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
@@ -395,6 +396,42 @@ function buildSessionManagementConfig(env, errors) {
     };
 }
 
+function buildBreakGlassConfig(env, errors) {
+    const rawMode = env.BREAK_GLASS_MODE === undefined
+        ? 'disabled'
+        : String(env.BREAK_GLASS_MODE).trim().toLowerCase();
+    const modeAliases = {
+        '': 'disabled',
+        off: 'disabled',
+        disabled: 'disabled',
+        readonly: 'read_only',
+        'read-only': 'read_only',
+        read_only: 'read_only',
+        offline: 'offline'
+    };
+    const mode = Object.prototype.hasOwnProperty.call(modeAliases, rawMode)
+        ? modeAliases[rawMode]
+        : null;
+
+    if (!mode) {
+        errors.push(`BREAK_GLASS_MODE must be one of: ${VALID_BREAK_GLASS_MODES.join(', ')}`);
+        return {
+            mode: 'disabled',
+            reason: ''
+        };
+    }
+
+    const reason = isNonEmptyString(env.BREAK_GLASS_REASON) ? env.BREAK_GLASS_REASON.trim() : '';
+    if (mode !== 'disabled' && !reason) {
+        errors.push('BREAK_GLASS_REASON is required when BREAK_GLASS_MODE is enabled');
+    }
+
+    return {
+        mode,
+        reason
+    };
+}
+
 function toDiagnosticRuntimeConfig(runtimeConfig) {
     if (!runtimeConfig || typeof runtimeConfig !== 'object') {
         return null;
@@ -451,6 +488,15 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
             source: isNonEmptyString(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.source)
                 ? runtimeConfig.immutableLogging.source.trim()
                 : ''
+        },
+        breakGlass: {
+            mode: isNonEmptyString(runtimeConfig.breakGlass && runtimeConfig.breakGlass.mode)
+                ? runtimeConfig.breakGlass.mode.trim()
+                : 'disabled',
+            enabled: isNonEmptyString(runtimeConfig.breakGlass && runtimeConfig.breakGlass.mode)
+                ? runtimeConfig.breakGlass.mode.trim() !== 'disabled'
+                : false,
+            reasonConfigured: isNonEmptyString(runtimeConfig.breakGlass && runtimeConfig.breakGlass.reason)
         },
         automation: {
             logBatch: buildAutomationDiagnostics(automation.logBatch),
@@ -525,6 +571,7 @@ function validateRuntimeConfig(env = process.env) {
     const sessionManagement = buildSessionManagementConfig(env, errors);
     const transport = buildTransportConfig(env, errors);
     const immutableLogging = buildImmutableLoggingConfig(env, errors);
+    const breakGlass = buildBreakGlassConfig(env, errors);
 
     if (errors.length > 0) {
         throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
@@ -539,6 +586,7 @@ function validateRuntimeConfig(env = process.env) {
         sessionManagement,
         transport,
         immutableLogging,
+        breakGlass,
         automation: {
             logBatch,
             scanBatch,

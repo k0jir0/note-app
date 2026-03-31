@@ -17,6 +17,8 @@ const injectionPreventionApiRoutes = require('../../src/routes/injectionPreventi
 const injectionPreventionPageRoutes = require('../../src/routes/injectionPreventionPageRoutes');
 const xssDefenseApiRoutes = require('../../src/routes/xssDefenseApiRoutes');
 const xssDefensePageRoutes = require('../../src/routes/xssDefensePageRoutes');
+const breakGlassApiRoutes = require('../../src/routes/breakGlassApiRoutes');
+const breakGlassPageRoutes = require('../../src/routes/breakGlassPageRoutes');
 const locatorRepairApiRoutes = require('../../src/routes/locatorRepairApiRoutes');
 const locatorRepairPageRoutes = require('../../src/routes/locatorRepairPageRoutes');
 const accessControlApiRoutes = require('../../src/routes/accessControlApiRoutes');
@@ -33,6 +35,7 @@ const { enforceInjectionPrevention } = require('../../src/middleware/injectionPr
 const { attachSessionAuthAssurance } = require('../../src/middleware/sessionAuthAssurance');
 const { enforceServerSideApiAccessControl } = require('../../src/middleware/apiAccessControl');
 const { enforceStrictSessionManagement } = require('../../src/middleware/sessionManagement');
+const { attachBreakGlassState, enforceBreakGlass } = require('../../src/middleware/breakGlass');
 const { sanitizeResponseMetadata } = require('../../src/middleware/responseMetadataProtection');
 const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
 const { buildContentSecurityPolicyDirectives, buildHelmetProtectionOptions } = require('../../src/config/xssDefense');
@@ -356,6 +359,15 @@ function createApp() {
     };
     app.locals.realtimeAvailable = true;
     app.locals.realtimeEnabled = true;
+    app.locals.breakGlass = {
+        mode: 'disabled',
+        enabled: false,
+        readOnly: false,
+        offline: false,
+        reason: '',
+        activatedAt: null,
+        activatedBy: ''
+    };
 
     app.use(sanitizeResponseMetadata);
     app.use(helmet(buildHelmetProtectionOptions({ isProduction: false })));
@@ -410,12 +422,28 @@ function createApp() {
         next();
     });
 
+    app.use(attachBreakGlassState);
+
     app.use(ensureCsrfToken);
     app.use(requireCsrfProtection);
 
     app.get('/__test/csrf', (req, res) => {
         res.status(200).json({ csrfToken: res.locals.csrfToken });
     });
+
+    app.get('/healthz', (req, res) => {
+        const breakGlass = req.app && req.app.locals ? req.app.locals.breakGlass : null;
+        const offline = Boolean(breakGlass && breakGlass.offline);
+        res.status(offline ? 503 : 200).json({
+            ok: !offline,
+            breakGlass: {
+                mode: breakGlass && breakGlass.mode ? breakGlass.mode : 'disabled',
+                enabled: Boolean(breakGlass && breakGlass.enabled)
+            }
+        });
+    });
+
+    app.use(enforceBreakGlass);
 
     app.use(noteApiRoutes);
     app.use(notePageRoutes);
@@ -429,6 +457,8 @@ function createApp() {
     app.use(injectionPreventionPageRoutes);
     app.use(xssDefenseApiRoutes);
     app.use(xssDefensePageRoutes);
+    app.use(breakGlassApiRoutes);
+    app.use(breakGlassPageRoutes);
     app.use(accessControlApiRoutes);
     app.use(accessControlPageRoutes);
     app.use(locatorRepairApiRoutes);

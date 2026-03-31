@@ -101,6 +101,10 @@ describe('Runtime Config Validation', () => {
             certPath: '',
             caPath: ''
         });
+        expect(config.breakGlass).to.deep.equal({
+            mode: 'disabled',
+            reason: ''
+        });
         expect(config.immutableLogging).to.deep.equal({
             enabled: false,
             endpoint: '',
@@ -193,6 +197,32 @@ describe('Runtime Config Validation', () => {
 
         expect(config.transport.trustProxyHops).to.equal(1);
         expect(config.transport.trustProxyClientCertHeaders).to.equal(false);
+    });
+
+    it('accepts valid break-glass runtime defaults and diagnostics', () => {
+        const env = createValidEnv();
+        env.BREAK_GLASS_MODE = 'offline';
+        env.BREAK_GLASS_REASON = 'Incident containment';
+
+        const config = validateRuntimeConfig(env);
+        const diagnostics = toDiagnosticRuntimeConfig(config);
+
+        expect(config.breakGlass).to.deep.equal({
+            mode: 'offline',
+            reason: 'Incident containment'
+        });
+        expect(diagnostics.breakGlass).to.deep.equal({
+            mode: 'offline',
+            enabled: true,
+            reasonConfigured: true
+        });
+    });
+
+    it('rejects invalid break-glass mode values', () => {
+        const env = createValidEnv();
+        env.BREAK_GLASS_MODE = 'panic';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('BREAK_GLASS_MODE');
     });
 
     it('rejects invalid HTTPS and mTLS transport combinations', () => {

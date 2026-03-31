@@ -618,6 +618,7 @@ describe('Application end-to-end flows', function () {
         expect(xssDefenseOverviewPayload.data.csp.directives.scriptSrc).to.deep.equal(['\'self\'']);
         expect(xssDefenseOverviewPayload.data.csp.directives.scriptSrcAttr).to.deep.equal(['\'none\'']);
         expect(xssDefenseOverviewPayload.data.rendering.serverTemplates.escapedInterpolationOnly).to.equal(true);
+        expect(xssDefenseOverviewPayload.data.sovereignty.selfHostedAssetsOnly).to.equal(true);
 
         const xssDefenseCsrfToken = await client.getCsrfToken();
         const xssDefenseEvaluateResponse = await client.request('/api/xss-defense/evaluate', {
@@ -638,6 +639,28 @@ describe('Application end-to-end flows', function () {
         expect(xssDefenseEvaluatePayload.data.decision).to.equal('escape-and-restrict');
         expect(xssDefenseEvaluatePayload.data.dangerSignals).to.be.an('array').that.is.not.empty;
         expect(xssDefenseEvaluatePayload.data.escapedPreview).to.include('&lt;script&gt;');
+
+        const breakGlassPage = await client.request('/break-glass/module', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const breakGlassHtml = await breakGlassPage.text();
+
+        expect(breakGlassPage.status).to.equal(200);
+        expect(breakGlassHtml).to.include('Break-Glass and Emergency Control Module');
+        expect(breakGlassHtml).to.include('/api/break-glass/overview');
+        expect(breakGlassHtml).to.include('/api/runtime/break-glass');
+        expect(breakGlassHtml).to.include('Change Emergency Mode');
+
+        const breakGlassOverviewResponse = await client.request('/api/break-glass/overview', {
+            headers: { 'x-test-auth': '1' }
+        });
+        const breakGlassOverviewPayload = await breakGlassOverviewResponse.json();
+
+        expect(breakGlassOverviewResponse.status).to.equal(200);
+        expect(breakGlassOverviewPayload.success).to.equal(true);
+        expect(breakGlassOverviewPayload.data.module.name).to.equal('Break-Glass and Emergency Control Module');
+        expect(breakGlassOverviewPayload.data.state.mode).to.equal('disabled');
+        expect(breakGlassOverviewPayload.data.controls.runtimeToggleEndpoint).to.equal('/api/runtime/break-glass');
 
         const accessControlPage = await client.request('/access-control/module', {
             headers: { 'x-test-auth': '1' }
