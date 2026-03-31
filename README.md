@@ -284,6 +284,12 @@ Prometheus-style metrics remain available at `/metrics`, but the route is now pr
 - Configure that token with `METRICS_AUTH_TOKEN` in the runtime environment.
 - Keep the token in your deployment secret store or local `.env.local`; do not commit a real value to source control.
 
+Deployment checklist:
+1. Generate a long random token for `METRICS_AUTH_TOKEN`.
+2. Store it in your hosting platform's secret manager or deployment environment settings.
+3. Update your Prometheus scraper, agent, or dashboard integration to send `Authorization: Bearer <token>` or `X-Metrics-Token: <token>`.
+4. Verify the protection by confirming `/metrics` returns `401` without the token and `200` with the token.
+
 ### Security Operations Module Demo Sample
 
 The Research Workspace links to a dedicated Security Operations Module page with an `Inject Automation Sample` action.
