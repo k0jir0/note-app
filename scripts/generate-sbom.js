@@ -6,48 +6,72 @@ const projectRoot = path.join(__dirname, '..');
 const outputDirectory = path.join(projectRoot, 'sbom');
 const outputFile = path.join(outputDirectory, 'note-app.cdx.json');
 
-function readExistingTimestamp(filePath) {
+function readSbomFile(filePath) {
     if (!fs.existsSync(filePath)) {
         return null;
     }
 
     try {
-        const existingSbom = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        return existingSbom
-            && existingSbom.metadata
-            && typeof existingSbom.metadata.timestamp === 'string'
-            ? existingSbom.metadata.timestamp
-            : null;
+        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
     } catch {
         return null;
     }
+}
+
+function readExistingTimestamp(filePath) {
+    const existingSbom = readSbomFile(filePath);
+    return existingSbom
+        && existingSbom.metadata
+        && typeof existingSbom.metadata.timestamp === 'string'
+        ? existingSbom.metadata.timestamp
+        : null;
+}
+
+function readExistingSbom(filePath) {
+    return readSbomFile(filePath);
 }
 
 function readCommittedTimestamp({ rootDir, destination }) {
+    const committedSbom = readCommittedSbom({ rootDir, destination });
+    return committedSbom
+        && committedSbom.metadata
+        && typeof committedSbom.metadata.timestamp === 'string'
+        ? committedSbom.metadata.timestamp
+        : null;
+}
+
+function readCommittedSbom({ rootDir, destination }) {
     const relativeDestination = path.relative(rootDir, destination).replace(/\\/g, '/');
 
     try {
-        const committedSbom = execSync(`git show HEAD:${relativeDestination}`, {
+        return JSON.parse(execSync(`git show HEAD:${relativeDestination}`, {
             cwd: rootDir,
             encoding: 'utf8',
             stdio: ['ignore', 'pipe', 'ignore']
-        });
-        const parsedSbom = JSON.parse(committedSbom);
-        return parsedSbom
-            && parsedSbom.metadata
-            && typeof parsedSbom.metadata.timestamp === 'string'
-            ? parsedSbom.metadata.timestamp
-            : null;
+        }));
     } catch {
         return null;
     }
 }
 
-function stabilizeSbom(rawSbom, existingTimestamp) {
+function stabilizeSbom(rawSbom, stableSbom = null) {
     const parsedSbom = JSON.parse(rawSbom);
+    const stableMetadata = stableSbom && stableSbom.metadata && typeof stableSbom.metadata === 'object'
+        ? stableSbom.metadata
+        : null;
 
-    if (existingTimestamp && parsedSbom.metadata && typeof parsedSbom.metadata === 'object') {
-        parsedSbom.metadata.timestamp = existingTimestamp;
+    if (stableSbom && typeof stableSbom.serialNumber === 'string') {
+        parsedSbom.serialNumber = stableSbom.serialNumber;
+    }
+
+    if (stableMetadata && parsedSbom.metadata && typeof parsedSbom.metadata === 'object') {
+        if (typeof stableMetadata.timestamp === 'string') {
+            parsedSbom.metadata.timestamp = stableMetadata.timestamp;
+        }
+
+        if (Array.isArray(stableMetadata.tools)) {
+            parsedSbom.metadata.tools = stableMetadata.tools;
+        }
     }
 
     return `${JSON.stringify(parsedSbom, null, 2)}\n`;
@@ -57,12 +81,12 @@ function generateSbom({ rootDir = projectRoot, destination = outputFile } = {}) 
     const destinationDirectory = path.dirname(destination);
     fs.mkdirSync(destinationDirectory, { recursive: true });
 
-    const existingTimestamp = readCommittedTimestamp({ rootDir, destination }) || readExistingTimestamp(destination);
+    const stableSbom = readCommittedSbom({ rootDir, destination }) || readExistingSbom(destination);
     const rawSbom = execSync('npm sbom --package-lock-only --sbom-format cyclonedx', {
         cwd: rootDir,
         encoding: 'utf8'
     });
-    const stabilizedSbom = stabilizeSbom(rawSbom, existingTimestamp);
+    const stabilizedSbom = stabilizeSbom(rawSbom, stableSbom);
 
     fs.writeFileSync(destination, stabilizedSbom, 'utf8');
     return destination;
@@ -75,7 +99,9 @@ if (require.main === module) {
 
 module.exports = {
     generateSbom,
+    readCommittedSbom,
     readCommittedTimestamp,
+    readExistingSbom,
     readExistingTimestamp,
     stabilizeSbom
 };
