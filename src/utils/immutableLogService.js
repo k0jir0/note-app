@@ -274,7 +274,7 @@ function installGlobalConsoleMirror(client, options = {}) {
             }))
                 .catch(() => {})
                 .finally(() => {
-                mirrorGuard = false;
+                    mirrorGuard = false;
                 });
         };
     });

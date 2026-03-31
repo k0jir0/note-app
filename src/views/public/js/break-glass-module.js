@@ -17,8 +17,6 @@ const bypassPathsEl = document.getElementById('break-glass-bypass-paths');
 const refreshBtn = document.getElementById('break-glass-refresh-btn');
 const applyBtn = document.getElementById('break-glass-apply-btn');
 
-let currentOverview = null;
-
 function escapeHtml(value = '') {
     return String(value)
         .replaceAll('&', '&amp;')
@@ -62,7 +60,6 @@ async function requestJson(url, options = {}) {
 }
 
 function renderOverview(overview = {}) {
-    currentOverview = overview;
     const state = overview.state || {};
     const controls = overview.controls || {};
     const allowedModes = Array.isArray(controls.allowedModes) ? controls.allowedModes : [];

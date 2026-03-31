@@ -58,43 +58,44 @@ router.post(
     requirePrivilegedRuntimeMutationAccess(),
     requireRecentPrivilegedStepUp(),
     (req, res) => {
-    try {
-        if (process.env.NODE_ENV === 'production') {
-            return res.status(403).json({
+        try {
+            if (process.env.NODE_ENV === 'production') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Runtime toggles are disabled in production'
+                });
+            }
+
+            if (!req.app || !req.app.locals || !req.app.locals.realtimeAvailable) {
+                return res.status(503).json({
+                    success: false,
+                    message: 'Realtime requires REDIS_URL to be configured'
+                });
+            }
+
+            const bodyEnabled = typeof req.body?.enabled !== 'undefined'
+                ? parseEnabledFlag(req.body.enabled)
+                : null;
+
+            if (bodyEnabled === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'enabled must be a boolean or the string true/false'
+                });
+            }
+
+            req.app.locals.realtimeEnabled = bodyEnabled;
+            return res.status(200).json({
+                success: true,
+                realtimeEnabled: req.app.locals.realtimeEnabled
+            });
+        } catch (_error) {
+            return res.status(500).json({
                 success: false,
-                message: 'Runtime toggles are disabled in production'
+                message: 'Unable to toggle realtime'
             });
         }
-
-        if (!req.app || !req.app.locals || !req.app.locals.realtimeAvailable) {
-            return res.status(503).json({
-                success: false,
-                message: 'Realtime requires REDIS_URL to be configured'
-            });
-        }
-
-        const bodyEnabled = typeof req.body?.enabled !== 'undefined'
-            ? parseEnabledFlag(req.body.enabled)
-            : null;
-
-        if (bodyEnabled === null) {
-            return res.status(400).json({
-                success: false,
-                message: 'enabled must be a boolean or the string true/false'
-            });
-        }
-
-        req.app.locals.realtimeEnabled = bodyEnabled;
-        return res.status(200).json({
-            success: true,
-            realtimeEnabled: req.app.locals.realtimeEnabled
-        });
-    } catch (_error) {
-        return res.status(500).json({
-            success: false,
-            message: 'Unable to toggle realtime'
-        });
     }
-});
+);
 
 module.exports = router;

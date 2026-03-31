@@ -60,7 +60,7 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     env:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3000
       APP_BASE_URL: http://127.0.0.1:3000
       MONGODB_URI: mongodb://127.0.0.1:27017/noteAppCi
