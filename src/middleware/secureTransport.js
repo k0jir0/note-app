@@ -5,16 +5,73 @@ function normalizeForwardedProto(value = '') {
         .toLowerCase();
 }
 
-function requestUsesSecureTransport(req = {}) {
+function normalizeSocketAddress(address = '') {
+    const trimmed = String(address || '').trim();
+    if (!trimmed) {
+        return '';
+    }
+
+    const withoutPrefix = trimmed.startsWith('::ffff:')
+        ? trimmed.slice(7)
+        : trimmed;
+
+    if (withoutPrefix.startsWith('[') && withoutPrefix.includes(']')) {
+        return withoutPrefix.slice(1, withoutPrefix.indexOf(']'));
+    }
+
+    const lastColon = withoutPrefix.lastIndexOf(':');
+    if (lastColon > -1 && withoutPrefix.indexOf(':') === lastColon) {
+        return withoutPrefix.slice(0, lastColon);
+    }
+
+    return withoutPrefix;
+}
+
+function isTrustedProxyAddress(address = '') {
+    const normalized = normalizeSocketAddress(address);
+    if (!normalized) {
+        return false;
+    }
+
+    return normalized === '127.0.0.1'
+        || normalized === '::1'
+        || normalized === 'localhost'
+        || normalized.startsWith('10.')
+        || normalized.startsWith('192.168.')
+        || /^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)
+        || normalized.startsWith('fc')
+        || normalized.startsWith('fd');
+}
+
+function requestArrivedFromTrustedProxy(req = {}, transport = {}) {
+    if (!transport || !transport.proxyTlsTerminated) {
+        return false;
+    }
+
+    const remoteAddress = req.socket && req.socket.remoteAddress
+        ? req.socket.remoteAddress
+        : (req.connection && req.connection.remoteAddress ? req.connection.remoteAddress : '');
+
+    return isTrustedProxyAddress(remoteAddress);
+}
+
+function requestUsesSecureTransport(req = {}, transport = {}) {
     if (req.secure) {
-        return true;
+        return Boolean(
+            (req.socket && req.socket.encrypted)
+            || requestArrivedFromTrustedProxy(req, transport)
+        );
     }
 
     if (req.socket && req.socket.encrypted) {
         return true;
     }
 
-    if (typeof req.get === 'function' && normalizeForwardedProto(req.get('x-forwarded-proto')) === 'https') {
+    if (
+        requestArrivedFromTrustedProxy(req, transport)
+        && typeof req.get === 'function'
+        && normalizeForwardedProto(req.get('x-forwarded-proto')) === 'https'
+    ) {
         return true;
     }
 
@@ -45,7 +102,7 @@ function enforceSecureTransport(req, res, next) {
         return next();
     }
 
-    if (requestUsesSecureTransport(req)) {
+    if (requestUsesSecureTransport(req, transport)) {
         return next();
     }
 

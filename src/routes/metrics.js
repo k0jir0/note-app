@@ -2,15 +2,17 @@ const express = require('express');
 const client = require('prom-client');
 const crypto = require('crypto');
 const { isAccountDisabled } = require('../services/accountLifecycleService');
+const { resolveMissionRole } = require('../services/privilegedRuntimeAccessService');
 
 const router = express.Router();
+const PRIVILEGED_METRICS_ROLES = new Set(['admin', 'auditor', 'break_glass']);
 
 function readMetricsAuthToken() {
     const value = String(process.env.METRICS_AUTH_TOKEN || '').trim();
     return value.length > 0 ? value : '';
 }
 
-function isAuthenticatedSession(req) {
+function hasPrivilegedMetricsSession(req) {
     return Boolean(
         req
         && typeof req.isAuthenticated === 'function'
@@ -18,6 +20,7 @@ function isAuthenticatedSession(req) {
         && req.user
         && req.user._id
         && !isAccountDisabled(req.user)
+        && PRIVILEGED_METRICS_ROLES.has(resolveMissionRole(req.user))
     );
 }
 
@@ -57,7 +60,7 @@ function hasValidMetricsToken(req) {
 }
 
 function authorizeMetricsRequest(req, res, next) {
-    if (isAuthenticatedSession(req) || hasValidMetricsToken(req)) {
+    if (hasPrivilegedMetricsSession(req) || hasValidMetricsToken(req)) {
         return next();
     }
 

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const { loadRuntimeEnvironment } = require('../src/config/runtimeEnv');
 const { validateRuntimeConfig } = require('../src/config/runtimeConfig');
+const { resolveBackupProtection } = require('../src/services/backupProtectionService');
 const { exportBackupArchive, writeBackupArchive } = require('../src/services/continuityService');
 
 const rootDir = path.join(__dirname, '..');
@@ -27,7 +28,10 @@ function parseArgs(argv = []) {
 
 async function run() {
     const options = parseArgs(process.argv.slice(2));
-    const backupProtectionSecret = String(process.env.BACKUP_ENCRYPTION_KEY || runtimeConfig.noteEncryptionKey || '').trim();
+    const backupProtection = resolveBackupProtection({
+        env: process.env,
+        runtimeConfig
+    });
 
     await mongoose.connect(runtimeConfig.dbURI);
 
@@ -41,8 +45,8 @@ async function run() {
 
         writeBackupArchive(options.outPath, archive, {
             protection: {
-                rawSecret: backupProtectionSecret,
-                cipherAlgo: runtimeConfig.cipherAlgo
+                rawSecret: backupProtection.rawSecret,
+                cipherAlgo: backupProtection.cipherAlgo
             }
         });
 

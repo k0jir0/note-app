@@ -42,14 +42,61 @@ describe('secure transport middleware', () => {
         sinon.restore();
     });
 
-    it('recognizes secure requests from Express or trusted proxy metadata', () => {
-        const secureReq = buildReq({ secure: true });
+    it('recognizes secure requests from direct TLS or a trusted proxy path', () => {
+        const secureReq = buildReq({
+            secure: true,
+            socket: {
+                encrypted: true
+            }
+        });
         const proxiedReq = buildReq({
+            secure: true,
+            socket: {
+                remoteAddress: '127.0.0.1'
+            },
+            app: {
+                locals: {
+                    appBaseUrl: 'https://note-app.example.com',
+                    transportSecurity: {
+                        secureTransportRequired: true,
+                        proxyTlsTerminated: true,
+                        trustProxyHops: 1
+                    }
+                }
+            },
             get: sinon.stub().withArgs('x-forwarded-proto').returns('https')
         });
 
         expect(requestUsesSecureTransport(secureReq)).to.equal(true);
-        expect(requestUsesSecureTransport(proxiedReq)).to.equal(true);
+        expect(requestUsesSecureTransport(
+            proxiedReq,
+            proxiedReq.app.locals.transportSecurity
+        )).to.equal(true);
+    });
+
+    it('does not trust spoofed forwarded-proto headers from untrusted remote addresses', () => {
+        const spoofedReq = buildReq({
+            secure: true,
+            socket: {
+                remoteAddress: '203.0.113.50'
+            },
+            app: {
+                locals: {
+                    appBaseUrl: 'https://note-app.example.com',
+                    transportSecurity: {
+                        secureTransportRequired: true,
+                        proxyTlsTerminated: true,
+                        trustProxyHops: 1
+                    }
+                }
+            },
+            get: sinon.stub().withArgs('x-forwarded-proto').returns('https')
+        });
+
+        expect(requestUsesSecureTransport(
+            spoofedReq,
+            spoofedReq.app.locals.transportSecurity
+        )).to.equal(false);
     });
 
     it('builds a secure redirect target from the configured app base URL', () => {

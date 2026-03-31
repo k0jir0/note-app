@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const { loadRuntimeEnvironment } = require('../src/config/runtimeEnv');
 const { validateRuntimeConfig } = require('../src/config/runtimeConfig');
+const { resolveBackupProtection } = require('../src/services/backupProtectionService');
 const { readBackupArchive, restoreBackupArchive } = require('../src/services/continuityService');
 
 const rootDir = path.join(__dirname, '..');
@@ -31,14 +32,15 @@ async function run() {
         throw new Error('Restoring data is destructive. Re-run with --confirm-restore or use --dry-run first.');
     }
 
-    const backupProtectionSecret = String(process.env.BACKUP_ENCRYPTION_KEY || runtimeConfig.noteEncryptionKey || '').trim();
+    const backupProtection = resolveBackupProtection({
+        env: process.env,
+        runtimeConfig
+    });
     const archive = readBackupArchive(options.inputPath, {
-        protection: backupProtectionSecret
-            ? {
-                rawSecret: backupProtectionSecret,
-                cipherAlgo: runtimeConfig.cipherAlgo
-            }
-            : null,
+        protection: {
+            rawSecret: backupProtection.rawSecret,
+            cipherAlgo: backupProtection.cipherAlgo
+        },
         allowPlaintextArchive: options.allowUnprotectedArchive
     });
 

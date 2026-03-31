@@ -72,8 +72,8 @@ jobs:
         run: npm ci --prefer-offline --no-audit --progress=false
       - name: Validate protected runtime configuration
         run: node -e "require('./src/config/runtimeConfig').validateRuntimeConfig(process.env); console.log('protected-runtime-config-ok')"
-      - name: Run protected-runtime regression slice
-        run: node ./node_modules/mocha/bin/mocha.js --require ./test/testSetup.js "test/runtimeConfig.test.js" "test/secureTransportMiddleware.test.js"
+      - name: Run protected-runtime regression and app smoke slice
+        run: node ./node_modules/mocha/bin/mocha.js --require ./test/testSetup.js "test/runtimeConfig.test.js" "test/secureTransportMiddleware.test.js" "test/protectedRuntimeApp.test.js"
 
   dast:
     name: DAST

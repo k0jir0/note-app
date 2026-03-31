@@ -159,18 +159,9 @@ function createApp({
             ? res.locals.breakGlass
             : (req.app && req.app.locals ? req.app.locals.breakGlass : null);
         const offline = Boolean(breakGlass && breakGlass.offline);
-        const runtimePosture = req.app && req.app.locals ? req.app.locals.runtimePosture || {} : {};
 
         return res.status(offline ? 503 : 200).json({
-            ok: !offline,
-            runtime: {
-                profile: String(runtimePosture.profile || 'local'),
-                protectedRuntime: Boolean(runtimePosture.protectedRuntime)
-            },
-            breakGlass: {
-                mode: breakGlass && breakGlass.mode ? breakGlass.mode : 'disabled',
-                enabled: Boolean(breakGlass && breakGlass.enabled)
-            }
+            ok: !offline
         });
     });
 
