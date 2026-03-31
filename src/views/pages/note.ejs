@@ -33,8 +33,9 @@
 
                 <!-- Note Card -->
                 <div class="card shadow-sm">
+                    <% const noteImageSrc = note.image ? `/notes/${note._id}/image?v=${new Date(note.updatedAt || note.createdAt || Date.now()).getTime()}` : '/placeholder.jpg'; %>
                     <img
-                        src="<%= note.image || '/placeholder.jpg' %>"
+                        src="<%= noteImageSrc %>"
                         class="note-image"
                         alt="<%= note.title %>"
                         data-fallback-src="/placeholder.jpg"

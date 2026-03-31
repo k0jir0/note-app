@@ -46,8 +46,9 @@
                 <% notes.forEach(note=> { %>
                     <div class="col-md-4 mb-4">
                         <div class="card h-100">
+                            <% const noteImageSrc = note.image ? `/notes/${note._id}/image?v=${new Date(note.updatedAt || note.createdAt || Date.now()).getTime()}` : '/placeholder.jpg'; %>
                             <img
-                                src="<%= note.image || '/placeholder.jpg' %>"
+                                src="<%= noteImageSrc %>"
                                 class="card-img-top note-img"
                                 alt="<%= note.title %>"
                                 data-fallback-src="/placeholder.jpg"

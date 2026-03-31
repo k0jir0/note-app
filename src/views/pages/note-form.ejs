@@ -67,6 +67,7 @@
                     placeholder="https://example.com/image.jpg"
                     value="<%= note ? note.image : '' %>"
                 />
+                <div class="form-text">Images are fetched by the server and re-served from this app so they keep working under the current security policy.</div>
                 <% if (typeof fieldErrors !== 'undefined' && fieldErrors.image) { %>
                     <div class="invalid-feedback"><%= fieldErrors.image %></div>
                 <% } %>

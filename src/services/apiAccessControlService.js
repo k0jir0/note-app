@@ -17,7 +17,7 @@ function isPlainObject(value) {
 
 function sanitizeString(value) {
     return String(value || '')
-        .replace(/\u0000/g, '')
+    .replaceAll('\0', '')
         .trim();
 }
 

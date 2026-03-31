@@ -179,6 +179,8 @@ function stubNotesModel(sandbox, stores) {
             title: payload.title,
             content: payload.content || '',
             image: payload.image || '',
+            imageAssetKey: payload.imageAssetKey || '',
+            imageAssetContentType: payload.imageAssetContentType || '',
             user: payload.user,
             createdAt: now,
             updatedAt: now

@@ -571,6 +571,34 @@
       ]
     },
     {
+      "bom-ref": "@popperjs/core@2.11.8",
+      "type": "library",
+      "name": "@popperjs/core",
+      "version": "2.11.8",
+      "scope": "required",
+      "purl": "pkg:npm/%40popperjs/core@2.11.8",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@popperjs/core/-/core-2.11.8.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "3f5b2dd1a92c0ab9fdb06661a7c18c63006742c6ef016b19017e38a1734dbcb1c6a8039ca15c668d98a886cb7043b4aa2a76d1e3b6a474d8beba57960fcfa0e8"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
       "bom-ref": "@sinonjs/commons@3.0.1",
       "type": "library",
       "name": "@sinonjs/commons",
@@ -1335,6 +1363,62 @@
         {
           "alg": "SHA-512",
           "content": "a0fe559004ca94dc1c82fc62d2f334a7f0f79f60b7111798557f83358b394e36459ffa10b768fee2c549b5232bd7ca5d46bf308d370197a2e857e154c333e634"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "bootstrap@5.3.8",
+      "type": "library",
+      "name": "bootstrap",
+      "version": "5.3.8",
+      "scope": "required",
+      "purl": "pkg:npm/bootstrap@5.3.8",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/bootstrap/-/bootstrap-5.3.8.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "1cfd52643a9a2c33f0b0d8aa46a8b935c3f44925dc897dacf44f91caa24822a1a8faf25e37900954cf7c097996fd6bb1d274392fb8de59476994211fd047beb6"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "bootstrap-icons@1.11.3",
+      "type": "library",
+      "name": "bootstrap-icons",
+      "version": "1.11.3",
+      "scope": "required",
+      "purl": "pkg:npm/bootstrap-icons@1.11.3",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/bootstrap-icons/-/bootstrap-icons-1.11.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "fb79691eb0b0fe2b76ffb9412f5e554741c4ba6681b2cd3e7ff2dbe99bc72129f59a52bcde38c5a68a132ec3166c88c93038c38ce13132c4f19d74884f8938c3"
         }
       ],
       "licenses": [
@@ -10863,6 +10947,8 @@
       "ref": "note-app@0.1.0",
       "dependsOn": [
         "bcrypt@6.0.0",
+        "bootstrap@5.3.8",
+        "bootstrap-icons@1.11.3",
         "connect-mongo@6.0.0",
         "dotenv@17.3.1",
         "ejs@5.0.1",
@@ -10984,6 +11070,10 @@
       "dependsOn": [
         "playwright@1.58.2"
       ]
+    },
+    {
+      "ref": "@popperjs/core@2.11.8",
+      "dependsOn": []
     },
     {
       "ref": "@sinonjs/commons@3.0.1",
@@ -11130,6 +11220,16 @@
         "raw-body@3.0.2",
         "type-is@2.0.1"
       ]
+    },
+    {
+      "ref": "bootstrap@5.3.8",
+      "dependsOn": [
+        "@popperjs/core@2.11.8"
+      ]
+    },
+    {
+      "ref": "bootstrap-icons@1.11.3",
+      "dependsOn": []
     },
     {
       "ref": "brace-expansion@1.1.13",

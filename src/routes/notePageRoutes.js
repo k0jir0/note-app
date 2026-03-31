@@ -4,6 +4,7 @@ const { requireAuth } = require('../middleware/auth');
 const { handlePageError } = require('../utils/errorHandler');
 const { buildAutomationSection } = require('../utils/automationViewModel');
 const noteService = require('../services/noteService');
+const noteImageAssetService = require('../services/noteImageAssetService');
 
 router.get('/notes/new', requireAuth, (req, res) => {
     res.render('pages/note-form.ejs', {
@@ -53,6 +54,29 @@ router.get('/research', requireAuth, (req, res) => {
             }
         }
     });
+});
+
+router.get('/notes/:id/image', requireAuth, async (req, res) => {
+    try {
+        const noteResult = await noteService.ensureNoteImageAssetForUser(req.user._id, req.params.id);
+        if (noteResult.kind === 'invalid_id') {
+            return res.status(400).send('Invalid note ID');
+        }
+
+        if (!noteResult.ok || !noteResult.note || !noteResult.note.imageAssetKey) {
+            return res.status(404).send('Note image not found');
+        }
+
+        const assetPath = noteImageAssetService.resolveStoredAssetPath(noteResult.note.imageAssetKey);
+        res.set('Cache-Control', 'private, max-age=3600');
+        if (noteResult.note.imageAssetContentType) {
+            res.type(noteResult.note.imageAssetContentType);
+        }
+
+        return res.sendFile(assetPath);
+    } catch (error) {
+        return handlePageError(res, error, 'Unable to load note image');
+    }
 });
 
 router.get('/notes/:id', requireAuth, async (req, res) => {

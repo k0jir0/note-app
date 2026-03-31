@@ -24,6 +24,14 @@ const noteSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    imageAssetKey: {
+        type: String,
+        default: ''
+    },
+    imageAssetContentType: {
+        type: String,
+        default: ''
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
