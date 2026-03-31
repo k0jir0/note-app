@@ -27,6 +27,7 @@ describe('persistent audit service', () => {
         const result = await client.audit('Database state changed', {
             category: 'db-state-change',
             userId: '507f1f77bcf86cd799439011',
+            correlationId: 'corr-persist-11',
             method: 'POST',
             path: '/api/notes/507f1f77bcf86cd799439012'
         });
@@ -35,6 +36,7 @@ describe('persistent audit service', () => {
         expect(createdDocs).to.have.length(1);
         expect(createdDocs[0].category).to.equal('db-state-change');
         expect(createdDocs[0].path).to.equal('/api/notes/507f1f77bcf86cd799439012');
+        expect(createdDocs[0].correlationId).to.equal('corr-persist-11');
         expect(createdDocs[0].entryHash).to.be.a('string').with.length.greaterThan(10);
         expect(forwarded).to.have.length(1);
         expect(forwarded[0].level).to.equal('audit');

@@ -1,8 +1,11 @@
 const crypto = require('crypto');
 
-const ENCRYPTION_PREFIX = 'enc:v1';
-const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH_BYTES = 12;
+const {
+    buildEncryptedPayload,
+    decryptEncryptedPayload,
+    getCryptoSuite,
+    isEncryptedPayload
+} = require('./cryptoSuite');
 
 const ENCRYPTED_NOTE_FIELDS = ['title', 'content', 'image'];
 
@@ -15,17 +18,21 @@ function deriveKeyFromFallback(secret) {
 
 function parseConfiguredKey(rawKey) {
     const trimmedKey = rawKey.trim();
+    const { keyLengthBytes } = getCryptoSuite();
 
     if (/^[a-fA-F0-9]{64}$/.test(trimmedKey)) {
-        return Buffer.from(trimmedKey, 'hex');
+        const hexBuffer = Buffer.from(trimmedKey, 'hex');
+        if (hexBuffer.length === keyLengthBytes) {
+            return hexBuffer;
+        }
     }
 
     const base64Buffer = Buffer.from(trimmedKey, 'base64');
-    if (base64Buffer.length === 32) {
+    if (base64Buffer.length === keyLengthBytes) {
         return base64Buffer;
     }
 
-    throw new Error('NOTE_ENCRYPTION_KEY must be a 64-char hex string or base64 for 32 bytes');
+    throw new Error(`NOTE_ENCRYPTION_KEY must be a ${keyLengthBytes * 2}-character hex string or base64 for ${keyLengthBytes} bytes`);
 }
 
 function getEncryptionKey() {
@@ -63,31 +70,11 @@ function getLegacyDecryptionKeys() {
 }
 
 function decryptTextWithKey(ciphertext, key) {
-    const payload = ciphertext.slice(`${ENCRYPTION_PREFIX}:`.length);
-    const [ivB64, authTagB64, encryptedB64] = payload.split(':');
-
-    if (!ivB64 || !authTagB64 || !encryptedB64) {
-        throw new Error('Invalid encrypted note payload format');
-    }
-
-    const decipher = crypto.createDecipheriv(
-        ENCRYPTION_ALGORITHM,
-        key,
-        Buffer.from(ivB64, 'base64')
-    );
-
-    decipher.setAuthTag(Buffer.from(authTagB64, 'base64'));
-
-    const decrypted = Buffer.concat([
-        decipher.update(Buffer.from(encryptedB64, 'base64')),
-        decipher.final()
-    ]);
-
-    return decrypted.toString('utf8');
+    return decryptEncryptedPayload(ciphertext, key);
 }
 
 function isEncryptedValue(value) {
-    return typeof value === 'string' && value.startsWith(`${ENCRYPTION_PREFIX}:`);
+    return isEncryptedPayload(value);
 }
 
 function encryptText(plaintext) {
@@ -99,16 +86,11 @@ function encryptText(plaintext) {
         return plaintext;
     }
 
-    const iv = crypto.randomBytes(IV_LENGTH_BYTES);
-    const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, getEncryptionKey(), iv);
-
-    const encrypted = Buffer.concat([
-        cipher.update(plaintext, 'utf8'),
-        cipher.final()
-    ]);
-    const authTag = cipher.getAuthTag();
-
-    return `${ENCRYPTION_PREFIX}:${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
+    return buildEncryptedPayload({
+        suite: getCryptoSuite(),
+        plaintext,
+        key: getEncryptionKey()
+    });
 }
 
 function decryptText(ciphertext) {
@@ -160,15 +142,40 @@ function encryptNoteUpdatePayload(update) {
     return update;
 }
 
+function readDocumentField(target, fieldName) {
+    if (!target) {
+        return undefined;
+    }
+
+    if (typeof target.get === 'function') {
+        return target.get(fieldName);
+    }
+
+    return target[fieldName];
+}
+
+function writeDocumentField(target, fieldName, value) {
+    if (!target) {
+        return;
+    }
+
+    if (typeof target.set === 'function') {
+        target.set(fieldName, value);
+        return;
+    }
+
+    target[fieldName] = value;
+}
+
 function decryptNoteDocumentFields(doc) {
     if (!doc) {
         return doc;
     }
 
     ENCRYPTED_NOTE_FIELDS.forEach((fieldName) => {
-        const currentValue = doc.get(fieldName);
+        const currentValue = readDocumentField(doc, fieldName);
         if (typeof currentValue === 'string' && currentValue.length > 0) {
-            doc.set(fieldName, decryptText(currentValue));
+            writeDocumentField(doc, fieldName, decryptText(currentValue));
         }
     });
 

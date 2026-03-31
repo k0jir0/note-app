@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 
 const router = require('../src/routes/notePageRoutes');
 const Notes = require('../src/models/Notes');
+const noteImageAssetService = require('../src/services/noteImageAssetService');
 
 const getHandler = (method, path, stackIndex = 1) => {
     const layer = router.stack.find(
@@ -20,7 +21,10 @@ const buildRes = () => ({
     locals: { csrfToken: 'test-csrf-token' },
     render: sinon.stub(),
     status: sinon.stub().returnsThis(),
-    send: sinon.stub().returnsThis()
+    send: sinon.stub().returnsThis(),
+    set: sinon.stub().returnsThis(),
+    type: sinon.stub().returnsThis(),
+    sendFile: sinon.stub().returnsThis()
 });
 
 describe('Note Page Routes', () => {
@@ -42,6 +46,12 @@ describe('Note Page Routes', () => {
 
     it('maps GET /notes/:id to a handler', () => {
         const handler = getHandler('get', '/notes/:id');
+
+        expect(handler).to.exist;
+    });
+
+    it('maps GET /notes/:id/image to a handler', () => {
+        const handler = getHandler('get', '/notes/:id/image');
 
         expect(handler).to.exist;
     });
@@ -314,6 +324,34 @@ describe('Note Page Routes', () => {
 
         expect(res.status.calledWith(404)).to.be.true;
         expect(res.send.calledWith('Note not found or access denied')).to.be.true;
+    });
+
+    it('streams a managed note image for an owned note', async () => {
+        const handler = getHandler('get', '/notes/:id/image');
+        const userId = new mongoose.Types.ObjectId();
+        const noteId = new mongoose.Types.ObjectId();
+
+        sinon.stub(Notes, 'findOne').resolves({
+            _id: noteId,
+            title: 'Test Note',
+            content: 'Test content',
+            image: 'https://example.com/image.jpg',
+            imageAssetKey: 'note-asset.jpg',
+            imageAssetContentType: 'image/jpeg',
+            user: userId
+        });
+        sinon.stub(noteImageAssetService, 'resolveStoredAssetPath').returns('C:\\temp\\note-asset.jpg');
+
+        const req = {
+            params: { id: noteId.toString() },
+            user: { _id: userId }
+        };
+        const res = buildRes();
+
+        await handler(req, res);
+
+        expect(res.type.calledWith('image/jpeg')).to.be.true;
+        expect(res.sendFile.calledWith('C:\\temp\\note-asset.jpg')).to.be.true;
     });
 });
 

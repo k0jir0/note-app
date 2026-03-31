@@ -52,6 +52,8 @@ describe('Note Model', () => {
         });
 
         expect(note.image).to.equal('');
+        expect(note.imageAssetKey).to.equal('');
+        expect(note.imageAssetContentType).to.equal('');
     });
 
     it('Should accept content and image fields', () => {

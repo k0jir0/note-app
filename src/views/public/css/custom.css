@@ -65,6 +65,27 @@ body.dark-mode .d-flex .selenium-tag {
   object-fit: cover;
 }
 
+.note-image {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 8px 8px 0 0;
+}
+
+.note-content {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+.metadata-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
 .alert-small {
   padding: .35rem .6rem;
 }
@@ -167,47 +188,14 @@ body.dark-mode a {
 body.dark-mode .card {
   background: #0f1724;
   border: 1px solid #1f2a36;
-    /* Fix progress bars in ML module */
-    .ml-progress,
-    .ml-progress.tone-positive,
-    .ml-progress.tone-negative {
-        background: #23272e !important;
-        color: #e0e6ef !important;
-        border-radius: 4px;
-        box-shadow: none;
-    }
+}
 
-    /* Fix Playwright tags */
-    .playwright-tag {
-        background: #23272e !important;
-        color: #e0e6ef !important;
-        border: 1px solid #444 !important;
-    }
-
-    /* Fix Selenium tags */
-    .selenium-tag {
-        background: #23272e !important;
-        color: #e0e6ef !important;
-        border: 1px solid #444 !important;
-      }
-    
-    body.dark-mode span.selenium-tag,
-    body.dark-mode .selenium-tag {
-      background: #23272e !important;
-      color: #e0e6ef !important;
-      border: 1px solid #444 !important;
-      box-shadow: none !important;
-      outline: none !important;
-    }
-    }
-
-    /* Fix card with bg-light-subtle */
-    .card.bg-light-subtle,
-    .card.border-0.bg-light-subtle {
-        background: #23272e !important;
-        color: #e0e6ef !important;
-        border: 1px solid #444 !important;
-    }
+/* Fix card with bg-light-subtle */
+body.dark-mode .card.bg-light-subtle,
+body.dark-mode .card.border-0.bg-light-subtle {
+  background: #23272e !important;
+  color: #e0e6ef !important;
+  border: 1px solid #444 !important;
 }
 
 body.dark-mode .note-card:hover {

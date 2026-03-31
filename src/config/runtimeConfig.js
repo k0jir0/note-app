@@ -1,9 +1,13 @@
 const MIN_SESSION_SECRET_LENGTH = 32;
-const ENCRYPTION_KEY_HEX_REGEX = /^[a-fA-F0-9]{64}$/;
 const MONGODB_OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
 const MAX_AUTOMATION_INTERVAL_MS = 1000 * 60 * 60 * 24;
 const MAX_IMMUTABLE_LOG_TIMEOUT_MS = 1000 * 30;
 const IMMUTABLE_LOG_FORMATS = ['json', 'syslog'];
+const VALID_BREAK_GLASS_MODES = ['disabled', 'read_only', 'offline'];
+
+const { DEFAULT_CIPHER_ALGO, getCryptoSuite, listSupportedCipherAlgos, normalizeCipherAlgo } = require('../utils/cryptoSuite');
+
+const SUPPORTED_CIPHER_ALGOS = listSupportedCipherAlgos();
 
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
@@ -33,19 +37,31 @@ function isPlaceholderValue(name, value) {
     return placeholderChecks[name] ? placeholderChecks[name]() : false;
 }
 
-function validateEncryptionKeyFormat(name, rawValue, errors) {
+function validateEncryptionKeyFormat(name, rawValue, suite, errors) {
     const trimmedValue = rawValue.trim();
+    const keyLengthBytes = suite && Number.isInteger(suite.keyLengthBytes) ? suite.keyLengthBytes : 32;
+    const hexRegex = new RegExp(`^[a-fA-F0-9]{${keyLengthBytes * 2}}$`);
 
-    if (ENCRYPTION_KEY_HEX_REGEX.test(trimmedValue)) {
+    if (hexRegex.test(trimmedValue)) {
         return;
     }
 
     const decoded = Buffer.from(trimmedValue, 'base64');
-    if (decoded.length === 32) {
+    if (decoded.length === keyLengthBytes) {
         return;
     }
 
-    errors.push(`${name} must be a 64-character hex string or base64 for 32 bytes`);
+    errors.push(`${name} must be a ${keyLengthBytes * 2}-character hex string or base64 for ${keyLengthBytes} bytes`);
+}
+
+function parseCipherAlgo(env = process.env, errors = []) {
+    const normalized = normalizeCipherAlgo(env.CIPHER_ALGO || DEFAULT_CIPHER_ALGO) || DEFAULT_CIPHER_ALGO;
+    if (!SUPPORTED_CIPHER_ALGOS.includes(normalized)) {
+        errors.push(`CIPHER_ALGO must be one of: ${SUPPORTED_CIPHER_ALGOS.join(', ')}`);
+        return DEFAULT_CIPHER_ALGO;
+    }
+
+    return normalized;
 }
 
 function hasGoogleAuthCredentials(env = process.env) {
@@ -395,6 +411,42 @@ function buildSessionManagementConfig(env, errors) {
     };
 }
 
+function buildBreakGlassConfig(env, errors) {
+    const rawMode = env.BREAK_GLASS_MODE === undefined
+        ? 'disabled'
+        : String(env.BREAK_GLASS_MODE).trim().toLowerCase();
+    const modeAliases = {
+        '': 'disabled',
+        off: 'disabled',
+        disabled: 'disabled',
+        readonly: 'read_only',
+        'read-only': 'read_only',
+        read_only: 'read_only',
+        offline: 'offline'
+    };
+    const mode = Object.prototype.hasOwnProperty.call(modeAliases, rawMode)
+        ? modeAliases[rawMode]
+        : null;
+
+    if (!mode) {
+        errors.push(`BREAK_GLASS_MODE must be one of: ${VALID_BREAK_GLASS_MODES.join(', ')}`);
+        return {
+            mode: 'disabled',
+            reason: ''
+        };
+    }
+
+    const reason = isNonEmptyString(env.BREAK_GLASS_REASON) ? env.BREAK_GLASS_REASON.trim() : '';
+    if (mode !== 'disabled' && !reason) {
+        errors.push('BREAK_GLASS_REASON is required when BREAK_GLASS_MODE is enabled');
+    }
+
+    return {
+        mode,
+        reason
+    };
+}
+
 function toDiagnosticRuntimeConfig(runtimeConfig) {
     if (!runtimeConfig || typeof runtimeConfig !== 'object') {
         return null;
@@ -406,6 +458,7 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
         dbConfigured: isNonEmptyString(runtimeConfig.dbURI),
         sessionSecretConfigured: isNonEmptyString(runtimeConfig.sessionSecret),
         noteEncryptionConfigured: isNonEmptyString(runtimeConfig.noteEncryptionKey),
+        cipherAlgo: isNonEmptyString(runtimeConfig.cipherAlgo) ? runtimeConfig.cipherAlgo.trim() : DEFAULT_CIPHER_ALGO,
         appBaseUrl: isNonEmptyString(runtimeConfig.appBaseUrl) ? runtimeConfig.appBaseUrl.trim() : '',
         googleAuthEnabled: Boolean(runtimeConfig.googleAuthEnabled),
         sessionManagement: {
@@ -452,6 +505,15 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
                 ? runtimeConfig.immutableLogging.source.trim()
                 : ''
         },
+        breakGlass: {
+            mode: isNonEmptyString(runtimeConfig.breakGlass && runtimeConfig.breakGlass.mode)
+                ? runtimeConfig.breakGlass.mode.trim()
+                : 'disabled',
+            enabled: isNonEmptyString(runtimeConfig.breakGlass && runtimeConfig.breakGlass.mode)
+                ? runtimeConfig.breakGlass.mode.trim() !== 'disabled'
+                : false,
+            reasonConfigured: isNonEmptyString(runtimeConfig.breakGlass && runtimeConfig.breakGlass.reason)
+        },
         automation: {
             logBatch: buildAutomationDiagnostics(automation.logBatch),
             scanBatch: buildAutomationDiagnostics(automation.scanBatch),
@@ -462,6 +524,8 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
 
 function validateRuntimeConfig(env = process.env) {
     const errors = [];
+    const cipherAlgo = parseCipherAlgo(env, errors);
+    const activeCipherSuite = getCryptoSuite(cipherAlgo);
 
     if (!isNonEmptyString(env.MONGODB_URI)) {
         errors.push('MONGODB_URI is required');
@@ -486,7 +550,7 @@ function validateRuntimeConfig(env = process.env) {
     } else if (isPlaceholderValue('NOTE_ENCRYPTION_KEY', env.NOTE_ENCRYPTION_KEY)) {
         errors.push('NOTE_ENCRYPTION_KEY must not use the example placeholder value');
     } else {
-        validateEncryptionKeyFormat('NOTE_ENCRYPTION_KEY', env.NOTE_ENCRYPTION_KEY, errors);
+        validateEncryptionKeyFormat('NOTE_ENCRYPTION_KEY', env.NOTE_ENCRYPTION_KEY, activeCipherSuite, errors);
     }
 
     const hasGoogleClientId = isNonEmptyString(env.GOOGLE_CLIENT_ID);
@@ -510,7 +574,7 @@ function validateRuntimeConfig(env = process.env) {
         if (isPlaceholderValue('LEGACY_NOTE_ENCRYPTION_KEY', env.LEGACY_NOTE_ENCRYPTION_KEY)) {
             errors.push('LEGACY_NOTE_ENCRYPTION_KEY must not use the example placeholder value');
         } else {
-            validateEncryptionKeyFormat('LEGACY_NOTE_ENCRYPTION_KEY', env.LEGACY_NOTE_ENCRYPTION_KEY, errors);
+            validateEncryptionKeyFormat('LEGACY_NOTE_ENCRYPTION_KEY', env.LEGACY_NOTE_ENCRYPTION_KEY, activeCipherSuite, errors);
         }
     }
 
@@ -525,6 +589,7 @@ function validateRuntimeConfig(env = process.env) {
     const sessionManagement = buildSessionManagementConfig(env, errors);
     const transport = buildTransportConfig(env, errors);
     const immutableLogging = buildImmutableLoggingConfig(env, errors);
+    const breakGlass = buildBreakGlassConfig(env, errors);
 
     if (errors.length > 0) {
         throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
@@ -534,11 +599,13 @@ function validateRuntimeConfig(env = process.env) {
         dbURI: env.MONGODB_URI.trim(),
         sessionSecret: env.SESSION_SECRET.trim(),
         noteEncryptionKey: env.NOTE_ENCRYPTION_KEY.trim(),
+        cipherAlgo,
         appBaseUrl: getConfiguredAppBaseUrl(env),
         googleAuthEnabled: hasGoogleAuthCredentials(env),
         sessionManagement,
         transport,
         immutableLogging,
+        breakGlass,
         automation: {
             logBatch,
             scanBatch,
@@ -550,6 +617,7 @@ function validateRuntimeConfig(env = process.env) {
 module.exports = {
     IMMUTABLE_LOG_FORMATS,
     MIN_SESSION_SECRET_LENGTH,
+    SUPPORTED_CIPHER_ALGOS,
     getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,
     toDiagnosticRuntimeConfig,

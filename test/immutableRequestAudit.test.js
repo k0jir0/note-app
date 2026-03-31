@@ -1,9 +1,10 @@
 const { expect } = require('chai');
 
 const { createImmutableRequestAuditMiddleware } = require('../src/middleware/immutableRequestAudit');
+const { requestContextMiddleware } = require('../src/utils/requestContext');
 
 describe('immutable request audit middleware', () => {
-    it('forwards security-relevant request completions to the immutable log sink', (done) => {
+    it('forwards semantic, correlation-aware request completions to the immutable log sink', (done) => {
         const entries = [];
         const middleware = createImmutableRequestAuditMiddleware({
             client: {
@@ -18,11 +19,35 @@ describe('immutable request audit middleware', () => {
         const req = {
             method: 'POST',
             path: '/api/security/log-analysis',
+            originalUrl: '/api/security/log-analysis',
             headers: {
                 'user-agent': 'mocha-test',
-                'x-forwarded-for': '203.0.113.99'
+                'x-forwarded-for': '203.0.113.99',
+                'x-correlation-id': 'corr-audit-9'
             },
-            user: { _id: '507f1f77bcf86cd799439011' },
+            user: {
+                _id: '507f1f77bcf86cd799439011',
+                email: 'operator@example.com',
+                accessProfile: {
+                    missionRole: 'analyst',
+                    mfaMethod: 'hardware_token',
+                    mfaAssurance: 'hardware_first',
+                    hardwareTokenLabel: 'MissionKey'
+                }
+            },
+            missionAccessDecision: {
+                allowed: true,
+                action: {
+                    id: 'view_mission_data',
+                    label: 'View Mission Data'
+                },
+                resource: {
+                    id: 'mission-data-42',
+                    title: 'Mission Data 42'
+                },
+                failedChecks: [],
+                summary: 'Operator may view Mission Data 42.'
+            },
             get(name) {
                 return this.headers[String(name).toLowerCase()];
             }
@@ -36,21 +61,33 @@ describe('immutable request audit middleware', () => {
             }
         };
 
-        middleware(req, res, () => {
-            setTimeout(() => {
-                expect(entries).to.have.length(1);
-                expect(entries[0].message).to.equal('HTTP request completed');
-                expect(entries[0].metadata).to.deep.include({
-                    category: 'http-request',
-                    method: 'POST',
-                    path: '/api/security/log-analysis',
-                    statusCode: 202,
-                    userId: '507f1f77bcf86cd799439011',
-                    ip: '203.0.113.99',
-                    userAgent: 'mocha-test'
-                });
-                done();
-            }, 10);
+        requestContextMiddleware(req, {}, () => {
+            middleware(req, res, () => {
+                setTimeout(() => {
+                    expect(entries).to.have.length(1);
+                    expect(entries[0].message).to.equal('User 507f1f77bcf86cd799439011 authorized to view mission data on Mission Data 42 via hardware token MissionKey.');
+                    expect(entries[0].metadata).to.deep.include({
+                        category: 'http-request',
+                        outcome: 'authorized',
+                        method: 'POST',
+                        path: '/api/security/log-analysis',
+                        statusCode: 202,
+                        userId: '507f1f77bcf86cd799439011',
+                        ip: '203.0.113.99',
+                        userAgent: 'mocha-test',
+                        correlationId: 'corr-audit-9'
+                    });
+                    expect(entries[0].metadata.what).to.deep.include({
+                        intent: 'mission-access',
+                        actionId: 'view_mission_data',
+                        resourceId: 'mission-data-42',
+                        decision: 'allow'
+                    });
+                    expect(entries[0].metadata.where.correlationId).to.equal('corr-audit-9');
+                    expect(entries[0].metadata.requestId).to.be.a('string').and.not.empty;
+                    done();
+                }, 10);
+            });
         });
     });
 });

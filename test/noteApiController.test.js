@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 
 const noteApiController = require('../src/controllers/noteApiController');
 const Notes = require('../src/models/Notes');
+const noteImageAssetService = require('../src/services/noteImageAssetService');
 
 describe('Note API Controller - getAllNotes', () => {
     afterEach(() => {
@@ -160,7 +161,7 @@ describe('Note API Controller - createNote', () => {
         const noteData = {
             title: 'New Note',
             content: 'New content',
-            image: 'https://example.com/image.jpg'
+            image: ''
         };
         const createdNote = {
             ...noteData,
@@ -249,6 +250,13 @@ describe('Note API Controller - updateNote', () => {
     it('should update a note and return 200', async () => {
         const userId = new mongoose.Types.ObjectId();
         const noteId = new mongoose.Types.ObjectId();
+        const existingNote = {
+            _id: noteId,
+            title: 'Original Title',
+            content: 'Original content',
+            image: '',
+            user: userId
+        };
         const updatedNote = {
             _id: noteId,
             title: 'Updated Title',
@@ -256,6 +264,7 @@ describe('Note API Controller - updateNote', () => {
             user: userId
         };
 
+        sinon.stub(Notes, 'findOne').resolves(existingNote);
         sinon.stub(Notes, 'findOneAndUpdate').resolves(updatedNote);
 
         const req = {
@@ -275,9 +284,49 @@ describe('Note API Controller - updateNote', () => {
         expect(res.json.firstCall.args[0].data).to.deep.equal(updatedNote);
     });
 
+    it('returns a validation error when note image ingestion fails', async () => {
+        const userId = new mongoose.Types.ObjectId();
+
+        sinon.stub(Notes, 'create').resolves({
+            _id: new mongoose.Types.ObjectId(),
+            title: 'New Note',
+            content: 'New content',
+            image: 'https://example.com/image.jpg',
+            user: userId
+        });
+        sinon.stub(Notes, 'findOneAndDelete').resolves(null);
+        sinon.stub(noteImageAssetService, 'persistRemoteNoteImage').rejects(new Error('Image download timed out.'));
+
+        const req = {
+            body: {
+                title: 'New Note',
+                content: 'New content',
+                image: 'https://example.com/image.jpg'
+            },
+            user: { _id: userId }
+        };
+        const res = {
+            status: sinon.stub().returnsThis(),
+            json: sinon.stub()
+        };
+
+        await noteApiController.createNote(req, res);
+
+        expect(res.status.calledWith(400)).to.be.true;
+        expect(res.json.firstCall.args[0].errors).to.deep.equal(['Image download timed out.']);
+    });
+
     it('should return 400 for empty request body', async () => {
         const userId = new mongoose.Types.ObjectId();
         const noteId = new mongoose.Types.ObjectId();
+
+        sinon.stub(Notes, 'findOne').resolves({
+            _id: noteId,
+            title: 'Original Title',
+            content: 'Original content',
+            image: '',
+            user: userId
+        });
 
         const req = {
             params: { id: noteId.toString() },
@@ -299,7 +348,7 @@ describe('Note API Controller - updateNote', () => {
         const userId = new mongoose.Types.ObjectId();
         const noteId = new mongoose.Types.ObjectId();
 
-        sinon.stub(Notes, 'findOneAndUpdate').resolves(null);
+        sinon.stub(Notes, 'findOne').resolves(null);
 
         const req = {
             params: { id: noteId.toString() },
@@ -320,6 +369,14 @@ describe('Note API Controller - updateNote', () => {
     it('should return 400 when update payload has no allowed fields', async () => {
         const userId = new mongoose.Types.ObjectId();
         const noteId = new mongoose.Types.ObjectId();
+
+        sinon.stub(Notes, 'findOne').resolves({
+            _id: noteId,
+            title: 'Original Title',
+            content: 'Original content',
+            image: '',
+            user: userId
+        });
 
         const req = {
             params: { id: noteId.toString() },

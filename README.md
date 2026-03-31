@@ -14,6 +14,7 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 - Auditability: immutable remote logging plus request-scoped database telemetry that records who changed what, when, where the request came from, and how the mutation was applied for persisted model changes.
 - Supply-chain visibility: a committed CycloneDX SBOM can be regenerated from the npm lockfile so the project keeps a current manifest of third-party libraries.
 - Dependency scanning: `npm audit`-based scripts and CI gates now check the imported package graph for known high-severity vulnerabilities before changes are merged.
+- Application security testing in CI: the `Security CI` workflow now combines Semgrep plus `npm audit` for SAST and boots the app against a disposable MongoDB service so OWASP ZAP can run a baseline DAST pass against the login surface on every push and pull request.
 - Container hardening: the repo now ships a multi-stage Docker build that runs the app on a non-root distroless Node 22 runtime instead of a general-purpose base image.
 - Delivery and quality: a REST API, responsive Bootstrap UI, CI-friendly smoke and integration coverage, report-only Trivy CI artifacts for triage, and end-to-end testing with Mocha, Chai, Sinon, Playwright, and Selenium across notes, auth, Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, the web-security modules, browser modules, Self-Healing Locator Repair, and autonomy-demo flows.
 
@@ -84,6 +85,12 @@ npm run audit:deps # Fail on high-severity dependency CVEs across all installed 
 npm run audit:prod # Fail on high-severity dependency CVEs in production deps only
 npm run sbom:generate # Regenerate the CycloneDX dependency manifest
 ```
+
+Security CI notes:
+- SAST runs Semgrep with the repo's custom rules and fails the workflow on `ERROR` findings.
+- Dependency audit runs alongside Semgrep and fails on high-severity npm advisories.
+- DAST starts the app with CI-only secrets, waits for `/healthz`, then runs an OWASP ZAP baseline scan against `/auth/login` and uploads the HTML and JSON reports as workflow artifacts.
+- ZAP warnings are published for review without blocking the pipeline; confirmed failure-level findings still fail the DAST job.
 
 Server: `http://localhost:3000`
 

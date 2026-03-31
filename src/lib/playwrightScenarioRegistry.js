@@ -311,7 +311,7 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'security-module-workflow',
-        title: 'Security Operations Module Interactive Workflow',
+        title: 'Security Module Interactive Workflow',
         purpose: 'Use the Security Operations Module helpers to load sample data, analyze logs, import a scan, and refresh persisted correlations.',
         routes: ['/security/module'],
         assertions: [
@@ -329,7 +329,7 @@ const PLAYWRIGHT_SCENARIOS = [
     },
     {
         id: 'playwright-module-interactions',
-        title: 'Playwright Testing Module Interaction Flow',
+        title: 'Playwright Module Interaction Flow',
         purpose: 'Switch scenarios inside the Playwright Testing Module, refresh the overview, and confirm cross-module navigation remains wired.',
         routes: ['/playwright/module', '/security/module'],
         assertions: [

@@ -17,12 +17,14 @@ const {
     clearCurrentSessionBinding,
     getLoginReasonMessage
 } = require('../services/sessionManagementService');
+const { handleAuthFailure } = require('../utils/errorHandler');
 
 const router = express.Router();
 
 const GENERIC_LOGIN_ERROR = 'Invalid email or password';
 const AUTH_PAYLOAD_FIELDS = ['email', 'password', CSRF_BODY_FIELD];
 const GOOGLE_OAUTH_EXCHANGE_ERROR_MESSAGE = 'Google sign-in could not be completed. Verify the configured Google OAuth client secret and redirect URI for this environment.';
+const GENERIC_AUTH_SERVICE_ERROR = 'Authentication is temporarily unavailable. Please try again.';
 
 function isGoogleTokenExchangeError(error) {
     if (!error || typeof error !== 'object') {
@@ -123,8 +125,14 @@ async function completeAuthenticatedLogin(req, res, next, user) {
         });
 
         return res.redirect('/');
-    } catch (error) {
-        return next(error);
+    } catch (_error) {
+        return handleAuthFailure(res, {
+            api: false,
+            statusCode: 503,
+            pageTitle: 'Login',
+            pageError: GENERIC_AUTH_SERVICE_ERROR,
+            csrfToken: res.locals.csrfToken
+        });
     }
 }
 
@@ -155,12 +163,14 @@ async function destroyAuthenticatedSession(req, res, next) {
         await destroySession(req);
         res.clearCookie('connect.sid');
         return res.redirect('/auth/login');
-    } catch (error) {
-        if (typeof next === 'function') {
-            return next(error);
-        }
-
-        return res.status(500).json({ error: 'Logout failed' });
+    } catch (_error) {
+        return handleAuthFailure(res, {
+            api: false,
+            statusCode: 503,
+            pageTitle: 'Logout',
+            pageError: 'Logout could not be completed safely.',
+            csrfToken: res.locals.csrfToken
+        });
     }
 }
 
@@ -225,7 +235,13 @@ router.post('/login', authRateLimiter, (req, res, next) => {
 
     return passport.authenticate('local', (err, user, _info) => {
         if (err) {
-            return next(err);
+            return handleAuthFailure(res, {
+                api: false,
+                statusCode: 503,
+                pageTitle: 'Login',
+                pageError: GENERIC_AUTH_SERVICE_ERROR,
+                csrfToken: res.locals.csrfToken
+            });
         }
 
         if (!user) {
@@ -237,7 +253,13 @@ router.post('/login', authRateLimiter, (req, res, next) => {
         }
 
         if (!req.session || typeof req.session.regenerate !== 'function') {
-            return next(new Error('Session regeneration is unavailable'));
+            return handleAuthFailure(res, {
+                api: false,
+                statusCode: 503,
+                pageTitle: 'Login',
+                pageError: GENERIC_AUTH_SERVICE_ERROR,
+                csrfToken: res.locals.csrfToken
+            });
         }
 
         return completeAuthenticatedLogin(req, res, next, user);
@@ -382,7 +404,13 @@ router.get('/oauth2/redirect/google', (req, res, next) => {
                 });
             }
 
-            return next(err);
+            return handleAuthFailure(res, {
+                api: false,
+                statusCode: 503,
+                pageTitle: 'Login',
+                pageError: GENERIC_AUTH_SERVICE_ERROR,
+                csrfToken: res.locals.csrfToken
+            });
         }
 
         if (!user) {

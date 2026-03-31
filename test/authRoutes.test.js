@@ -583,7 +583,7 @@ describe('Auth Routes', () => {
             expect(res.redirect.calledWith('/auth/login')).to.be.true;
         });
 
-        it('should return 500 if logout fails', async () => {
+        it('renders the logout page with a generic error if logout fails', async () => {
             const handler = getHandler('post', '/logout');
 
             const req = {
@@ -596,11 +596,15 @@ describe('Auth Routes', () => {
 
             await handler(req, res);
 
-            expect(res.status.calledWith(500)).to.be.true;
-            expect(res.json.calledWith({ error: 'Logout failed' })).to.be.true;
+            expect(res.status.calledWith(503)).to.be.true;
+            expect(res.render.calledWith('pages/login', {
+                title: 'Logout',
+                error: 'Logout could not be completed safely.',
+                csrfToken: 'test-csrf-token'
+            })).to.be.true;
         });
 
-        it('should return 500 if session destruction fails after logout', async () => {
+        it('renders the logout page with a generic error if session destruction fails after logout', async () => {
             const handler = getHandler('post', '/logout');
 
             const req = {
@@ -613,8 +617,40 @@ describe('Auth Routes', () => {
 
             await handler(req, res);
 
-            expect(res.status.calledWith(500)).to.be.true;
-            expect(res.json.calledWith({ error: 'Logout failed' })).to.be.true;
+            expect(res.status.calledWith(503)).to.be.true;
+            expect(res.render.calledWith('pages/login', {
+                title: 'Logout',
+                error: 'Logout could not be completed safely.',
+                csrfToken: 'test-csrf-token'
+            })).to.be.true;
+        });
+
+        it('renders a generic login error when the local auth service throws', () => {
+            const handler = getHandler('post', '/login', 1);
+
+            sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
+                expect(strategy).to.equal('local');
+                return () => callback(new Error('database down'));
+            });
+
+            const req = {
+                body: {
+                    email: 'test@example.com',
+                    password: 'password123'
+                }
+            };
+            const res = buildRes();
+            const next = sinon.stub();
+
+            handler(req, res, next);
+
+            expect(res.status.calledWith(503)).to.equal(true);
+            expect(res.render.calledWith('pages/login', {
+                title: 'Login',
+                error: 'Authentication is temporarily unavailable. Please try again.',
+                csrfToken: 'test-csrf-token'
+            })).to.equal(true);
+            expect(next.called).to.equal(false);
         });
 
         it('keeps GET /logout separate from the state-changing POST handler', () => {

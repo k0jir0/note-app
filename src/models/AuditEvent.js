@@ -50,6 +50,12 @@ const auditEventSchema = new mongoose.Schema({
         trim: true,
         default: ''
     },
+    correlationId: {
+        type: String,
+        trim: true,
+        default: '',
+        index: true
+    },
     method: {
         type: String,
         trim: true,

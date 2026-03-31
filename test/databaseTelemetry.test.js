@@ -4,6 +4,7 @@ const sinon = require('sinon');
 const {
     buildTelemetryEvent,
     configureDatabaseTelemetry,
+    findDocumentsByIds,
     runTelemetryAwareBulkWrite
 } = require('../src/utils/databaseTelemetry');
 const { requestContextMiddleware } = require('../src/utils/requestContext');
@@ -38,6 +39,7 @@ describe('Database telemetry', () => {
             ip: '10.0.0.5',
             headers: {
                 'x-forwarded-for': '203.0.113.15, 10.0.0.5',
+                'x-correlation-id': 'corr-db-42',
                 'user-agent': 'telemetry-test'
             },
             get(headerName) {
@@ -70,7 +72,9 @@ describe('Database telemetry', () => {
         expect(event.where.path).to.equal('/api/alerts/alert-1');
         expect(event.where.ip).to.equal('203.0.113.15');
         expect(event.where.userAgent).to.equal('telemetry-test');
+        expect(event.correlationId).to.equal('corr-db-42');
         expect(event.where.requestId).to.be.a('string').and.not.empty;
+        expect(event.where.correlationId).to.equal('corr-db-42');
         expect(event.how).to.deep.equal({
             mechanism: 'updateOne',
             telemetryVersion: 1
@@ -96,6 +100,9 @@ describe('Database telemetry', () => {
                 .returns({
                     lean: async () => ([{ _id: 'alert-9', status: 'closed', severity: 'high' }])
                 }),
+            findById: sinon.stub().returns({
+                lean: async () => ({ _id: 'alert-9', status: 'closed', severity: 'high' })
+            }),
             bulkWrite: sinon.stub().resolves({ modifiedCount: 1 })
         };
 
@@ -133,7 +140,7 @@ describe('Database telemetry', () => {
 
         expect(model.bulkWrite.calledOnce).to.equal(true);
         expect(audit.calledOnce).to.equal(true);
-        expect(audit.firstCall.args[0]).to.equal('Database state changed');
+        expect(audit.firstCall.args[0]).to.equal('User analyst-7 updated SecurityAlert alert-9 via bulkWrite.updateOne.');
         expect(audit.firstCall.args[1].what).to.include({
             model: 'SecurityAlert',
             action: 'update',
@@ -144,6 +151,7 @@ describe('Database telemetry', () => {
         expect(audit.firstCall.args[1].what.after.id).to.equal('alert-9');
         expect(audit.firstCall.args[1].who.userId).to.equal('analyst-7');
         expect(audit.firstCall.args[1].where.path).to.equal('/api/automation/respond');
+        expect(audit.firstCall.args[1].correlationId).to.be.a('string').and.not.empty;
     });
 
     it('still executes bulkWrite when the caller does not expose query helpers', async () => {
@@ -178,5 +186,25 @@ describe('Database telemetry', () => {
         expect(result).to.deep.equal({ modifiedCount: 1 });
         expect(model.bulkWrite.calledOnce).to.equal(true);
         expect(audit.called).to.equal(false);
+    });
+
+    it('re-fetches updated documents by id without building a $in filter', async () => {
+        const model = {
+            findById: sinon.stub()
+                .onFirstCall()
+                .returns({ lean: async () => ({ _id: 'user-1', status: 'open' }) })
+                .onSecondCall()
+                .returns({ lean: async () => ({ _id: 'user-2', status: 'closed' }) })
+        };
+
+        const documents = await findDocumentsByIds(model, ['user-1', 'user-2']);
+
+        expect(model.findById.calledTwice).to.equal(true);
+        expect(model.findById.firstCall.args[0]).to.equal('user-1');
+        expect(model.findById.secondCall.args[0]).to.equal('user-2');
+        expect(documents).to.deep.equal([
+            { _id: 'user-1', status: 'open' },
+            { _id: 'user-2', status: 'closed' }
+        ]);
     });
 });

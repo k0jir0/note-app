@@ -128,7 +128,7 @@ const DEFAULT_ANALYST_NOTES = [
     {
         title: 'Meeting Notes',
         content: 'Discussed Q1 goals and upcoming project deadlines. Action items: Review budget, Schedule team meeting.',
-        image: 'https://images.unsplash.com/photo-1517842645767-c639042777db?w=600'
+        image: '/placeholder.jpg'
     },
     {
         title: 'Shopping List',
@@ -138,7 +138,7 @@ const DEFAULT_ANALYST_NOTES = [
     {
         title: 'Book Ideas',
         content: 'Research topics for new project: Machine Learning basics, Web Development trends, Design patterns',
-        image: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600'
+        image: '/placeholder.jpg'
     }
 ];
 

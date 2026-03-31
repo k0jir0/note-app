@@ -3,6 +3,7 @@ const { expect } = require('chai');
 const {
     IMMUTABLE_LOG_FORMATS,
     MIN_SESSION_SECRET_LENGTH,
+    SUPPORTED_CIPHER_ALGOS,
     getConfiguredAppBaseUrl,
     hasGoogleAuthCredentials,
     toDiagnosticRuntimeConfig,
@@ -23,6 +24,24 @@ describe('Runtime Config Validation', () => {
 
         expect(config.dbURI).to.equal('mongodb://localhost:27017/noteApp');
         expect(config.googleAuthEnabled).to.equal(false);
+        expect(config.cipherAlgo).to.equal('aes-256-gcm');
+    });
+
+    it('accepts a supported cipher algorithm override', () => {
+        const env = createValidEnv();
+        env.CIPHER_ALGO = 'AES-256-GCM';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(SUPPORTED_CIPHER_ALGOS).to.include('aes-256-gcm');
+        expect(config.cipherAlgo).to.equal('aes-256-gcm');
+    });
+
+    it('rejects unsupported cipher algorithms', () => {
+        const env = createValidEnv();
+        env.CIPHER_ALGO = 'kyber-mlkem';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('CIPHER_ALGO');
     });
 
     it('rejects weak or placeholder secrets', () => {
@@ -100,6 +119,10 @@ describe('Runtime Config Validation', () => {
             keyPath: '',
             certPath: '',
             caPath: ''
+        });
+        expect(config.breakGlass).to.deep.equal({
+            mode: 'disabled',
+            reason: ''
         });
         expect(config.immutableLogging).to.deep.equal({
             enabled: false,
@@ -195,6 +218,32 @@ describe('Runtime Config Validation', () => {
         expect(config.transport.trustProxyClientCertHeaders).to.equal(false);
     });
 
+    it('accepts valid break-glass runtime defaults and diagnostics', () => {
+        const env = createValidEnv();
+        env.BREAK_GLASS_MODE = 'offline';
+        env.BREAK_GLASS_REASON = 'Incident containment';
+
+        const config = validateRuntimeConfig(env);
+        const diagnostics = toDiagnosticRuntimeConfig(config);
+
+        expect(config.breakGlass).to.deep.equal({
+            mode: 'offline',
+            reason: 'Incident containment'
+        });
+        expect(diagnostics.breakGlass).to.deep.equal({
+            mode: 'offline',
+            enabled: true,
+            reasonConfigured: true
+        });
+    });
+
+    it('rejects invalid break-glass mode values', () => {
+        const env = createValidEnv();
+        env.BREAK_GLASS_MODE = 'panic';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('BREAK_GLASS_MODE');
+    });
+
     it('rejects invalid HTTPS and mTLS transport combinations', () => {
         const env = createValidEnv();
         env.HTTPS_REQUEST_CLIENT_CERT = 'true';
@@ -272,6 +321,7 @@ describe('Runtime Config Validation', () => {
             dbURI: 'mongodb://localhost:27017/noteApp',
             sessionSecret: 'super-secret-value',
             noteEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            cipherAlgo: 'aes-256-gcm',
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true,
             sessionManagement: {
@@ -315,6 +365,7 @@ describe('Runtime Config Validation', () => {
             dbConfigured: true,
             sessionSecretConfigured: true,
             noteEncryptionConfigured: true,
+            cipherAlgo: 'aes-256-gcm',
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true
         });

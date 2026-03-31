@@ -7,10 +7,12 @@ const templateEngineEl = document.getElementById('xss-defense-template-engine');
 const unescapedCountEl = document.getElementById('xss-defense-unescaped-count');
 const inlineScriptCountEl = document.getElementById('xss-defense-inline-script-count');
 const cspScriptSrcEl = document.getElementById('xss-defense-csp-script-src');
+const externalAssetCountEl = document.getElementById('xss-defense-external-asset-count');
 const statusEl = document.getElementById('xss-defense-status');
 const statusCopyEl = document.getElementById('xss-defense-status-copy');
 const controlsEl = document.getElementById('xss-defense-controls');
 const cspDirectivesEl = document.getElementById('xss-defense-csp-directives');
+const sovereigntyEl = document.getElementById('xss-defense-sovereignty');
 const scenarioSelectEl = document.getElementById('xss-defense-scenario-select');
 const payloadEl = document.getElementById('xss-defense-payload');
 const evaluationEl = document.getElementById('xss-defense-evaluation');
@@ -105,6 +107,7 @@ function renderOverview(overview = {}) {
     const serverTemplates = overview.rendering?.serverTemplates || {};
     const clientRendering = overview.rendering?.clientRendering || {};
     const directives = Array.isArray(overview.csp?.directiveList) ? overview.csp.directiveList : [];
+    const sovereignty = overview.sovereignty || {};
 
     if (templateEngineEl) {
         templateEngineEl.textContent = serverTemplates.escapedInterpolationOnly ? 'EJS escaped' : 'Review needed';
@@ -123,8 +126,13 @@ function renderOverview(overview = {}) {
         cspScriptSrcEl.textContent = scriptDirective ? scriptDirective.value : '\'self\'';
     }
 
+    if (externalAssetCountEl) {
+        const externalCount = (sovereignty.externalAssetReferences || []).length + (sovereignty.externalClientCalls || []).length;
+        externalAssetCountEl.textContent = String(externalCount);
+    }
+
     if (statusCopyEl) {
-        statusCopyEl.textContent = `Escaped EJS only: ${serverTemplates.escapedInterpolationOnly ? 'yes' : 'no'}. Protected DOM sink files: ${(clientRendering.protectedSinkFiles || []).length}/${(clientRendering.innerHtmlSinkFiles || []).length}. CSP enforced with inline script attributes blocked.`;
+        statusCopyEl.textContent = `Escaped EJS only: ${serverTemplates.escapedInterpolationOnly ? 'yes' : 'no'}. Protected DOM sink files: ${(clientRendering.protectedSinkFiles || []).length}/${(clientRendering.innerHtmlSinkFiles || []).length}. Self-hosted browser assets only: ${sovereignty.selfHostedAssetsOnly ? 'yes' : 'no'}. CSP enforced with inline script attributes blocked.`;
     }
 
     if (controlsEl) {
@@ -145,6 +153,25 @@ function renderOverview(overview = {}) {
                 <pre class="small mb-0"><code>${escapeHtml(directive.value)}</code></pre>
             </div>
         `).join('');
+    }
+
+    if (sovereigntyEl) {
+        sovereigntyEl.innerHTML = `
+            <div class="playwright-scenario-card">
+                <div class="d-flex justify-content-between gap-3 mb-3 flex-wrap">
+                    <div>
+                        <p class="research-kicker mb-1">Self-hosted asset contract</p>
+                        <h3 class="h5 mb-1">${escapeHtml(sovereignty.selfHostedAssetsOnly ? 'No external asset calls detected' : 'Review required')}</h3>
+                    </div>
+                    <span class="badge text-bg-${sovereignty.selfHostedAssetsOnly ? 'success' : 'danger'}">${escapeHtml(sovereignty.selfHostedAssetsOnly ? 'Sovereignty aligned' : 'External references found')}</span>
+                </div>
+                <p class="text-muted mb-3">Shared head assets: ${escapeHtml(String(sovereignty.sharedHeadAssetCount || 0))}. Inline style allowances: ${escapeHtml(String(sovereignty.inlineStyleAllowanceCount || 0))}.</p>
+                <p class="fw-semibold mb-2">Self-hosted paths</p>
+                <ul>${(sovereignty.selfHostedPaths || []).map((entry) => `<li><code>${escapeHtml(entry)}</code></li>`).join('')}</ul>
+                <p class="fw-semibold mb-2">External references</p>
+                <p class="text-muted mb-0">${escapeHtml(((sovereignty.externalAssetReferences || []).concat(sovereignty.externalClientCalls || [])).join(', ') || 'None detected')}</p>
+            </div>
+        `;
     }
 
     currentScenarios = Array.isArray(overview.scenarios) ? overview.scenarios : [];

@@ -3,9 +3,7 @@
 <head>
 
     <title><%= note ? "Edit Note" : "Create Note" %></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/custom.css">
+    <%- include('../partials/head-assets') %>
     <script src="/js/theme-toggle.js" defer></script>
 </head>
 <body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
@@ -69,6 +67,7 @@
                     placeholder="https://example.com/image.jpg"
                     value="<%= note ? note.image : '' %>"
                 />
+                <div class="form-text">Images are fetched by the server and re-served from this app so they keep working under the current security policy.</div>
                 <% if (typeof fieldErrors !== 'undefined' && fieldErrors.image) { %>
                     <div class="invalid-feedback"><%= fieldErrors.image %></div>
                 <% } %>

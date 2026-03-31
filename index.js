@@ -19,6 +19,8 @@ const locatorRepairApiRoute = require('./src/routes/locatorRepairApiRoutes');
 const locatorRepairPageRoute = require('./src/routes/locatorRepairPageRoutes');
 const xssDefenseApiRoute = require('./src/routes/xssDefenseApiRoutes');
 const xssDefensePageRoute = require('./src/routes/xssDefensePageRoutes');
+const breakGlassApiRoute = require('./src/routes/breakGlassApiRoutes');
+const breakGlassPageRoute = require('./src/routes/breakGlassPageRoutes');
 const accessControlApiRoute = require('./src/routes/accessControlApiRoutes');
 const accessControlPageRoute = require('./src/routes/accessControlPageRoutes');
 const hardwareFirstMfaApiRoute = require('./src/routes/hardwareFirstMfaApiRoutes');
@@ -38,10 +40,12 @@ const devRuntimeRoute = require('./src/routes/devRuntimeRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const settingsApiRoute = require('./src/routes/settingsApiRoutes');
 const metricsRoute = require('./src/routes/metrics');
+const breakGlassRoute = require('./src/routes/breakGlassRoutes');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { loadRuntimeEnvironment, reapplyLocalEnvOverrides } = require('./src/config/runtimeEnv');
 const { buildContentSecurityPolicyDirectives, buildHelmetProtectionOptions } = require('./src/config/xssDefense');
 const { requireAuth } = require('./src/middleware/auth');
+const { attachBreakGlassState, enforceBreakGlass } = require('./src/middleware/breakGlass');
 const { ensureCsrfToken, requireCsrfProtection } = require('./src/middleware/csrf');
 const { attachSessionAuthAssurance } = require('./src/middleware/sessionAuthAssurance');
 const { enforceServerSideApiAccessControl } = require('./src/middleware/apiAccessControl');
@@ -106,6 +110,15 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.locals.transportSecurity = runtimeConfig.transport;
         app.locals.immutableLogging = runtimeConfig.immutableLogging;
         app.locals.immutableLogClient = immutableLogClient;
+        app.locals.breakGlass = {
+            mode: runtimeConfig.breakGlass.mode,
+            enabled: runtimeConfig.breakGlass.mode !== 'disabled',
+            readOnly: runtimeConfig.breakGlass.mode === 'read_only',
+            offline: runtimeConfig.breakGlass.mode === 'offline',
+            reason: runtimeConfig.breakGlass.reason,
+            activatedAt: runtimeConfig.breakGlass.mode === 'disabled' ? null : new Date().toISOString(),
+            activatedBy: runtimeConfig.breakGlass.mode === 'disabled' ? '' : 'environment'
+        };
 
         const trustProxyHops = runtimeConfig.transport && Number.isInteger(runtimeConfig.transport.trustProxyHops)
             ? runtimeConfig.transport.trustProxyHops
@@ -125,6 +138,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.use(express.urlencoded({ extended: true }));
         app.use(enforceInjectionPrevention);
         app.use(createImmutableRequestAuditMiddleware({ client: immutableLogClient }));
+        app.use('/vendor/bootstrap', express.static(path.join(__dirname, 'node_modules', 'bootstrap', 'dist')));
+        app.use('/vendor/bootstrap-icons', express.static(path.join(__dirname, 'node_modules', 'bootstrap-icons')));
         app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
         // Public fallback image for notes without an image URL.
@@ -170,6 +185,23 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
             res.locals.user = req.user || null;
             next();
         });
+        app.use(attachBreakGlassState);
+
+        app.get('/healthz', (req, res) => {
+            const breakGlass = req.app && req.app.locals ? req.app.locals.breakGlass : null;
+            const offline = Boolean(breakGlass && breakGlass.offline);
+            return res.status(offline ? 503 : 200).json({
+                ok: !offline,
+                breakGlass: {
+                    mode: breakGlass && breakGlass.mode ? breakGlass.mode : 'disabled',
+                    enabled: Boolean(breakGlass && breakGlass.enabled)
+                }
+            });
+        });
+
+        app.use(enforceBreakGlass);
+
+        app.use(breakGlassRoute);
 
         // Authentication routes (must be before requireAuth middleware)
         app.use('/auth', authRoutes);
@@ -220,6 +252,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.use(injectionPreventionPageRoute);
         app.use(xssDefenseApiRoute);
         app.use(xssDefensePageRoute);
+        app.use(breakGlassApiRoute);
+        app.use(breakGlassPageRoute);
         app.use(accessControlApiRoute);
         app.use(accessControlPageRoute);
         app.use(locatorRepairApiRoute);

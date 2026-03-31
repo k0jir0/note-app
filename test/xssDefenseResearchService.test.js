@@ -15,7 +15,9 @@ describe('XSS defense research service', () => {
         expect(overview.csp.directives.scriptSrcAttr).to.deep.equal(['\'none\'']);
         expect(overview.rendering.serverTemplates.escapedInterpolationOnly).to.equal(true);
         expect(overview.rendering.clientRendering.inlineStyleTemplateFiles).to.deep.equal([]);
-        expect(overview.controls).to.have.length(5);
+        expect(overview.sovereignty.selfHostedAssetsOnly).to.equal(true);
+        expect(overview.sovereignty.externalAssetReferences).to.deep.equal([]);
+        expect(overview.controls).to.have.length(6);
         expect(overview.scenarios).to.be.an('array').that.is.not.empty;
     });
 

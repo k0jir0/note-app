@@ -5,14 +5,17 @@ const {
     isEncryptedValue,
     encryptText,
     decryptText,
-    encryptNoteUpdatePayload
+    encryptNoteUpdatePayload,
+    decryptNoteDocumentFields
 } = require('../src/utils/noteEncryption');
+const { parseEncryptedPayload } = require('../src/utils/cryptoSuite');
 
 describe('Note Encryption Utility', () => {
     const originalNoteKey = process.env.NOTE_ENCRYPTION_KEY;
     const originalLegacyNoteKey = process.env.LEGACY_NOTE_ENCRYPTION_KEY;
     const originalSessionSecret = process.env.SESSION_SECRET;
     const originalLegacyFallbackFlag = process.env.ALLOW_LEGACY_SESSION_SECRET_FALLBACK;
+    const originalCipherAlgo = process.env.CIPHER_ALGO;
 
     before(() => {
         process.env.NOTE_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
@@ -42,6 +45,12 @@ describe('Note Encryption Utility', () => {
         } else {
             process.env.ALLOW_LEGACY_SESSION_SECRET_FALLBACK = originalLegacyFallbackFlag;
         }
+
+        if (originalCipherAlgo === undefined) {
+            delete process.env.CIPHER_ALGO;
+        } else {
+            process.env.CIPHER_ALGO = originalCipherAlgo;
+        }
     });
 
     it('encrypts and decrypts plain text consistently', () => {
@@ -51,7 +60,19 @@ describe('Note Encryption Utility', () => {
 
         expect(ciphertext).to.not.equal(plaintext);
         expect(isEncryptedValue(ciphertext)).to.equal(true);
+        expect(parseEncryptedPayload(ciphertext).suiteId).to.equal('aes-256-gcm');
         expect(decryptText(ciphertext)).to.equal(plaintext);
+    });
+
+    it('uses the active cipher suite from CIPHER_ALGO', () => {
+        process.env.CIPHER_ALGO = 'AES-256-GCM';
+
+        const ciphertext = encryptText('Cipher suite selected by env');
+        const parsed = parseEncryptedPayload(ciphertext);
+
+        expect(parsed.version).to.equal(2);
+        expect(parsed.suiteId).to.equal('aes-256-gcm');
+        expect(decryptText(ciphertext)).to.equal('Cipher suite selected by env');
     });
 
     it('does not double-encrypt an already encrypted value', () => {
@@ -108,5 +129,20 @@ describe('Note Encryption Utility', () => {
         expect(decryptText(legacyCiphertext)).to.equal('Legacy note payload');
 
         delete process.env.ALLOW_LEGACY_SESSION_SECRET_FALLBACK;
+    });
+
+    it('decrypts plain-object note payloads returned from query hooks', () => {
+        const note = {
+            title: encryptText('Updated title'),
+            content: encryptText('Updated content'),
+            image: encryptText('https://example.com/updated.png')
+        };
+
+        const decryptedNote = decryptNoteDocumentFields(note);
+
+        expect(decryptedNote).to.equal(note);
+        expect(note.title).to.equal('Updated title');
+        expect(note.content).to.equal('Updated content');
+        expect(note.image).to.equal('https://example.com/updated.png');
     });
 });
