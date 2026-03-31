@@ -1,46 +1,9 @@
-const express = require('express');
-const helmet = require('helmet');
 const mongoose = require('mongoose');
 const path = require('path');
 const session = require('express-session');
 
-const noteApiRoutes = require('../../src/routes/noteApiRoutes');
-const notePageRoutes = require('../../src/routes/notePageRoutes');
-const scanApiRoutes = require('../../src/routes/scanApiRoutes');
-const securityApiRoutes = require('../../src/routes/securityApiRoutes');
-const securityPageRoutes = require('../../src/routes/securityPageRoutes');
-const mlApiRoutes = require('../../src/routes/mlApiRoutes');
-const mlPageRoutes = require('../../src/routes/mlPageRoutes');
-const playwrightApiRoutes = require('../../src/routes/playwrightApiRoutes');
-const playwrightPageRoutes = require('../../src/routes/playwrightPageRoutes');
-const injectionPreventionApiRoutes = require('../../src/routes/injectionPreventionApiRoutes');
-const injectionPreventionPageRoutes = require('../../src/routes/injectionPreventionPageRoutes');
-const xssDefenseApiRoutes = require('../../src/routes/xssDefenseApiRoutes');
-const xssDefensePageRoutes = require('../../src/routes/xssDefensePageRoutes');
-const breakGlassApiRoutes = require('../../src/routes/breakGlassApiRoutes');
-const breakGlassPageRoutes = require('../../src/routes/breakGlassPageRoutes');
-const locatorRepairApiRoutes = require('../../src/routes/locatorRepairApiRoutes');
-const locatorRepairPageRoutes = require('../../src/routes/locatorRepairPageRoutes');
-const accessControlApiRoutes = require('../../src/routes/accessControlApiRoutes');
-const accessControlPageRoutes = require('../../src/routes/accessControlPageRoutes');
-const hardwareFirstMfaApiRoutes = require('../../src/routes/hardwareFirstMfaApiRoutes');
-const hardwareFirstMfaPageRoutes = require('../../src/routes/hardwareFirstMfaPageRoutes');
-const missionAssuranceApiRoutes = require('../../src/routes/missionAssuranceApiRoutes');
-const missionAssurancePageRoutes = require('../../src/routes/missionAssurancePageRoutes');
-const sessionManagementApiRoutes = require('../../src/routes/sessionManagementApiRoutes');
-const sessionManagementPageRoutes = require('../../src/routes/sessionManagementPageRoutes');
-const seleniumApiRoutes = require('../../src/routes/seleniumApiRoutes');
-const seleniumPageRoutes = require('../../src/routes/seleniumPageRoutes');
-const { enforceInjectionPrevention } = require('../../src/middleware/injectionPrevention');
-const { attachSessionAuthAssurance } = require('../../src/middleware/sessionAuthAssurance');
-const { enforceServerSideApiAccessControl } = require('../../src/middleware/apiAccessControl');
-const { enforceStrictSessionManagement } = require('../../src/middleware/sessionManagement');
-const { attachBreakGlassState, enforceBreakGlass } = require('../../src/middleware/breakGlass');
-const { sanitizeResponseMetadata } = require('../../src/middleware/responseMetadataProtection');
-const { ensureCsrfToken, requireCsrfProtection } = require('../../src/middleware/csrf');
-const { buildContentSecurityPolicyDirectives, buildHelmetProtectionOptions } = require('../../src/config/xssDefense');
+const { createApp: createApplication } = require('../../src/app/createApp');
 const { applyMongooseInjectionDefaults } = require('../../src/services/injectionPreventionService');
-const { handleUnhandledError } = require('../../src/utils/errorHandler');
 const Notes = require('../../src/models/Notes');
 const SecurityAlert = require('../../src/models/SecurityAlert');
 const ScanResult = require('../../src/models/ScanResult');
@@ -313,15 +276,7 @@ function stubSecurityModels(sandbox, stores) {
 }
 
 function createApp() {
-    const app = express();
-    const mongoosePosture = applyMongooseInjectionDefaults(mongoose);
-
-    app.disable('x-powered-by');
-
-    app.set('view engine', 'ejs');
-    app.set('views', path.join(__dirname, '../../src/views'));
-    app.locals.mongooseLib = mongoose;
-    app.locals.runtimeConfig = {
+    const runtimeConfig = {
         sessionManagement: {
             idleTimeoutMs: 15 * 60 * 1000,
             absoluteTimeoutMs: 8 * 60 * 60 * 1000,
@@ -350,135 +305,63 @@ function createApp() {
             }
         }
     };
-    app.locals.injectionPrevention = {
-        requestGuardEnabled: true,
-        ...mongoosePosture
-    };
-    app.locals.xssDefense = {
-        escapedServerRendering: true,
-        strictCspEnabled: true,
-        directives: buildContentSecurityPolicyDirectives()
-    };
-    app.locals.realtimeAvailable = true;
-    app.locals.realtimeEnabled = true;
-    app.locals.locatorRepairStorageRoot = path.join(__dirname, '../.tmp-locator-repair-runtime');
-    app.locals.breakGlass = {
-        mode: 'disabled',
-        enabled: false,
-        readOnly: false,
-        offline: false,
-        reason: '',
-        activatedAt: null,
-        activatedBy: ''
-    };
 
-    app.use(sanitizeResponseMetadata);
-    app.use(helmet(buildHelmetProtectionOptions({ isProduction: false })));
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: true }));
-    app.use(enforceInjectionPrevention);
-    app.use(session({
-        secret: 'test-session-secret-that-is-long-enough',
-        resave: false,
-        saveUninitialized: true
-    }));
-
-    app.use((req, res, next) => {
-        const authenticated = req.get('x-test-auth') === '1';
-        req.isAuthenticated = () => authenticated;
-        req.user = authenticated
-            ? {
-                _id: TEST_USER_ID,
-                email: 'tester@example.com',
-                accessProfile: {
-                    missionRole: 'analyst',
-                    clearance: 'protected_b',
-                    unit: 'cyber-task-force',
-                    assignedMissions: ['research-workspace', 'browser-assurance'],
-                    deviceTier: 'managed',
-                    networkZones: ['corp'],
-                    registeredHardwareToken: true,
-                    hardwareTokenLabel: 'TestRigKey',
-                    hardwareTokenSerial: 'CAF-TST-1000',
-                    registeredPkiCertificate: true,
-                    pkiCertificateSubject: 'CN=tester@example.com, OU=CAF Research',
-                    pkiCertificateIssuer: 'CN=CAF Root CA',
-                    breakGlassApproved: false,
-                    breakGlassReason: ''
+    return createApplication({
+        rootDir: path.join(__dirname, '../..'),
+        runtimeConfig,
+        mongooseLib: mongoose,
+        injectionPreventionPosture: applyMongooseInjectionDefaults(mongoose),
+        sessionMiddleware: session({
+            secret: 'test-session-secret-that-is-long-enough',
+            resave: false,
+            saveUninitialized: true
+        }),
+        realtimeAvailable: true,
+        realtimeEnabled: true,
+        includeAuthRoutes: false,
+        includeSettingsApiRoute: false,
+        includeMetricsRoute: false,
+        additionalLocals: {
+            locatorRepairStorageRoot: path.join(__dirname, '../.tmp-locator-repair-runtime')
+        },
+        injectSessionPrincipal: (req, res, next) => {
+            const authenticated = req.get('x-test-auth') === '1';
+            req.isAuthenticated = () => authenticated;
+            req.user = authenticated
+                ? {
+                    _id: TEST_USER_ID,
+                    email: 'tester@example.com',
+                    accessProfile: {
+                        missionRole: 'analyst',
+                        clearance: 'protected_b',
+                        unit: 'cyber-task-force',
+                        assignedMissions: ['research-workspace', 'browser-assurance'],
+                        deviceTier: 'managed',
+                        networkZones: ['corp'],
+                        registeredHardwareToken: true,
+                        hardwareTokenLabel: 'TestRigKey',
+                        hardwareTokenSerial: 'CAF-TST-1000',
+                        registeredPkiCertificate: true,
+                        pkiCertificateSubject: 'CN=tester@example.com, OU=CAF Research',
+                        pkiCertificateIssuer: 'CN=CAF Root CA',
+                        breakGlassApproved: false,
+                        breakGlassReason: ''
+                    }
                 }
-            }
-            : null;
-        req.logIn = (user, callback) => {
-            req.user = user;
-            callback(null);
-        };
-        req.logout = (callback) => callback(null);
-        next();
+                : null;
+            req.logIn = (user, callback) => {
+                req.user = user;
+                callback(null);
+            };
+            req.logout = (callback) => callback(null);
+            next();
+        },
+        registerAdditionalRoutes: (app) => {
+            app.get('/__test/csrf', (req, res) => {
+                res.status(200).json({ csrfToken: res.locals.csrfToken });
+            });
+        }
     });
-
-    app.use(enforceStrictSessionManagement);
-    app.use(attachSessionAuthAssurance);
-    app.use(enforceServerSideApiAccessControl);
-
-    app.use((req, res, next) => {
-        res.locals.user = req.user || null;
-        next();
-    });
-
-    app.use(attachBreakGlassState);
-
-    app.use(ensureCsrfToken);
-    app.use(requireCsrfProtection);
-
-    app.get('/__test/csrf', (req, res) => {
-        res.status(200).json({ csrfToken: res.locals.csrfToken });
-    });
-
-    app.get('/healthz', (req, res) => {
-        const breakGlass = req.app && req.app.locals ? req.app.locals.breakGlass : null;
-        const offline = Boolean(breakGlass && breakGlass.offline);
-        res.status(offline ? 503 : 200).json({
-            ok: !offline,
-            breakGlass: {
-                mode: breakGlass && breakGlass.mode ? breakGlass.mode : 'disabled',
-                enabled: Boolean(breakGlass && breakGlass.enabled)
-            }
-        });
-    });
-
-    app.use(enforceBreakGlass);
-
-    app.use(noteApiRoutes);
-    app.use(notePageRoutes);
-    app.use(securityApiRoutes);
-    app.use(securityPageRoutes);
-    app.use(mlApiRoutes);
-    app.use(mlPageRoutes);
-    app.use(playwrightApiRoutes);
-    app.use(playwrightPageRoutes);
-    app.use(injectionPreventionApiRoutes);
-    app.use(injectionPreventionPageRoutes);
-    app.use(xssDefenseApiRoutes);
-    app.use(xssDefensePageRoutes);
-    app.use(breakGlassApiRoutes);
-    app.use(breakGlassPageRoutes);
-    app.use(accessControlApiRoutes);
-    app.use(accessControlPageRoutes);
-    app.use(locatorRepairApiRoutes);
-    app.use(locatorRepairPageRoutes);
-    app.use(hardwareFirstMfaApiRoutes);
-    app.use(hardwareFirstMfaPageRoutes);
-    app.use(missionAssuranceApiRoutes);
-    app.use(missionAssurancePageRoutes);
-    app.use(sessionManagementApiRoutes);
-    app.use(sessionManagementPageRoutes);
-    app.use(seleniumApiRoutes);
-    app.use(seleniumPageRoutes);
-    app.use(scanApiRoutes);
-
-    app.use(handleUnhandledError);
-
-    return app;
 }
 
 class TestClient {

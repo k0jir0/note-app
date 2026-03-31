@@ -175,7 +175,7 @@ Notes:
 - For production scraping, set `METRICS_AUTH_TOKEN` through your deployment secret manager rather than committing a value into `.env`.
 
 Current local verification (March 31, 2026):
-- `npm test --silent` passes with 543 tests
+- the full Mocha suite passes with 551 tests
 - `npm run lint` passes with 0 errors
 - `npm run audit:deps` and `npm run audit:prod` both report 0 vulnerabilities
 - `npm run test:e2e` passes in Chromium with 21 passing browser tests
@@ -192,6 +192,9 @@ Current local verification (March 31, 2026):
 - Latest `artifacts/selenium-results.json` on disk shows 11 passing / 0 failing
 - Note images now render through authenticated same-origin routes (`/notes/:id/image`) backed by server-managed assets, which restores note thumbnails under the strict CSP posture without trusting third-party image hosts in the browser.
 - The Security CI DAST workflow now uses the maintained ZAP baseline GitHub Action after the earlier manual Docker invocation proved fragile in GitHub-hosted runners.
+- App composition now runs through a reusable `createApp()` factory plus a centralized feature route registry, which keeps `index.js` thin and lets the integration test harness share the same application assembly path.
+- Auth, settings, and note-page routes now delegate through dedicated controllers and services, and the Research Workspace page now builds from shared workspace catalog/service code instead of scattered inline composition.
+- Runtime config, security realtime/workspace logic, Playwright module helpers, and mission-access policy data were split into smaller modules, reducing oversized files while preserving the current behavior.
 
 Recent security hardening progress (March 29, 2026):
 - inbound HTTPS transport is pinned to TLS 1.3 only when certificate-based transport is enabled

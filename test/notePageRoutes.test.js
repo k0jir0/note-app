@@ -146,38 +146,42 @@ describe('Note Page Routes', () => {
 
         await handler(req, res);
 
-        expect(
-            res.render.calledWith('pages/research.ejs', {
-                title: 'Research',
-                csrfToken: 'test-csrf-token',
-                workspace: {
-                    automation: {
-                        anyEnabled: true,
-                        enabledCount: 1,
-                        logBatch: {
-                            enabled: true,
-                            statusLabel: 'Active',
-                            statusTone: 'success',
-                            source: 'server-log-batch',
-                            intervalMs: 60000,
-                            dedupeWindowMs: 300000,
-                            filePath: 'C:\\logs\\app.log',
-                            maxReadBytes: 65536
-                        },
-                        scanBatch: {
-                            enabled: false,
-                            statusLabel: 'Disabled',
-                            statusTone: 'secondary',
-                            source: 'scheduled-scan-import',
-                            intervalMs: 300000,
-                            dedupeWindowMs: 3600000,
-                            filePath: null,
-                            maxReadBytes: null
-                        }
-                    }
-                }
-            })
-        ).to.be.true;
+        expect(res.render.calledOnce).to.equal(true);
+        expect(res.render.firstCall.args[0]).to.equal('pages/research.ejs');
+        expect(res.render.firstCall.args[1]).to.deep.include({
+            title: 'Research',
+            csrfToken: 'test-csrf-token'
+        });
+        expect(res.render.firstCall.args[1].workspace.automation).to.deep.equal({
+            anyEnabled: true,
+            enabledCount: 1,
+            logBatch: {
+                enabled: true,
+                statusLabel: 'Active',
+                statusTone: 'success',
+                source: 'server-log-batch',
+                intervalMs: 60000,
+                dedupeWindowMs: 300000,
+                filePath: 'C:\\logs\\app.log',
+                maxReadBytes: 65536
+            },
+            scanBatch: {
+                enabled: false,
+                statusLabel: 'Disabled',
+                statusTone: 'secondary',
+                source: 'scheduled-scan-import',
+                intervalMs: 300000,
+                dedupeWindowMs: 3600000,
+                filePath: null,
+                maxReadBytes: null
+            }
+        });
+        expect(res.render.firstCall.args[1].workspace.modules).to.be.an('array').that.is.not.empty;
+        expect(res.render.firstCall.args[1].workspace.modules[0]).to.deep.include({
+            title: 'Security Operations Module',
+            href: '/security/module',
+            badgeText: '1/2 automation pollers active'
+        });
     });
 
     it('renders home page with empty notes on error for GET /notes', async () => {

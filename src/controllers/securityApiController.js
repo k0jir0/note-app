@@ -1,44 +1,6 @@
-const mongoose = require('mongoose');
-const SecurityAlert = require('../models/SecurityAlert');
-const ScanResult = require('../models/ScanResult');
-const { buildScanAlertCorrelations } = require('../utils/correlationAnalysis');
 const { handleApiError } = require('../utils/errorHandler');
-const { buildPersistedCorrelationDemo, buildSampleCorrelationInputs } = require('../utils/sampleCorrelationData');
-const { VALID_FEEDBACK_LABELS, enrichAlertForTriage, enrichAlertsForTriage } = require('../utils/alertTriage');
-const { persistAutomatedAlerts, persistAutomatedScan } = require('../services/automationService');
-const { persistLogAnalysis } = require('../services/securityIngestService');
-const { redis, subscriber } = require('../lib/redisClient');
-const { ingestCounter } = require('../routes/metrics');
-
-const ALERT_LIST_SELECT = 'type severity summary details detectedAt feedback mlScore mlLabel mlReasons mlFeatures scoreSource response';
-const SCAN_LIST_SELECT = 'target tool findings summary importedAt';
-const ALERT_SORT_RECENT = { detectedAt: -1, createdAt: -1 };
-const ALERT_SORT_ML_SCORE = { mlScore: -1, detectedAt: -1, createdAt: -1 };
-
-const parseLimit = (value, fallback = 20, max = 100) => {
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isNaN(parsed) || parsed <= 0) {
-        return fallback;
-    }
-
-    return Math.min(parsed, max);
-};
-
-const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
-
-const normalizeAlertSort = (value) => {
-    return String(value || '').trim().toLowerCase() === 'ml_score'
-        ? 'ml_score'
-        : 'recent';
-};
-
-const resolveLeanResult = async (queryOrValue) => {
-    if (queryOrValue && typeof queryOrValue.lean === 'function') {
-        return queryOrValue.lean();
-    }
-
-    return queryOrValue;
-};
+const securityWorkspaceService = require('../services/securityWorkspaceService');
+const securityRealtimeService = require('../services/securityRealtimeService');
 
 exports.analyzeLogs = async (req, res) => {
     try {
@@ -52,9 +14,8 @@ exports.analyzeLogs = async (req, res) => {
             });
         }
 
-        const result = await persistLogAnalysis({
+        const result = await securityWorkspaceService.analyzeLogsForUser({
             userId: req.user._id,
-            source: 'manual-log-input',
             logText
         });
 
@@ -76,36 +37,15 @@ exports.analyzeLogs = async (req, res) => {
 
 exports.getAlerts = async (req, res) => {
     try {
-        const limit = parseLimit(req.query.limit, 20, 100);
-        const sortMode = normalizeAlertSort(req.query.sort);
-
-        const [alerts, totalCount] = await Promise.all([
-            SecurityAlert.find({ user: req.user._id })
-                .select(ALERT_LIST_SELECT)
-                .sort(sortMode === 'ml_score' ? ALERT_SORT_ML_SCORE : ALERT_SORT_RECENT)
-                .lean()
-                .limit(limit),
-            SecurityAlert.countDocuments({ user: req.user._id })
-        ]);
-
-        const enrichedAlerts = enrichAlertsForTriage(alerts);
-        if (sortMode === 'ml_score') {
-            enrichedAlerts.sort((left, right) => {
-                const scoreDelta = Number(right.mlScore || 0) - Number(left.mlScore || 0);
-                if (scoreDelta !== 0) {
-                    return scoreDelta;
-                }
-
-                return new Date(right.detectedAt || 0).getTime() - new Date(left.detectedAt || 0).getTime();
-            });
-        }
+        const payload = await securityWorkspaceService.listAlertsForUser({
+            userId: req.user._id,
+            limit: securityWorkspaceService.parseLimit(req.query.limit, 20, 100),
+            sort: securityWorkspaceService.normalizeAlertSort(req.query.sort)
+        });
 
         return res.status(200).json({
             success: true,
-            count: enrichedAlerts.length,
-            totalCount,
-            sort: sortMode,
-            data: enrichedAlerts
+            ...payload
         });
     } catch (error) {
         return handleApiError(res, error, 'Get security alerts');
@@ -114,69 +54,26 @@ exports.getAlerts = async (req, res) => {
 
 exports.updateAlertFeedback = async (req, res) => {
     try {
-        const id = typeof req.params.id === 'string' ? req.params.id.trim() : '';
-        const feedbackLabel = typeof req.body?.feedbackLabel === 'string'
-            ? req.body.feedbackLabel.trim()
-            : '';
-
-        if (!isValidObjectId(id)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid alert ID format',
-                errors: ['The provided alert ID is not valid']
-            });
-        }
-
-        if (!VALID_FEEDBACK_LABELS.includes(feedbackLabel)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors: [`feedbackLabel must be one of: ${VALID_FEEDBACK_LABELS.join(', ')}`]
-            });
-        }
-
-        const existingAlert = await resolveLeanResult(SecurityAlert.findOne({ _id: id, user: req.user._id }));
-        if (!existingAlert) {
-            return res.status(404).json({
-                success: false,
-                message: 'Alert not found or access denied',
-                errors: ['The alert does not exist or you do not have permission to update it']
-            });
-        }
-
-        const triagedAlert = enrichAlertForTriage({
-            ...existingAlert,
-            feedback: {
-                label: feedbackLabel,
-                updatedAt: new Date()
-            }
+        const result = await securityWorkspaceService.updateAlertFeedbackForUser({
+            userId: req.user._id,
+            alertId: typeof req.params.id === 'string' ? req.params.id.trim() : '',
+            feedbackLabel: typeof req.body?.feedbackLabel === 'string'
+                ? req.body.feedbackLabel.trim()
+                : ''
         });
 
-        const updateQuery = SecurityAlert.findOneAndUpdate(
-            { _id: id, user: req.user._id },
-            {
-                feedback: triagedAlert.feedback,
-                mlScore: triagedAlert.mlScore,
-                mlLabel: triagedAlert.mlLabel,
-                mlReasons: triagedAlert.mlReasons,
-                mlFeatures: triagedAlert.mlFeatures,
-                scoreSource: triagedAlert.scoreSource
-            },
-            {
-                new: true,
-                runValidators: true
-            }
-        );
-        if (updateQuery && typeof updateQuery.select === 'function') {
-            updateQuery.select(ALERT_LIST_SELECT);
+        if (!result.ok) {
+            return res.status(result.status).json({
+                success: false,
+                message: result.message,
+                errors: result.errors
+            });
         }
-
-        const savedAlert = await resolveLeanResult(updateQuery);
 
         return res.status(200).json({
             success: true,
-            message: 'Alert feedback updated',
-            data: enrichAlertForTriage(savedAlert)
+            message: result.message,
+            data: result.data
         });
     } catch (error) {
         return handleApiError(res, error, 'Update alert feedback');
@@ -185,29 +82,14 @@ exports.updateAlertFeedback = async (req, res) => {
 
 exports.getCorrelations = async (req, res) => {
     try {
-        const limit = parseLimit(req.query.limit, 20, 50);
-
-        const [alerts, scans] = await Promise.all([
-            SecurityAlert.find({ user: req.user._id })
-                .select(ALERT_LIST_SELECT)
-                .sort({ detectedAt: -1, createdAt: -1 })
-                .lean()
-                .limit(50),
-            ScanResult.find({ user: req.user._id })
-                .select(SCAN_LIST_SELECT)
-                .sort({ importedAt: -1, createdAt: -1 })
-                .lean()
-                .limit(50)
-        ]);
-
-        const correlationPayload = buildScanAlertCorrelations(scans, alerts, limit);
+        const payload = await securityWorkspaceService.listCorrelationsForUser({
+            userId: req.user._id,
+            limit: securityWorkspaceService.parseLimit(req.query.limit, 20, 50)
+        });
 
         return res.status(200).json({
             success: true,
-            count: correlationPayload.correlations.length,
-            totalCount: correlationPayload.totalCount,
-            data: correlationPayload.correlations,
-            overview: correlationPayload.overview
+            ...payload
         });
     } catch (error) {
         return handleApiError(res, error, 'Get correlations');
@@ -216,55 +98,13 @@ exports.getCorrelations = async (req, res) => {
 
 exports.getSampleCorrelations = async (req, res) => {
     try {
-        const sampleInput = buildPersistedCorrelationDemo();
-        const alertSource = 'correlation-demo';
-        const scanSource = 'correlation-demo';
-
-        // Append demo records instead of removing existing ones
-        const [savedScans, savedAlerts] = await Promise.all([
-            ScanResult.insertMany(sampleInput.scans.map((scan) => ({
-                ...scan,
-                user: req.user._id,
-                source: scanSource
-            }))),
-            SecurityAlert.insertMany(enrichAlertsForTriage(sampleInput.alerts.map((alert) => ({
-                ...alert,
-                user: req.user._id,
-                source: alertSource
-            }))))
-        ]);
-
-        // After inserting, include existing user alerts/scans when building correlations
-        const [alerts, scans] = await Promise.all([
-            SecurityAlert.find({ user: req.user._id })
-                .select(ALERT_LIST_SELECT)
-                .sort({ detectedAt: -1, createdAt: -1 })
-                .lean()
-                .limit(50),
-            ScanResult.find({ user: req.user._id })
-                .select(SCAN_LIST_SELECT)
-                .sort({ importedAt: -1, createdAt: -1 })
-                .lean()
-                .limit(50)
-        ]);
-
-        const correlationPayload = buildScanAlertCorrelations(scans, alerts, 20);
+        const payload = await securityWorkspaceService.createSampleCorrelationsForUser({
+            userId: req.user._id
+        });
 
         return res.status(200).json({
             success: true,
-            message: 'Correlation demo injected',
-            count: correlationPayload.correlations.length,
-            totalCount: correlationPayload.totalCount,
-            data: correlationPayload.correlations,
-            overview: correlationPayload.overview,
-            meta: {
-                sample: true,
-                persisted: true,
-                createdScans: savedScans.length,
-                createdAlerts: savedAlerts.length,
-                targets: sampleInput.targets,
-                logSummaries: sampleInput.logSummaries
-            }
+            ...payload
         });
     } catch (error) {
         return handleApiError(res, error, 'Get sample correlations');
@@ -273,139 +113,67 @@ exports.getSampleCorrelations = async (req, res) => {
 
 exports.injectAutomationSample = async (req, res) => {
     try {
-        const sampleInput = buildSampleCorrelationInputs();
         const runtimeAutomation = (req.app && req.app.locals && req.app.locals.runtimeConfig && req.app.locals.runtimeConfig.automation)
             ? req.app.locals.runtimeConfig.automation
             : {};
-        const alertSource = runtimeAutomation.logBatch && runtimeAutomation.logBatch.source
-            ? runtimeAutomation.logBatch.source
-            : 'server-log-batch';
-        const scanSource = runtimeAutomation.scanBatch && runtimeAutomation.scanBatch.source
-            ? runtimeAutomation.scanBatch.source
-            : 'scheduled-scan-import';
 
-        const [alertResult, scanResult] = await Promise.all([
-            persistAutomatedAlerts({
-                userId: req.user._id,
-                source: alertSource,
-                dedupeWindowMs: 0,
-                respondToIncidents: false
-            }, sampleInput.sampleLogText),
-            persistAutomatedScan({
-                userId: req.user._id,
-                source: scanSource,
-                dedupeWindowMs: 0
-            }, sampleInput.sampleScanText)
-        ]);
+        const payload = await securityWorkspaceService.injectAutomationSampleForUser({
+            userId: req.user._id,
+            runtimeAutomation
+        });
 
-        console.log(`[automation] sample injection created ${alertResult.createdAlerts} alert(s) and ${scanResult.findingsCount || 0} finding(s) for user ${req.user._id}`);
+        console.log(`[automation] sample injection created ${payload.data.createdAlerts} alert(s) and ${payload.data.findingsCount || 0} finding(s) for user ${req.user._id}`);
 
         return res.status(200).json({
             success: true,
-            message: 'Automation sample injected',
-            data: {
-                createdAlerts: alertResult.createdAlerts,
-                skippedAlerts: alertResult.skippedAlerts,
-                scanCreated: Boolean(scanResult.created),
-                scanSkippedReason: scanResult.reason || null,
-                findingsCount: scanResult.findingsCount || 0,
-                alertSource,
-                scanSource
-            }
+            ...payload
         });
     } catch (error) {
         return handleApiError(res, error, 'Inject automation sample');
     }
 };
 
-// Enqueue inbound log text (real-time ingestion)
 exports.realtimeIngest = async (req, res) => {
     try {
-        if (!req.app || !req.app.locals || !req.app.locals.realtimeEnabled) {
-            return res.status(404).json({ success: false, message: 'Realtime ingestion is disabled' });
+        const result = await securityRealtimeService.enqueueRealtimeIngest({
+            appLocals: req.app && req.app.locals,
+            userId: req.user._id,
+            payload: req.body || {}
+        });
+
+        if (!result.ok) {
+            return res.status(result.status).json({
+                success: false,
+                message: result.message,
+                errors: result.errors
+            });
         }
-        const payload = req.body || {};
-        const { type = 'log', logText = '', raw = '' } = payload;
 
-        if (type === 'log' && typeof logText !== 'string') {
-            return res.status(400).json({ success: false, errors: ['logText must be a string'] });
-        }
-
-        // Create a message for Redis Stream
-        const message = {
-            type,
-            user: String(req.user._id),
-            logText: type === 'log' ? logText : '',
-            raw: raw || ''
-        };
-
-        // XADD to stream (auto id)
-        await redis.xadd('security:ingest', '*', 'payload', JSON.stringify(message));
-
-        // increment Prometheus counter
-        try { ingestCounter.inc({ type }); } catch (e) { void e; }
-
-        return res.status(202).json({ success: true, message: 'Enqueued for real-time processing' });
+        return res.status(result.status).json({
+            success: true,
+            message: result.message
+        });
     } catch (error) {
         return handleApiError(res, error, 'Realtime ingest');
     }
 };
 
-// Server-Sent Events endpoint for live alerts
 exports.streamEvents = async (req, res) => {
     try {
-        if (!req.app || !req.app.locals || !req.app.locals.realtimeEnabled) {
-            return res.status(404).json({ success: false, message: 'Realtime endpoint disabled' });
+        const probeResponse = await securityRealtimeService.respondToRealtimeProbe({
+            appLocals: req.app && req.app.locals,
+            query: req.query,
+            res
+        });
+        if (probeResponse) {
+            return probeResponse;
         }
-        if (req.query && req.query.probe === '1') {
-            return res.status(200).json({ success: true, enabled: true });
-        }
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
-        res.flushHeaders?.();
 
-        const send = (data) => {
-            res.write(`data: ${JSON.stringify(data)}\n\n`);
-        };
-
-        // Send a simple keep-alive every 25s
-        const keepAlive = setInterval(() => {
-            res.write(': keep-alive\n\n');
-        }, 25000);
-
-        // Subscribe to a per-user Redis pubsub channel for immediate events
-        const userId = String(req.user && req.user._id ? req.user._id : 'global');
-        const channel = `security:events:${userId}`;
-        const localSubscriber = typeof subscriber.duplicate === 'function'
-            ? subscriber.duplicate()
-            : subscriber;
-
-        const onMessage = (chan, message) => {
-            if (chan === channel) {
-                try {
-                    const payload = JSON.parse(message);
-                    send(payload);
-                } catch (_e) {
-                    send({ error: 'malformed event' });
-                }
-            }
-        };
-
-        localSubscriber.subscribe(channel).then(() => {
-            localSubscriber.on('message', onMessage);
-        }).catch((e) => { void e; });
-
-        // Cleanup when client disconnects
-        req.on('close', () => {
-            clearInterval(keepAlive);
-            try { localSubscriber.removeListener('message', onMessage); } catch (e) { void e; }
-            try { localSubscriber.unsubscribe(channel); } catch (e) { void e; }
-            if (localSubscriber !== subscriber) {
-                try { localSubscriber.quit(); } catch (e) { void e; }
-                try { localSubscriber.disconnect(); } catch (e) { void e; }
-            }
-            res.end();
+        return securityRealtimeService.openRealtimeEventStream({
+            appLocals: req.app && req.app.locals,
+            userId: req.user && req.user._id,
+            req,
+            res
         });
     } catch (error) {
         return handleApiError(res, error, 'Stream events');
