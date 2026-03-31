@@ -56,6 +56,7 @@ jobs:
       SESSION_SECRET: ci-session-secret-0123456789abcdef
       NOTE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       TRUST_PROXY_HOPS: '1'
+      TRUSTED_PROXY_ADDRESSES: '127.0.0.1'
       IMMUTABLE_LOGGING_ENABLED: 'true'
       IMMUTABLE_LOGGING_URL: https://logs.example.gov/append
       IMMUTABLE_LOGGING_TOKEN: ci-log-token
@@ -72,8 +73,8 @@ jobs:
         run: npm ci --prefer-offline --no-audit --progress=false
       - name: Validate protected runtime configuration
         run: node -e "require('./src/config/runtimeConfig').validateRuntimeConfig(process.env); console.log('protected-runtime-config-ok')"
-      - name: Run protected-runtime regression and app smoke slice
-        run: node ./node_modules/mocha/bin/mocha.js --require ./test/testSetup.js "test/runtimeConfig.test.js" "test/secureTransportMiddleware.test.js" "test/protectedRuntimeApp.test.js"
+      - name: Run protected-runtime regression, bootstrap, and app smoke slice
+        run: node ./node_modules/mocha/bin/mocha.js --require ./test/testSetup.js "test/runtimeConfig.test.js" "test/secureTransportMiddleware.test.js" "test/bootstrapApplication.test.js" "test/protectedRuntimeApp.test.js"
 
   dast:
     name: DAST

@@ -27,6 +27,11 @@ describe('PKI request evidence service', () => {
         };
         const req = {
             app: {
+                locals: {
+                    transportSecurity: {
+                        trustedProxyAddresses: ['127.0.0.1']
+                    }
+                },
                 get(setting) {
                     return setting === 'trust proxy';
                 }
@@ -59,6 +64,11 @@ describe('PKI request evidence service', () => {
         };
         const req = {
             app: {
+                locals: {
+                    transportSecurity: {
+                        trustedProxyAddresses: ['127.0.0.1']
+                    }
+                },
                 get(setting) {
                     return setting === 'trust proxy';
                 }

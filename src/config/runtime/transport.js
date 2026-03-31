@@ -5,6 +5,7 @@ const {
     parseIntegerEnv
 } = require('./helpers');
 const { buildRuntimePosture } = require('./database');
+const { parseTrustedProxyAddresses } = require('../../services/trustedProxyService');
 
 function buildTransportConfig(env, errors) {
     const httpsEnabled = parseBooleanEnv('HTTPS_ENABLED', env, errors);
@@ -16,6 +17,7 @@ function buildTransportConfig(env, errors) {
         min: 0,
         max: 10
     }, errors);
+    const trustedProxyAddresses = parseTrustedProxyAddresses(env.TRUSTED_PROXY_ADDRESSES);
 
     const keyPath = isNonEmptyString(env.HTTPS_KEY_PATH) ? env.HTTPS_KEY_PATH.trim() : '';
     const certPath = isNonEmptyString(env.HTTPS_CERT_PATH) ? env.HTTPS_CERT_PATH.trim() : '';
@@ -37,6 +39,10 @@ function buildTransportConfig(env, errors) {
 
     if (trustProxyClientCertHeaders && trustProxyHops < 1) {
         errors.push('TRUST_PROXY_CLIENT_CERT_HEADERS=true requires TRUST_PROXY_HOPS to be at least 1');
+    }
+
+    if (trustProxyClientCertHeaders && trustedProxyAddresses.length < 1) {
+        errors.push('TRUSTED_PROXY_ADDRESSES is required when trusting proxy client certificate headers');
     }
 
     if (httpsEnabled) {
@@ -65,6 +71,10 @@ function buildTransportConfig(env, errors) {
         errors.push('APP_BASE_URL must use https:// when HTTPS_ENABLED=true in protected runtime environments');
     }
 
+    if (protectedRuntime && proxyTlsTerminated && trustedProxyAddresses.length < 1) {
+        errors.push('TRUSTED_PROXY_ADDRESSES must enumerate one or more exact proxy addresses when TRUST_PROXY_HOPS is configured for protected runtime transport');
+    }
+
     return {
         protocol: httpsEnabled || proxyTlsTerminated ? 'https' : 'http',
         httpsEnabled,
@@ -72,6 +82,7 @@ function buildTransportConfig(env, errors) {
         requireClientCertificate,
         trustProxyClientCertHeaders,
         trustProxyHops,
+        trustedProxyAddresses,
         tlsMinVersion: httpsEnabled ? 'TLSv1.3' : '',
         tlsMaxVersion: httpsEnabled ? 'TLSv1.3' : '',
         keyPath,

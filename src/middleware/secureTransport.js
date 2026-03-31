@@ -1,46 +1,10 @@
+const { isTrustedProxyAddress } = require('../services/trustedProxyService');
+
 function normalizeForwardedProto(value = '') {
     return String(value || '')
         .split(',')[0]
         .trim()
         .toLowerCase();
-}
-
-function normalizeSocketAddress(address = '') {
-    const trimmed = String(address || '').trim();
-    if (!trimmed) {
-        return '';
-    }
-
-    const withoutPrefix = trimmed.startsWith('::ffff:')
-        ? trimmed.slice(7)
-        : trimmed;
-
-    if (withoutPrefix.startsWith('[') && withoutPrefix.includes(']')) {
-        return withoutPrefix.slice(1, withoutPrefix.indexOf(']'));
-    }
-
-    const lastColon = withoutPrefix.lastIndexOf(':');
-    if (lastColon > -1 && withoutPrefix.indexOf(':') === lastColon) {
-        return withoutPrefix.slice(0, lastColon);
-    }
-
-    return withoutPrefix;
-}
-
-function isTrustedProxyAddress(address = '') {
-    const normalized = normalizeSocketAddress(address);
-    if (!normalized) {
-        return false;
-    }
-
-    return normalized === '127.0.0.1'
-        || normalized === '::1'
-        || normalized === 'localhost'
-        || normalized.startsWith('10.')
-        || normalized.startsWith('192.168.')
-        || /^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)
-        || normalized.startsWith('fc')
-        || normalized.startsWith('fd');
 }
 
 function requestArrivedFromTrustedProxy(req = {}, transport = {}) {
@@ -52,7 +16,7 @@ function requestArrivedFromTrustedProxy(req = {}, transport = {}) {
         ? req.socket.remoteAddress
         : (req.connection && req.connection.remoteAddress ? req.connection.remoteAddress : '');
 
-    return isTrustedProxyAddress(remoteAddress);
+    return isTrustedProxyAddress(remoteAddress, transport.trustedProxyAddresses);
 }
 
 function requestUsesSecureTransport(req = {}, transport = {}) {

@@ -24,6 +24,7 @@ describe('protected runtime app smoke', function () {
             SESSION_SECRET: 'ci-session-secret-0123456789abcdef',
             NOTE_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
             TRUST_PROXY_HOPS: '1',
+            TRUSTED_PROXY_ADDRESSES: '127.0.0.1',
             IMMUTABLE_LOGGING_ENABLED: 'true',
             IMMUTABLE_LOGGING_URL: 'https://logs.example.gov/append',
             IMMUTABLE_LOGGING_TOKEN: 'ci-log-token',

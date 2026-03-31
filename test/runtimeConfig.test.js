@@ -119,6 +119,7 @@ describe('Runtime Config Validation', () => {
         env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
         env.APP_BASE_URL = 'https://note-app.example.com';
         env.TRUST_PROXY_HOPS = '1';
+        env.TRUSTED_PROXY_ADDRESSES = '127.0.0.1';
         env.IMMUTABLE_LOGGING_ENABLED = 'true';
         env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
         env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
@@ -157,6 +158,7 @@ describe('Runtime Config Validation', () => {
             requireClientCertificate: false,
             trustProxyClientCertHeaders: false,
             trustProxyHops: 0,
+            trustedProxyAddresses: [],
             tlsMinVersion: '',
             tlsMaxVersion: '',
             keyPath: '',
@@ -278,6 +280,7 @@ describe('Runtime Config Validation', () => {
             requireClientCertificate: true,
             trustProxyClientCertHeaders: false,
             trustProxyHops: 0,
+            trustedProxyAddresses: [],
             tlsMinVersion: 'TLSv1.3',
             tlsMaxVersion: 'TLSv1.3',
             keyPath: 'C:\\tls\\server.key',
@@ -307,11 +310,13 @@ describe('Runtime Config Validation', () => {
         expect(() => validateRuntimeConfig(env)).to.throw('TRUST_PROXY_CLIENT_CERT_HEADERS=true requires TRUST_PROXY_HOPS to be at least 1');
 
         env.TRUST_PROXY_HOPS = '1';
+        env.TRUSTED_PROXY_ADDRESSES = '127.0.0.1';
 
         const config = validateRuntimeConfig(env);
 
         expect(config.transport.trustProxyClientCertHeaders).to.equal(true);
         expect(config.transport.trustProxyHops).to.equal(1);
+        expect(config.transport.trustedProxyAddresses).to.deep.equal(['127.0.0.1']);
     });
 
     it('accepts valid break-glass runtime defaults and diagnostics', () => {
@@ -370,6 +375,7 @@ describe('Runtime Config Validation', () => {
         env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
         env.APP_BASE_URL = 'https://note-app.example.com';
         env.TRUST_PROXY_HOPS = '1';
+        env.TRUSTED_PROXY_ADDRESSES = '127.0.0.1, ::1';
         env.IMMUTABLE_LOGGING_ENABLED = 'true';
         env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
         env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
@@ -380,11 +386,25 @@ describe('Runtime Config Validation', () => {
         expect(config.transport.secureTransportRequired).to.equal(true);
         expect(config.transport.proxyTlsTerminated).to.equal(true);
         expect(config.transport.publicOriginHttps).to.equal(true);
+        expect(config.transport.trustedProxyAddresses).to.deep.equal(['127.0.0.1', '::1']);
         expect(config.identityLifecycle).to.deep.equal({
             protectedRuntime: true,
             selfSignupEnabled: false,
             googleAutoProvisionEnabled: false
         });
+    });
+
+    it('requires an explicit trusted proxy allowlist for protected runtime proxy transport', () => {
+        const env = createValidEnv();
+        env.NODE_ENV = 'production';
+        env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
+        env.APP_BASE_URL = 'https://note-app.example.com';
+        env.TRUST_PROXY_HOPS = '1';
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('TRUSTED_PROXY_ADDRESSES must enumerate one or more exact proxy addresses');
     });
 
     it('rejects self-service identity provisioning in protected runtimes', () => {
@@ -393,6 +413,7 @@ describe('Runtime Config Validation', () => {
         env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
         env.APP_BASE_URL = 'https://note-app.example.com';
         env.TRUST_PROXY_HOPS = '1';
+        env.TRUSTED_PROXY_ADDRESSES = '127.0.0.1';
         env.IMMUTABLE_LOGGING_ENABLED = 'true';
         env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
         env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';

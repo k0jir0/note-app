@@ -1,3 +1,5 @@
+const { isTrustedProxyAddress } = require('./trustedProxyService');
+
 function normalizeDistinguishedName(input) {
     if (!input) {
         return '';
@@ -42,42 +44,14 @@ function readHeader(req = {}, name = '') {
     return String(headers[String(name).toLowerCase()] || headers[name] || '').trim();
 }
 
-function normalizeSocketAddress(address = '') {
-    const trimmed = String(address || '').trim();
-    if (!trimmed) {
-        return '';
-    }
+function readTrustedProxyAddresses(req = {}) {
+    const transportSecurity = req.app && req.app.locals
+        ? req.app.locals.transportSecurity
+        : null;
 
-    const withoutPrefix = trimmed.startsWith('::ffff:')
-        ? trimmed.slice(7)
-        : trimmed;
-
-    if (withoutPrefix.startsWith('[') && withoutPrefix.includes(']')) {
-        return withoutPrefix.slice(1, withoutPrefix.indexOf(']'));
-    }
-
-    const lastColon = withoutPrefix.lastIndexOf(':');
-    if (lastColon > -1 && withoutPrefix.indexOf(':') === lastColon) {
-        return withoutPrefix.slice(0, lastColon);
-    }
-
-    return withoutPrefix;
-}
-
-function isTrustedProxyHop(address = '') {
-    const normalized = normalizeSocketAddress(address);
-    if (!normalized) {
-        return process.env.NODE_ENV === 'test';
-    }
-
-    return normalized === '127.0.0.1'
-        || normalized === '::1'
-        || normalized === 'localhost'
-        || normalized.startsWith('10.')
-        || normalized.startsWith('192.168.')
-        || /^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)
-        || normalized.startsWith('fc')
-        || normalized.startsWith('fd');
+    return Array.isArray(transportSecurity && transportSecurity.trustedProxyAddresses)
+        ? transportSecurity.trustedProxyAddresses
+        : [];
 }
 
 function hasTrustedProxyContext(req = {}) {
@@ -101,7 +75,7 @@ function hasTrustedProxyContext(req = {}) {
     return trustProxyEnabled
         && proxyMarkedRequest
         && forwardedChainPresent
-        && isTrustedProxyHop(remoteAddress);
+        && isTrustedProxyAddress(remoteAddress, readTrustedProxyAddresses(req));
 }
 
 function extractPeerCertificateEvidence(req = {}) {

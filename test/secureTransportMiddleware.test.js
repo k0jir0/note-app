@@ -60,7 +60,8 @@ describe('secure transport middleware', () => {
                     transportSecurity: {
                         secureTransportRequired: true,
                         proxyTlsTerminated: true,
-                        trustProxyHops: 1
+                        trustProxyHops: 1,
+                        trustedProxyAddresses: ['127.0.0.1']
                     }
                 }
             },
@@ -74,11 +75,11 @@ describe('secure transport middleware', () => {
         )).to.equal(true);
     });
 
-    it('does not trust spoofed forwarded-proto headers from untrusted remote addresses', () => {
+    it('does not trust forwarded-proto headers from remote addresses outside the explicit allowlist', () => {
         const spoofedReq = buildReq({
             secure: true,
             socket: {
-                remoteAddress: '203.0.113.50'
+                remoteAddress: '10.10.10.20'
             },
             app: {
                 locals: {
@@ -86,7 +87,8 @@ describe('secure transport middleware', () => {
                     transportSecurity: {
                         secureTransportRequired: true,
                         proxyTlsTerminated: true,
-                        trustProxyHops: 1
+                        trustProxyHops: 1,
+                        trustedProxyAddresses: ['127.0.0.1']
                     }
                 }
             },
