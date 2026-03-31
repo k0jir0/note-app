@@ -65,6 +65,27 @@ body.dark-mode .d-flex .selenium-tag {
   object-fit: cover;
 }
 
+.note-image {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 8px 8px 0 0;
+}
+
+.note-content {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+.metadata-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
 .alert-small {
   padding: .35rem .6rem;
 }

@@ -3,9 +3,7 @@
 <head>
 
     <title><%= note ? "Edit Note" : "Create Note" %></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/custom.css">
+    <%- include('../partials/head-assets') %>
     <script src="/js/theme-toggle.js" defer></script>
 </head>
 <body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">

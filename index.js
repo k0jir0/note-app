@@ -125,6 +125,8 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         app.use(express.urlencoded({ extended: true }));
         app.use(enforceInjectionPrevention);
         app.use(createImmutableRequestAuditMiddleware({ client: immutableLogClient }));
+        app.use('/vendor/bootstrap', express.static(path.join(__dirname, 'node_modules', 'bootstrap', 'dist')));
+        app.use('/vendor/bootstrap-icons', express.static(path.join(__dirname, 'node_modules', 'bootstrap-icons')));
         app.use(express.static(path.join(__dirname, 'src', 'views', 'public')));
 
         // Public fallback image for notes without an image URL.

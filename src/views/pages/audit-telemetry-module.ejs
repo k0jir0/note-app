@@ -4,9 +4,7 @@
 <head>
     <title><%= title %></title>
     <meta name="csrf-token" content="<%= csrfToken %>">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/custom.css">
+    <%- include('../partials/head-assets') %>
     <script src="/js/theme-toggle.js" defer></script>
     <script src="/js/audit-telemetry-module.js" defer></script>
 </head>
@@ -170,7 +168,7 @@
                     <div class="card-body">
                         <span class="research-kicker">DB Telemetry</span>
                         <h2 class="h4 mt-2 mb-3">Sample Who / What / When / Where / How Event</h2>
-                        <pre class="bg-body-tertiary border rounded p-3 small mb-0" style="white-space: pre-wrap;"><%= moduleData.immutablePreview.sampleEventJson %></pre>
+                        <pre class="bg-body-tertiary border rounded p-3 small mb-0 audit-prewrap"><%= moduleData.immutablePreview.sampleEventJson %></pre>
                     </div>
                 </div>
             </div>
@@ -198,7 +196,7 @@
                         <span class="research-kicker">Sink Preview</span>
                         <h2 class="h4 mt-2 mb-3">Structured JSON Payload</h2>
                         <p class="text-muted small">This preview shows the immutable sink body when the collector expects structured JSON.</p>
-                        <pre class="bg-body-tertiary border rounded p-3 small mb-0" style="white-space: pre-wrap;"><%= moduleData.immutablePreview.jsonPayload %></pre>
+                        <pre class="bg-body-tertiary border rounded p-3 small mb-0 audit-prewrap"><%= moduleData.immutablePreview.jsonPayload %></pre>
                     </div>
                 </div>
             </div>
@@ -208,7 +206,7 @@
                         <span class="research-kicker">Sink Preview</span>
                         <h2 class="h4 mt-2 mb-3">RFC 5424-Style Syslog Payload</h2>
                         <p class="text-muted small">This preview shows the same event encoded for a collector that expects syslog text.</p>
-                        <pre class="bg-body-tertiary border rounded p-3 small mb-2" style="white-space: pre-wrap;"><%= moduleData.immutablePreview.syslogPayload %></pre>
+                        <pre class="bg-body-tertiary border rounded p-3 small mb-2 audit-prewrap"><%= moduleData.immutablePreview.syslogPayload %></pre>
                         <p class="text-muted small mb-0">Derived entry hash: <code><%= moduleData.immutablePreview.entryHash %></code></p>
                     </div>
                 </div>
