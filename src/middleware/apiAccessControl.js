@@ -2,6 +2,7 @@ const {
     buildVerifiedIdentityContext,
     evaluateApiAccessPolicy,
     isProtectedApiPath,
+    isPublicApiPath,
     normalizeAccessPath,
     sanitizeRequestSurfaces
 } = require('../services/apiAccessControlService');
@@ -9,15 +10,16 @@ const { handleAuthFailure } = require('../utils/errorHandler');
 
 function enforceServerSideApiAccessControl(req, res, next) {
     let requestPath = '/';
-    let sanitizedRequest = {
-        body: req.body || {},
-        query: req.query || {},
-        params: req.params || {}
-    };
 
     try {
         requestPath = normalizeAccessPath(req.originalUrl || req.path || '');
-        sanitizedRequest = sanitizeRequestSurfaces(req);
+        const apiRequest = isProtectedApiPath(requestPath) || isPublicApiPath(requestPath);
+
+        if (!apiRequest) {
+            return next();
+        }
+
+        const sanitizedRequest = sanitizeRequestSurfaces(req);
 
         req.zeroTrustInput = sanitizedRequest;
         res.locals.zeroTrustInput = sanitizedRequest;
@@ -45,7 +47,7 @@ function enforceServerSideApiAccessControl(req, res, next) {
             });
         }
 
-        const identityContext = buildVerifiedIdentityContext(req);
+        const identityContext = buildVerifiedIdentityContext(req, authorization);
         req.serverAccessControl = identityContext;
         res.locals.serverAccessControl = identityContext;
 

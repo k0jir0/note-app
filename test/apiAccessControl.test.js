@@ -16,7 +16,10 @@ describe('API access control middleware', () => {
         const req = {
             method: 'GET',
             path: '/notes',
-            originalUrl: '/notes'
+            originalUrl: '/notes',
+            body: {
+                title: '  Preserve page input  '
+            }
         };
         const res = buildRes();
         const next = sinon.spy();
@@ -25,6 +28,8 @@ describe('API access control middleware', () => {
 
         expect(next.calledOnce).to.equal(true);
         expect(res.status.called).to.equal(false);
+        expect(req.body.title).to.equal('  Preserve page input  ');
+        expect(req.zeroTrustInput).to.equal(undefined);
     });
 
     it('allows explicit public api exceptions', () => {

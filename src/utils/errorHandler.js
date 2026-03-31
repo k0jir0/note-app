@@ -26,6 +26,26 @@ function isApiRequest(req = {}) {
     return path.startsWith('/api/') || acceptHeader.includes('application/json');
 }
 
+function deriveAuthFailureMessage(statusCode, overrideMessage) {
+    if (overrideMessage) {
+        return overrideMessage;
+    }
+
+    if (statusCode === 403) {
+        return 'Forbidden';
+    }
+
+    if (statusCode === 503) {
+        return 'Service Unavailable';
+    }
+
+    if (statusCode >= 500) {
+        return 'Server Error';
+    }
+
+    return 'Unauthorized';
+}
+
 function handleAuthFailure(res, options = {}) {
     const {
         api = true,
@@ -34,13 +54,14 @@ function handleAuthFailure(res, options = {}) {
         statusCode = 401,
         redirectPath = '/auth/login',
         csrfToken = undefined,
+        message = '',
         errors = ['Authentication could not be completed. Please try again.']
     } = options;
 
     if (api) {
         return res.status(statusCode).json({
             success: false,
-            message: statusCode === 403 ? 'Forbidden' : 'Unauthorized',
+            message: deriveAuthFailureMessage(statusCode, message),
             errors: sanitizeClientErrorList(errors, 'Authentication could not be completed.')
         });
     }

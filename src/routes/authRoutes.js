@@ -164,18 +164,12 @@ async function destroyAuthenticatedSession(req, res, next) {
         res.clearCookie('connect.sid');
         return res.redirect('/auth/login');
     } catch (_error) {
-        if (typeof next === 'function') {
-            return handleAuthFailure(res, {
-                api: true,
-                statusCode: 503,
-                errors: ['Logout could not be completed safely.']
-            });
-        }
-
         return handleAuthFailure(res, {
-            api: true,
+            api: false,
             statusCode: 503,
-            errors: ['Logout could not be completed safely.']
+            pageTitle: 'Logout',
+            pageError: 'Logout could not be completed safely.',
+            csrfToken: res.locals.csrfToken
         });
     }
 }

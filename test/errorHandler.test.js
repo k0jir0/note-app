@@ -81,4 +81,21 @@ describe('errorHandler sanitization', () => {
             errors: ['Authentication could not be completed. Please try again.']
         });
     });
+
+    it('returns a service-unavailable message for auth service outages', () => {
+        const res = createJsonResponseDouble();
+
+        handleAuthFailure(res, {
+            api: true,
+            statusCode: 503,
+            errors: ['Authentication is temporarily unavailable. Please try again.']
+        });
+
+        expect(res.statusCode).to.equal(503);
+        expect(res.payload).to.deep.equal({
+            success: false,
+            message: 'Service Unavailable',
+            errors: ['Authentication is temporarily unavailable. Please try again.']
+        });
+    });
 });

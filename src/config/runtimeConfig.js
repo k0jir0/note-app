@@ -1,12 +1,11 @@
 const MIN_SESSION_SECRET_LENGTH = 32;
-const ENCRYPTION_KEY_HEX_REGEX = /^[a-fA-F0-9]{64}$/;
 const MONGODB_OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
 const MAX_AUTOMATION_INTERVAL_MS = 1000 * 60 * 60 * 24;
 const MAX_IMMUTABLE_LOG_TIMEOUT_MS = 1000 * 30;
 const IMMUTABLE_LOG_FORMATS = ['json', 'syslog'];
 const VALID_BREAK_GLASS_MODES = ['disabled', 'read_only', 'offline'];
 
-const { DEFAULT_CIPHER_ALGO, listSupportedCipherAlgos, normalizeCipherAlgo } = require('../utils/cryptoSuite');
+const { DEFAULT_CIPHER_ALGO, getCryptoSuite, listSupportedCipherAlgos, normalizeCipherAlgo } = require('../utils/cryptoSuite');
 
 const SUPPORTED_CIPHER_ALGOS = listSupportedCipherAlgos();
 
@@ -38,19 +37,21 @@ function isPlaceholderValue(name, value) {
     return placeholderChecks[name] ? placeholderChecks[name]() : false;
 }
 
-function validateEncryptionKeyFormat(name, rawValue, errors) {
+function validateEncryptionKeyFormat(name, rawValue, suite, errors) {
     const trimmedValue = rawValue.trim();
+    const keyLengthBytes = suite && Number.isInteger(suite.keyLengthBytes) ? suite.keyLengthBytes : 32;
+    const hexRegex = new RegExp(`^[a-fA-F0-9]{${keyLengthBytes * 2}}$`);
 
-    if (ENCRYPTION_KEY_HEX_REGEX.test(trimmedValue)) {
+    if (hexRegex.test(trimmedValue)) {
         return;
     }
 
     const decoded = Buffer.from(trimmedValue, 'base64');
-    if (decoded.length === 32) {
+    if (decoded.length === keyLengthBytes) {
         return;
     }
 
-    errors.push(`${name} must be a 64-character hex string or base64 for 32 bytes`);
+    errors.push(`${name} must be a ${keyLengthBytes * 2}-character hex string or base64 for ${keyLengthBytes} bytes`);
 }
 
 function parseCipherAlgo(env = process.env, errors = []) {
@@ -524,6 +525,7 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
 function validateRuntimeConfig(env = process.env) {
     const errors = [];
     const cipherAlgo = parseCipherAlgo(env, errors);
+    const activeCipherSuite = getCryptoSuite(cipherAlgo);
 
     if (!isNonEmptyString(env.MONGODB_URI)) {
         errors.push('MONGODB_URI is required');
@@ -548,7 +550,7 @@ function validateRuntimeConfig(env = process.env) {
     } else if (isPlaceholderValue('NOTE_ENCRYPTION_KEY', env.NOTE_ENCRYPTION_KEY)) {
         errors.push('NOTE_ENCRYPTION_KEY must not use the example placeholder value');
     } else {
-        validateEncryptionKeyFormat('NOTE_ENCRYPTION_KEY', env.NOTE_ENCRYPTION_KEY, errors);
+        validateEncryptionKeyFormat('NOTE_ENCRYPTION_KEY', env.NOTE_ENCRYPTION_KEY, activeCipherSuite, errors);
     }
 
     const hasGoogleClientId = isNonEmptyString(env.GOOGLE_CLIENT_ID);
@@ -572,7 +574,7 @@ function validateRuntimeConfig(env = process.env) {
         if (isPlaceholderValue('LEGACY_NOTE_ENCRYPTION_KEY', env.LEGACY_NOTE_ENCRYPTION_KEY)) {
             errors.push('LEGACY_NOTE_ENCRYPTION_KEY must not use the example placeholder value');
         } else {
-            validateEncryptionKeyFormat('LEGACY_NOTE_ENCRYPTION_KEY', env.LEGACY_NOTE_ENCRYPTION_KEY, errors);
+            validateEncryptionKeyFormat('LEGACY_NOTE_ENCRYPTION_KEY', env.LEGACY_NOTE_ENCRYPTION_KEY, activeCipherSuite, errors);
         }
     }
 

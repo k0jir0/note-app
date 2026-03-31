@@ -167,8 +167,8 @@ function hasVerifiedRequestIdentity(req) {
     );
 }
 
-function buildVerifiedIdentityContext(req) {
-    const authorization = evaluateApiAccessPolicy(req);
+function buildVerifiedIdentityContext(req, authorization = null) {
+    const resolvedAuthorization = authorization || evaluateApiAccessPolicy(req);
 
     return {
         userId: String(req.user._id),
@@ -178,10 +178,10 @@ function buildVerifiedIdentityContext(req) {
         verifiedAt: new Date().toISOString(),
         enforcement: 'server-side-api-access-control',
         authorization: {
-            policyId: authorization.policyId,
-            requirement: authorization.requirement,
-            reason: authorization.reason,
-            metadata: authorization.metadata || {}
+            policyId: resolvedAuthorization.policyId,
+            requirement: resolvedAuthorization.requirement,
+            reason: resolvedAuthorization.reason,
+            metadata: resolvedAuthorization.metadata || {}
         }
     };
 }
