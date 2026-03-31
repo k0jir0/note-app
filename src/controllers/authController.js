@@ -70,7 +70,7 @@ function handleLogin(req, res, next) {
     req.body.email = email;
     req.body.password = password;
 
-    return passport.authenticate('local', async (error, user, _info) => {
+    return passport.authenticate('local', async (error, user, info) => {
         if (error) {
             return handleAuthFailure(res, {
                 api: false,
@@ -83,7 +83,9 @@ function handleLogin(req, res, next) {
 
         if (!user) {
             return authService.renderLoginPage(res, {
-                error: authService.GENERIC_LOGIN_ERROR
+                error: info && info.code === 'ACCOUNT_LOCKED'
+                    ? authService.ACCOUNT_LOCKED_ERROR
+                    : authService.GENERIC_LOGIN_ERROR
             });
         }
 
@@ -199,7 +201,7 @@ function handleGoogleCallback(req, res, next) {
         return undefined;
     }
 
-    return passport.authenticate('google', async (error, user, _info) => {
+    return passport.authenticate('google', async (error, user, info) => {
         if (error) {
             if (authService.isGoogleTokenExchangeError(error)) {
                 console.warn('[auth] Google token exchange failed. Verify GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APP_BASE_URL, and the Google Cloud redirect URI for this environment.');
@@ -220,7 +222,11 @@ function handleGoogleCallback(req, res, next) {
         }
 
         if (!user) {
-            return res.redirect('/auth/login');
+            return authService.renderLoginPage(res, {
+                error: info && info.code === 'ACCOUNT_LOCKED'
+                    ? authService.ACCOUNT_LOCKED_ERROR
+                    : null
+            });
         }
 
         try {

@@ -15,7 +15,9 @@ const BYPASS_PREFIXES = [
 ];
 
 function getBreakGlassState(req) {
-    const state = req && req.app && req.app.locals ? req.app.locals.breakGlass : null;
+    const state = req && req.breakGlassState
+        ? req.breakGlassState
+        : (req && req.app && req.app.locals ? req.app.locals.breakGlass : null);
     return state && typeof state === 'object'
         ? state
         : buildBreakGlassState({ mode: BREAK_GLASS_MODES.DISABLED });
@@ -54,9 +56,31 @@ function buildBlockedPayload(state) {
     };
 }
 
-function attachBreakGlassState(req, res, next) {
-    res.locals.breakGlass = getBreakGlassState(req);
-    next();
+async function attachBreakGlassState(req, res, next) {
+    try {
+        const stateStore = req && req.app && req.app.locals ? req.app.locals.breakGlassStateStore : null;
+        const resolvedState = stateStore && typeof stateStore.getCurrentState === 'function'
+            ? await stateStore.getCurrentState()
+            : getBreakGlassState(req);
+
+        if (req) {
+            req.breakGlassState = resolvedState;
+        }
+
+        if (req && req.app && req.app.locals) {
+            req.app.locals.breakGlass = resolvedState;
+        }
+
+        res.locals.breakGlass = resolvedState;
+        next();
+    } catch (_error) {
+        const fallbackState = getBreakGlassState(req);
+        if (req) {
+            req.breakGlassState = fallbackState;
+        }
+        res.locals.breakGlass = fallbackState;
+        next();
+    }
 }
 
 function enforceBreakGlass(req, res, next) {

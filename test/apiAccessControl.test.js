@@ -131,8 +131,65 @@ describe('API access control middleware', () => {
 
         expect(next.called).to.equal(false);
         expect(res.status.calledWith(403)).to.equal(true);
-        expect(res.json.firstCall.args[0].data.policyId).to.equal('break-glass-control');
+        expect(res.json.firstCall.args[0].data.policyId).to.equal('break-glass-role-required');
         expect(req.body.mode).to.equal('offline');
+    });
+
+    it('rejects break-glass runtime mutations when recent hardware-first MFA is missing', () => {
+        const req = {
+            method: 'POST',
+            path: '/api/runtime/break-glass',
+            originalUrl: '/api/runtime/break-glass',
+            body: {
+                mode: ' read_only '
+            },
+            query: {},
+            params: {},
+            session: {},
+            isAuthenticated: () => true,
+            user: {
+                _id: '507f1f77bcf86cd799439011',
+                email: 'admin@example.com',
+                accessProfile: {
+                    missionRole: 'admin'
+                }
+            }
+        };
+        const res = buildRes();
+        const next = sinon.spy();
+
+        enforceServerSideApiAccessControl(req, res, next);
+
+        expect(next.called).to.equal(false);
+        expect(res.status.calledWith(403)).to.equal(true);
+        expect(res.json.firstCall.args[0].data.requirement).to.equal('break_glass_operator_with_recent_hardware_step_up');
+    });
+
+    it('rejects privileged runtime diagnostics for non-admin users', () => {
+        const req = {
+            method: 'GET',
+            path: '/__runtime-config',
+            originalUrl: '/__runtime-config',
+            body: {},
+            query: {},
+            params: {},
+            isAuthenticated: () => true,
+            user: {
+                _id: '507f1f77bcf86cd799439011',
+                email: 'analyst@example.com',
+                accessProfile: {
+                    missionRole: 'analyst'
+                }
+            }
+        };
+        const res = buildRes();
+        const next = sinon.spy();
+
+        enforceServerSideApiAccessControl(req, res, next);
+
+        expect(next.called).to.equal(false);
+        expect(res.status.calledWith(403)).to.equal(true);
+        expect(res.json.firstCall.args[0].data.policyId).to.equal('privileged-runtime-read');
     });
 
     it('fails secure when access-control evaluation throws', () => {

@@ -9,6 +9,7 @@ const {
 } = require('./sessionManagementService');
 
 const GENERIC_LOGIN_ERROR = 'Invalid email or password';
+const ACCOUNT_LOCKED_ERROR = 'This account is temporarily locked after repeated failed sign-in attempts. Please wait and try again.';
 const GOOGLE_OAUTH_EXCHANGE_ERROR_MESSAGE = 'Google sign-in could not be completed. Verify the configured Google OAuth client secret and redirect URI for this environment.';
 const GENERIC_AUTH_SERVICE_ERROR = 'Authentication is temporarily unavailable. Please try again.';
 
@@ -169,6 +170,7 @@ async function createLocalUser({ email, password }) {
 }
 
 module.exports = {
+    ACCOUNT_LOCKED_ERROR,
     GENERIC_AUTH_SERVICE_ERROR,
     GENERIC_LOGIN_ERROR,
     GOOGLE_OAUTH_EXCHANGE_ERROR_MESSAGE,

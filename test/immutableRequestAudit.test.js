@@ -91,4 +91,36 @@ describe('immutable request audit middleware', () => {
             });
         });
     });
+
+    it('swallows asynchronous audit sink rejections after the response completes', (done) => {
+        const middleware = createImmutableRequestAuditMiddleware({
+            client: {
+                enabled: true,
+                audit: async () => {
+                    throw new Error('required audit delivery failed');
+                }
+            }
+        });
+        const req = {
+            method: 'POST',
+            path: '/api/notes',
+            originalUrl: '/api/notes',
+            headers: {},
+            get() {
+                return '';
+            }
+        };
+        const res = {
+            statusCode: 201,
+            on(eventName, handler) {
+                if (eventName === 'finish') {
+                    setImmediate(handler);
+                }
+            }
+        };
+
+        middleware(req, res, () => {
+            setTimeout(() => done(), 10);
+        });
+    });
 });

@@ -5,7 +5,7 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 ## Features
 
 - Accounts and notes: local signup/login with Passport and bcrypt, optional Google sign-in with email-based account linking, encrypted note CRUD, AES-256 encryption at rest for selected sensitive user, alert, and scan fields, per-user authorization, and same-origin managed note images that are fetched server-side and re-served through authenticated note routes.
-- Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, route-specific rate limiting, and HTTPS transport pinned to TLS 1.3 when certificate-based transport is enabled.
+- Core web security: input validation, Mongo-oriented injection prevention, strict CSP-backed XSS defense, session-backed CSRF protection, MongoDB-backed sessions, Helmet headers, route-specific rate limiting, account-level login lockout for repeated failures, and HTTPS transport pinned to TLS 1.3 when certificate-based transport is enabled.
 - Security research workflow: server-side log analysis, scan import from Nmap/Nikto/JSON, alert-to-scan correlation, and a unified Research Workspace for security architecture, automation, and browser-testing tools.
 - ML and response: an Alert Triage ML Module for training and inspecting the alert-triage model, explainable scoring, feedback-aware supervision, autonomy proof flows, and an auditable notify-or-block policy for high-risk ingested alerts.
 - Mission-grade assurance: dedicated modules for RBAC-plus-ABAC mission access decisions, hardware-first MFA and PKI step-up, strict session timeout and concurrent-login control, and server-side access-control verification for protected APIs.
@@ -53,6 +53,7 @@ SESSION_SECRET=your-strong-random-secret-32-chars-minimum
 NOTE_ENCRYPTION_KEY=64-char-hex-key-for-note-and-sensitive-field-encryption
 METRICS_AUTH_TOKEN=long-random-token-for-metrics-scrapers
 NODE_ENV=development
+ENABLE_PRIVILEGED_DEV_TOOLS=false
 PORT=3000
 ```
 
@@ -73,6 +74,7 @@ node -e "const crypto=require('crypto'); console.log('SESSION_SECRET=' + crypto.
 **MongoDB Setup:**
 - MongoDB Atlas: Create a free cluster, copy connection string
 - Local MongoDB: Use `mongodb://localhost:27017/noteApp`
+- Non-local or protected-runtime MongoDB deployments must use TLS through `mongodb+srv://...` or `?tls=true`.
 
 3. **Run**
 ```bash
@@ -175,11 +177,12 @@ Notes:
 - For production scraping, set `METRICS_AUTH_TOKEN` through your deployment secret manager rather than committing a value into `.env`.
 
 Current local verification (March 31, 2026):
-- the full Mocha suite passes with 551 tests
+- the full Mocha suite passes with 575 tests
 - `npm run lint` passes with 0 errors
 - `npm run audit:deps` and `npm run audit:prod` both report 0 vulnerabilities
 - `npm run test:e2e` passes in Chromium with 21 passing browser tests
 - `GET /healthz` on `http://127.0.0.1:3000` returns `{"ok":true,"breakGlass":{"mode":"disabled","enabled":false}}`
+- focused March 31 hardening regressions pass with `82 passing` across the strict audit, break-glass persistence, federated lockout, and runtime-config slices
 - focused March 29 module coverage passes with `13 passing` across the new Supply Chain and Audit/Telemetry page routes plus the persisted audit-history service and API tests
 - focused sandbox runtime coverage passes with `20 passing` in `test/runtimeConfig.test.js`
 - `docker build -t note-app:hardened .` completes successfully
@@ -210,6 +213,16 @@ Recent security hardening progress (March 29, 2026):
 - the Research Workspace now includes an Audit Trail and Telemetry Module at `/audit-telemetry/module` that surfaces immutable sink posture, request-scoped DB telemetry coverage, TLS posture, JSON versus syslog payload previews, and a live persisted audit-history panel
 - immutable audit forwarding is now wrapped with a local `AuditEvent` store and an authenticated `/api/audit-telemetry/events` endpoint so the module can show per-user persisted audit history instead of only static posture snapshots
 
+Additional hardening updates (March 31, 2026):
+- Break-glass state is now persisted through a shared backend store instead of relying only on per-process memory, and runtime break-glass changes require both a privileged operator role and a recent hardware-first MFA step-up.
+- Development-only runtime diagnostics and seed operations are now opt-in behind `ENABLE_PRIVILEGED_DEV_TOOLS=true`; the diagnostics require an admin session, and runtime mutations/seeding additionally require a recent hardware-first MFA step-up.
+- Local username/password authentication now enforces account-level failed-login lockout after repeated unsuccessful attempts instead of relying only on IP rate limiting.
+- Runtime config now enforces TLS for non-local or protected-runtime MongoDB connections and requires HTTPS-backed immutable remote logging outside local development and test environments.
+- Required immutable logging now probes the remote sink during protected-runtime startup and fails closed on later mandatory-delivery outages instead of silently continuing with only local success.
+- Strict break-glass persistence now fails safe to an offline posture when the state store cannot be read and rejects runtime mutations when the new state cannot be durably persisted.
+- Google sign-in now honors the same account lockout state as local authentication, including existing linked accounts and email-based account-linking attempts.
+- MongoDB runtime classification no longer treats arbitrary `*.local` hosts as local-only deployments, which keeps TLS requirements from being bypassed by broad hostname matching.
+
 4. **Create Account & Use**
 - Navigate to `/auth/signup` to create an account
 - Login and start creating notes
@@ -221,7 +234,7 @@ Recent security hardening progress (March 29, 2026):
 - Use `/playwright/module` to inspect browser-test scenarios, review the latest annotated Playwright run, and export Playwright specs for the auth, notes, research, security, Playwright, and Selenium flows
 - Use `/selenium/module` to inspect browser-test scenarios, review Selenium prerequisites, and export WebDriver smoke templates for the Research Workspace, Security Operations, Alert Triage ML, and Selenium Testing module flows
 - Use `/self-healing/module` to open the Self-Healing Locator Repair Module, analyze broken Playwright and Selenium locators, load sample failure cases, and compare ranked repair suggestions before editing the test
-- Optional: send a `POST` request to `/seed` after logging in (dev only) for sample data
+- Optional: send a `POST` request to `/seed` only when `ENABLE_PRIVILEGED_DEV_TOOLS=true`; the seed path now also requires an admin session plus a recent hardware-first MFA step-up
 
 ### Optional Automation
 
@@ -274,7 +287,7 @@ npm run worker
 Notes:
 - The web app uses `MONGODB_URI` and the worker now does the same, with `MONGO_URI` accepted only as a compatibility fallback.
 - The worker loads both `.env` and `.env.local`, so local Redis and OAuth-related overrides are available there too.
-- In development, `POST /api/runtime/realtime` can toggle realtime on or off at runtime, but Redis still needs to be configured first.
+- In development, `POST /api/runtime/realtime` is available only when `ENABLE_PRIVILEGED_DEV_TOOLS=true` and now requires an admin session plus a recent hardware-first MFA step-up; Redis still needs to be configured first.
 - The Security Operations Module page now shows two realtime states: a server badge for feature availability and a browser badge for the current tab's live stream state.
 - `Disconnect Realtime` only closes the current browser tab's SSE stream; it does not disable realtime globally on the server.
 
@@ -542,7 +555,7 @@ PUT /api/notes/:id
 | `GET /security/correlations` | Redirects to the Correlations section in `/security/module` | Yes |
 | `GET /security/automation` | Redirects to the Automation section in `/security/module` | Yes |
 | `GET /security/module` | Dedicated Security Operations Module page | Yes |
-| `POST /seed` | Seed database (dev only) | Yes |
+| `POST /seed` | Seed database (dev only, privileged tooling flag plus admin and recent hardware-first MFA required) | Yes |
 
 ### Security API Endpoints
 
@@ -956,7 +969,7 @@ GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
 
 When `HTTPS_ENABLED=true`, the server pins inbound HTTPS transport to TLS 1.3 and will not negotiate SSLv3, TLS 1.0, TLS 1.1, or TLS 1.2.
 
-When `IMMUTABLE_LOGGING_ENABLED=true`, the app mirrors operational logs and security-relevant request audit events to a separate append-only HTTP(S) endpoint using authenticated `POST` requests only. The remote log service should be configured as write-only for the app identity and should reject read, update, and delete operations.
+When `IMMUTABLE_LOGGING_ENABLED=true`, the app mirrors operational logs and security-relevant request audit events to a separate append-only HTTP(S) endpoint using authenticated `POST` requests only. The remote log service should be configured as write-only for the app identity and should reject read, update, and delete operations. Outside local development and test environments, immutable logging is required and the remote sink must use HTTPS.
 
 SIEM integration options:
 - `IMMUTABLE_LOGGING_FORMAT=json` sends structured JSON payloads that Splunk HEC, Elastic HTTP collectors, and similar SIEM pipelines can ingest directly.

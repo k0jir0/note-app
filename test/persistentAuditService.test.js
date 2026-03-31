@@ -134,6 +134,66 @@ describe('persistent audit service', () => {
         expect(createdDocs[1].previousHash).to.equal(createdDocs[0].entryHash);
     });
 
+    it('can require both local persistence and remote forwarding for success', async () => {
+        const client = createPersistentAuditClient({
+            baseClient: {
+                enabled: true,
+                capture: async () => false
+            },
+            requireRemoteSuccess: true,
+            AuditEventModel: {
+                create: async (doc) => doc
+            },
+            AuditChainStateModel: createChainStateModel(),
+            osLib: { hostname: () => 'audit-host' },
+            clock: () => new Date('2026-03-29T20:00:00.000Z')
+        });
+
+        const result = await client.audit('Database state changed', {
+            category: 'db-state-change'
+        });
+
+        expect(result).to.equal(false);
+    });
+
+    it('can throw on required immutable audit delivery failures in strict mode', async () => {
+        const failures = [];
+        const client = createPersistentAuditClient({
+            baseClient: {
+                enabled: true,
+                capture: async () => false
+            },
+            requireRemoteSuccess: true,
+            throwOnRequiredFailure: true,
+            onRequiredFailure: async (error) => {
+                failures.push(error);
+            },
+            AuditEventModel: {
+                create: async (doc) => doc
+            },
+            AuditChainStateModel: createChainStateModel(),
+            osLib: { hostname: () => 'audit-host' },
+            clock: () => new Date('2026-03-29T20:00:00.000Z')
+        });
+
+        try {
+            await client.audit('Database state changed', {
+                category: 'db-state-change'
+            });
+            expect.fail('Expected strict audit delivery to reject');
+        } catch (error) {
+            expect(error.code).to.equal('REQUIRED_AUDIT_DELIVERY_FAILED');
+            expect(error.auditDelivery).to.deep.include({
+                level: 'audit',
+                message: 'Database state changed',
+                persisted: true,
+                forwarded: false
+            });
+            expect(failures).to.have.length(1);
+            expect(failures[0]).to.equal(error);
+        }
+    });
+
     it('lists persisted events for a user with pagination', async () => {
         const expectedEvents = [{ _id: 'evt-1', message: 'HTTP request completed' }];
         const queryState = {};

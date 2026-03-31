@@ -230,6 +230,9 @@ function createPersistentAuditClient({
     baseClient,
     AuditEventModel = AuditEvent,
     AuditChainStateModel = AuditChainState,
+    requireRemoteSuccess = false,
+    throwOnRequiredFailure = false,
+    onRequiredFailure = null,
     clock = () => new Date(),
     osLib = os
 } = {}) {
@@ -293,11 +296,33 @@ function createPersistentAuditClient({
                 : Promise.resolve(false)
         ]);
 
+        if (requireRemoteSuccess && !(persisted && forwarded)) {
+            const failure = new Error('Required immutable audit delivery failed.');
+            failure.code = 'REQUIRED_AUDIT_DELIVERY_FAILED';
+            failure.auditDelivery = {
+                level,
+                message: typeof message === 'string' ? message : String(message || 'Application log event'),
+                persisted,
+                forwarded
+            };
+
+            if (typeof onRequiredFailure === 'function') {
+                await onRequiredFailure(failure);
+            }
+
+            if (throwOnRequiredFailure) {
+                throw failure;
+            }
+
+            return false;
+        }
+
         return Boolean(persisted || forwarded);
     }
 
     return {
         enabled: true,
+        requireRemoteSuccess: Boolean(requireRemoteSuccess),
         capture,
         info: (message, metadata) => capture('info', message, metadata),
         warn: (message, metadata) => capture('warn', message, metadata),

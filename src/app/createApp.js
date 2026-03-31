@@ -46,12 +46,14 @@ function createApp({
     mongooseLib = null,
     injectionPreventionPosture = {},
     immutableLogClient = null,
+    breakGlassStateStore = null,
     passportInstance = null,
     sessionMiddleware = null,
     isProduction = false,
     appBaseUrl = '',
     realtimeAvailable = false,
     realtimeEnabled = false,
+    privilegedDevToolsEnabled = false,
     includeAuthRoutes = true,
     includeSettingsApiRoute = true,
     includeMetricsRoute = true,
@@ -96,6 +98,8 @@ function createApp({
     app.locals.immutableLogging = immutableLogging;
     app.locals.immutableLogClient = immutableLogClient || null;
     app.locals.breakGlass = breakGlassLocals;
+    app.locals.breakGlassStateStore = breakGlassStateStore || null;
+    app.locals.privilegedDevToolsEnabled = Boolean(privilegedDevToolsEnabled);
 
     Object.assign(app.locals, additionalLocals);
 
@@ -139,7 +143,9 @@ function createApp({
     app.use(attachBreakGlassState);
 
     app.get('/healthz', (req, res) => {
-        const breakGlass = req.app && req.app.locals ? req.app.locals.breakGlass : null;
+        const breakGlass = res.locals && res.locals.breakGlass
+            ? res.locals.breakGlass
+            : (req.app && req.app.locals ? req.app.locals.breakGlass : null);
         const offline = Boolean(breakGlass && breakGlass.offline);
 
         return res.status(offline ? 503 : 200).json({

@@ -271,9 +271,11 @@ function installGlobalConsoleMirror(client, options = {}) {
                 channel: 'console',
                 method: methodName,
                 context: payload.context
-            })).finally(() => {
+            }))
+                .catch(() => {})
+                .finally(() => {
                 mirrorGuard = false;
-            });
+                });
         };
     });
 

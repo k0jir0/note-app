@@ -32,7 +32,7 @@ function createImmutableRequestAuditMiddleware({ client } = {}) {
             }
 
             const entry = buildRequestAuditEntry(req, res, Date.now() - startedAt);
-            void client.audit(entry.message, entry.metadata);
+            void Promise.resolve(client.audit(entry.message, entry.metadata)).catch(() => {});
         });
 
         return next();

@@ -19,6 +19,7 @@ const {
 } = require('./runtime/automation');
 const { buildSessionManagementConfig } = require('./runtime/sessionManagement');
 const { buildTransportConfig } = require('./runtime/transport');
+const { buildDatabaseConfig } = require('./runtime/database');
 const { buildImmutableLoggingConfig } = require('./runtime/immutableLogging');
 const { buildBreakGlassConfig } = require('./runtime/breakGlass');
 const { toDiagnosticRuntimeConfig } = require('./runtime/diagnostics');
@@ -27,12 +28,7 @@ function validateRuntimeConfig(env = process.env) {
     const errors = [];
     const cipherAlgo = parseCipherAlgo(env, errors);
     const activeCipherSuite = getActiveCipherSuite(cipherAlgo);
-
-    if (!isNonEmptyString(env.MONGODB_URI)) {
-        errors.push('MONGODB_URI is required');
-    } else if (isPlaceholderValue('MONGODB_URI', env.MONGODB_URI)) {
-        errors.push('MONGODB_URI must be set to a real connection string');
-    }
+    const database = buildDatabaseConfig(env, errors);
 
     if (!isNonEmptyString(env.SESSION_SECRET)) {
         errors.push('SESSION_SECRET is required');
@@ -97,7 +93,8 @@ function validateRuntimeConfig(env = process.env) {
     }
 
     return {
-        dbURI: env.MONGODB_URI.trim(),
+        dbURI: database.uri,
+        database,
         sessionSecret: env.SESSION_SECRET.trim(),
         noteEncryptionKey: env.NOTE_ENCRYPTION_KEY.trim(),
         cipherAlgo,

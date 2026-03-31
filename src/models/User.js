@@ -167,8 +167,29 @@ const userSchema = new mongoose.Schema({
             type: Date,
             default: null
         }
-    }
-    ,
+    },
+    authenticationState: {
+        failedLoginAttempts: {
+            type: Number,
+            default: 0
+        },
+        lastFailedLoginAt: {
+            type: Date,
+            default: null
+        },
+        lastFailedLoginIp: {
+            type: String,
+            default: ''
+        },
+        lockoutUntil: {
+            type: Date,
+            default: null
+        },
+        lastSuccessfulLoginAt: {
+            type: Date,
+            default: null
+        }
+    },
     preferences: {
         nightMode: {
             type: Boolean,

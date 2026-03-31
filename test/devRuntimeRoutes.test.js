@@ -13,12 +13,17 @@ const buildRes = () => {
     return {
         statusCode: 200,
         payload: null,
+        sent: null,
         status(code) {
             this.statusCode = code;
             return this;
         },
         json(body) {
             this.payload = body;
+            return body;
+        },
+        send(body) {
+            this.sent = body;
             return body;
         }
     };
@@ -31,17 +36,34 @@ describe('Dev Runtime Routes', () => {
         expect(routeLayers).to.have.length(3);
     });
 
-    it('protects the diagnostic GET routes with API auth middleware', () => {
+    it('protects the diagnostic GET routes with auth, tooling gates, and privileged-read access', () => {
         const runtimeConfigLayer = findRouteLayer('get', '/__runtime-config');
         const realtimeStatusLayer = findRouteLayer('get', '/__realtime-status');
 
         expect(runtimeConfigLayer).to.exist;
-        expect(runtimeConfigLayer.route.stack).to.have.length(2);
+        expect(runtimeConfigLayer.route.stack).to.have.length(4);
         expect(runtimeConfigLayer.route.stack[0].handle).to.equal(requireAuthAPI);
 
         expect(realtimeStatusLayer).to.exist;
-        expect(realtimeStatusLayer.route.stack).to.have.length(2);
+        expect(realtimeStatusLayer.route.stack).to.have.length(4);
         expect(realtimeStatusLayer.route.stack[0].handle).to.equal(requireAuthAPI);
+    });
+
+    it('rejects diagnostics when privileged dev tooling is disabled', async () => {
+        const layer = findRouteLayer('get', '/__runtime-config');
+        const req = {
+            app: {
+                locals: {
+                    privilegedDevToolsEnabled: false
+                }
+            }
+        };
+        const res = buildRes();
+
+        await layer.route.stack[1].handle(req, res, () => {});
+
+        expect(res.statusCode).to.equal(403);
+        expect(res.payload.message).to.equal('Privileged development tooling is disabled for this environment.');
     });
 
     it('returns a sanitized runtime config from app locals', async () => {
@@ -51,6 +73,11 @@ describe('Dev Runtime Routes', () => {
                 locals: {
                     runtimeConfig: {
                         dbURI: 'mongodb://localhost:27017/noteApp',
+                        database: {
+                            tlsRequired: false,
+                            tlsEnabled: false,
+                            local: true
+                        },
                         sessionSecret: 'super-secret-value',
                         noteEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
                         cipherAlgo: 'aes-256-gcm',
@@ -62,7 +89,7 @@ describe('Dev Runtime Routes', () => {
         };
         const res = buildRes();
 
-        await layer.route.stack[1].handle(req, res);
+        await layer.route.stack[3].handle(req, res);
 
         expect(res.statusCode).to.equal(200);
         expect(res.payload.runtimeConfig).to.include({
@@ -72,6 +99,11 @@ describe('Dev Runtime Routes', () => {
             cipherAlgo: 'aes-256-gcm',
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true
+        });
+        expect(res.payload.runtimeConfig.database).to.deep.equal({
+            tlsRequired: false,
+            tlsEnabled: false,
+            local: true
         });
         expect(res.payload.runtimeConfig).to.not.have.property('dbURI');
         expect(res.payload.runtimeConfig).to.not.have.property('sessionSecret');
@@ -90,7 +122,7 @@ describe('Dev Runtime Routes', () => {
         };
         const res = buildRes();
 
-        await layer.route.stack[1].handle(req, res);
+        await layer.route.stack[3].handle(req, res);
 
         expect(res.statusCode).to.equal(200);
         expect(res.payload).to.include({
@@ -100,11 +132,11 @@ describe('Dev Runtime Routes', () => {
         });
     });
 
-    it('maps POST /api/runtime/realtime with API auth middleware', () => {
+    it('maps POST /api/runtime/realtime with the new privileged runtime middleware chain', () => {
         const layer = findRouteLayer('post', '/api/runtime/realtime');
 
         expect(layer).to.exist;
-        expect(layer.route.stack).to.have.length(2);
+        expect(layer.route.stack).to.have.length(5);
         expect(layer.route.stack[0].handle).to.equal(requireAuthAPI);
     });
 
@@ -121,7 +153,7 @@ describe('Dev Runtime Routes', () => {
         };
         const res = buildRes();
 
-        await layer.route.stack[1].handle(req, res);
+        await layer.route.stack[4].handle(req, res);
 
         expect(res.statusCode).to.equal(200);
         expect(req.app.locals.realtimeEnabled).to.equal(true);
@@ -144,7 +176,7 @@ describe('Dev Runtime Routes', () => {
         };
         const res = buildRes();
 
-        await layer.route.stack[1].handle(req, res);
+        await layer.route.stack[4].handle(req, res);
 
         expect(res.statusCode).to.equal(400);
         expect(res.payload).to.deep.equal({

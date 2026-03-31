@@ -189,6 +189,69 @@ describe('Database telemetry', () => {
         expect(audit.called).to.equal(false);
     });
 
+    it('propagates strict audit delivery failures instead of ignoring a falsey telemetry result', async () => {
+        const audit = sinon.stub().rejects(Object.assign(new Error('Required immutable audit delivery failed.'), {
+            code: 'REQUIRED_AUDIT_DELIVERY_FAILED'
+        }));
+        configureDatabaseTelemetry({
+            client: {
+                enabled: true,
+                audit
+            }
+        });
+
+        const model = {
+            find: sinon.stub()
+                .onFirstCall()
+                .returns({
+                    lean: async () => ([{ _id: 'alert-17', status: 'queued' }])
+                })
+                .onSecondCall()
+                .returns({
+                    lean: async () => ([{ _id: 'alert-17', status: 'closed' }])
+                }),
+            findById: sinon.stub().returns({
+                lean: async () => ({ _id: 'alert-17', status: 'closed' })
+            }),
+            bulkWrite: sinon.stub().resolves({ modifiedCount: 1 })
+        };
+
+        try {
+            await runWithRequestContext({
+                method: 'post',
+                originalUrl: '/api/automation/respond',
+                ip: '198.51.100.31',
+                headers: {},
+                get() {
+                    return '';
+                },
+                user: {
+                    _id: 'analyst-8',
+                    email: 'analyst8@example.com'
+                }
+            }, async () => {
+                await runTelemetryAwareBulkWrite({
+                    model,
+                    modelName: 'SecurityAlert',
+                    operations: [{
+                        updateOne: {
+                            filter: { _id: 'alert-17' },
+                            update: {
+                                $set: {
+                                    status: 'closed'
+                                }
+                            }
+                        }
+                    }]
+                });
+            });
+            expect.fail('Expected strict telemetry failures to reject');
+        } catch (error) {
+            expect(error.code).to.equal('REQUIRED_AUDIT_DELIVERY_FAILED');
+            expect(audit.calledOnce).to.equal(true);
+        }
+    });
+
     it('re-fetches updated documents by id without building a $in filter', async () => {
         const model = {
             findById: sinon.stub()

@@ -227,6 +227,47 @@ describe('Auth Routes', () => {
                 }
             }
         });
+
+        it('renders the account lockout message when Google sign-in reports a locked account', () => {
+            const handler = getHandler('get', '/oauth2/redirect/google');
+            const originalClientId = process.env.GOOGLE_CLIENT_ID;
+            const originalClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+            try {
+                process.env.GOOGLE_CLIENT_ID = 'client-id';
+                process.env.GOOGLE_CLIENT_SECRET = 'client-secret';
+
+                sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
+                    expect(strategy).to.equal('google');
+                    return () => callback(null, false, { code: 'ACCOUNT_LOCKED', message: 'Account locked.' });
+                });
+
+                const req = {};
+                const res = buildRes();
+                const next = sinon.stub();
+
+                handler(req, res, next);
+
+                expect(res.render.calledWith('pages/login', {
+                    title: 'Login',
+                    error: 'This account is temporarily locked after repeated failed sign-in attempts. Please wait and try again.',
+                    csrfToken: 'test-csrf-token'
+                })).to.equal(true);
+                expect(next.called).to.equal(false);
+            } finally {
+                if (originalClientId === undefined) {
+                    delete process.env.GOOGLE_CLIENT_ID;
+                } else {
+                    process.env.GOOGLE_CLIENT_ID = originalClientId;
+                }
+
+                if (originalClientSecret === undefined) {
+                    delete process.env.GOOGLE_CLIENT_SECRET;
+                } else {
+                    process.env.GOOGLE_CLIENT_SECRET = originalClientSecret;
+                }
+            }
+        });
     });
 
     describe('POST /login', () => {
@@ -344,6 +385,33 @@ describe('Auth Routes', () => {
             expect(res.render.calledWith('pages/login', {
                 title: 'Login',
                 error: 'Invalid email or password',
+                csrfToken: 'test-csrf-token'
+            })).to.be.true;
+        });
+
+        it('should render the account lockout message when passport reports a locked account', () => {
+            const handler = getHandler('post', '/login', 1);
+
+            sinon.stub(passport, 'authenticate').callsFake((strategy, callback) => {
+                expect(strategy).to.equal('local');
+                return () => callback(null, false, { code: 'ACCOUNT_LOCKED', message: 'Account locked.' });
+            });
+
+            const req = {
+                body: {
+                    email: 'test@example.com',
+                    password: 'password123'
+                },
+                logIn: sinon.stub()
+            };
+            const res = buildRes();
+            const next = sinon.stub();
+
+            handler(req, res, next);
+
+            expect(res.render.calledWith('pages/login', {
+                title: 'Login',
+                error: 'This account is temporarily locked after repeated failed sign-in attempts. Please wait and try again.',
                 csrfToken: 'test-csrf-token'
             })).to.be.true;
         });

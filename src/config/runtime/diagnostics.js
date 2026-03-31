@@ -10,6 +10,11 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
 
     return {
         dbConfigured: isNonEmptyString(runtimeConfig.dbURI),
+        database: {
+            tlsRequired: Boolean(runtimeConfig.database && runtimeConfig.database.tlsRequired),
+            tlsEnabled: Boolean(runtimeConfig.database && runtimeConfig.database.tlsEnabled),
+            local: Boolean(runtimeConfig.database && runtimeConfig.database.local)
+        },
         sessionSecretConfigured: isNonEmptyString(runtimeConfig.sessionSecret),
         noteEncryptionConfigured: isNonEmptyString(runtimeConfig.noteEncryptionKey),
         cipherAlgo: isNonEmptyString(runtimeConfig.cipherAlgo) ? runtimeConfig.cipherAlgo.trim() : DEFAULT_CIPHER_ALGO,
@@ -48,6 +53,7 @@ function toDiagnosticRuntimeConfig(runtimeConfig) {
         },
         immutableLogging: {
             enabled: Boolean(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.enabled),
+            required: Boolean(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.required),
             endpointConfigured: isNonEmptyString(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.endpoint),
             timeoutMs: Number.isFinite(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.timeoutMs)
                 ? runtimeConfig.immutableLogging.timeoutMs

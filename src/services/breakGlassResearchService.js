@@ -34,7 +34,7 @@ const CONTROL_GUIDANCE = [
     {
         id: 'restricted-control-plane',
         label: 'Restricted control plane',
-        description: 'Only admin and break_glass mission roles can change the runtime kill-switch state.'
+        description: 'Only admin and break_glass mission roles can inspect the runtime kill-switch, and changes require a recent hardware-first MFA step-up.'
     }
 ];
 

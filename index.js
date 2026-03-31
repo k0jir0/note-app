@@ -4,12 +4,12 @@ const { MongoStore } = require('connect-mongo');
 const passport = require('passport');
 
 const devRuntimeRoute = require('./src/routes/devRuntimeRoutes');
+const devSeedRoute = require('./src/routes/devSeedRoutes');
 const { createApp } = require('./src/app/createApp');
 const { validateRuntimeConfig } = require('./src/config/runtimeConfig');
 const { loadRuntimeEnvironment, reapplyLocalEnvOverrides } = require('./src/config/runtimeEnv');
-const { destructiveActionRateLimiter } = require('./src/middleware/rateLimit');
 const { tryLoadKeytarGoogleSecrets } = require('./src/config/localSecrets');
-const { buildSeedResponseMessage, seedDevelopmentData } = require('./src/services/devSeedService');
+const { createBreakGlassStateStore } = require('./src/services/breakGlassStateStoreService');
 const { applyMongooseInjectionDefaults } = require('./src/services/injectionPreventionService');
 const { startApplication } = require('./src/utils/appStartup');
 const { createImmutableLogClient, installGlobalConsoleMirror } = require('./src/utils/immutableLogService');
@@ -33,15 +33,51 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
         require('./src/config/passport')(passport);
 
         const immutableRemoteClient = createImmutableLogClient(runtimeConfig);
-        const immutableLogClient = createPersistentAuditClient({ baseClient: immutableRemoteClient });
+        let requiredAuditFailureTriggered = false;
+
+        const handleRequiredAuditFailure = (error) => {
+            if (requiredAuditFailureTriggered) {
+                return;
+            }
+
+            requiredAuditFailureTriggered = true;
+            const detail = error && error.message ? error.message : String(error);
+            process.stderr.write(`[immutable-logging] required audit delivery failed: ${detail}\n`);
+            setTimeout(() => process.exit(1), 0);
+        };
+
+        if (runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.requireForwardSuccess) {
+            const auditSinkReady = await immutableRemoteClient.info('Immutable logging startup connectivity check', {
+                category: 'startup',
+                channel: 'startup',
+                check: 'immutable-logging-connectivity'
+            });
+
+            if (!auditSinkReady) {
+                throw new Error('Required immutable logging sink is unavailable at startup.');
+            }
+        }
+
+        const immutableLogClient = createPersistentAuditClient({
+            baseClient: immutableRemoteClient,
+            requireRemoteSuccess: Boolean(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.requireForwardSuccess),
+            throwOnRequiredFailure: Boolean(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.requireForwardSuccess),
+            onRequiredFailure: handleRequiredAuditFailure
+        });
         installGlobalConsoleMirror(immutableLogClient);
         configureDatabaseTelemetry({ client: immutableLogClient });
 
         const isProduction = process.env.NODE_ENV === 'production';
         const useSecureCookies = isProduction || Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled);
         const realtimeAvailable = Boolean(process.env.REDIS_URL) && process.env.DISABLE_REDIS !== '1';
+        const privilegedDevToolsEnabled = !isProduction
+            && String(process.env.ENABLE_PRIVILEGED_DEV_TOOLS || '').trim().toLowerCase() === 'true';
         const SESSION_COOKIE_MAX_AGE = 1000 * 60 * 60 * 24;
         const dbURI = runtimeConfig.dbURI;
+        const breakGlassStateStore = createBreakGlassStateStore({
+            seedState: runtimeConfig.breakGlass,
+            strictPersistence: Boolean(runtimeConfig.immutableLogging && runtimeConfig.immutableLogging.required)
+        });
 
         const sessionStore = MongoStore.create({
             mongoUrl: dbURI,
@@ -67,35 +103,17 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
             mongooseLib: mongoose,
             injectionPreventionPosture: mongooseSecurity,
             immutableLogClient,
+            breakGlassStateStore,
             passportInstance: passport,
             sessionMiddleware,
             isProduction,
             appBaseUrl: runtimeConfig.appBaseUrl,
             realtimeAvailable,
             realtimeEnabled: realtimeAvailable && process.env.ENABLE_REALTIME === '1',
+            privilegedDevToolsEnabled,
             registerAdditionalRoutes: (application) => {
-                if (process.env.NODE_ENV !== 'production') {
-                    const { requireAuth } = require('./src/middleware/auth');
-
-                    application.post('/seed', requireAuth, destructiveActionRateLimiter, async (req, res) => {
-                        const User = require('./src/models/User');
-                        const Notes = require('./src/models/Notes');
-                        const bcrypt = require('bcrypt');
-
-                        try {
-                            const seedSummary = await seedDevelopmentData({
-                                User,
-                                Notes,
-                                bcryptLib: bcrypt
-                            });
-
-                            res.type('text/plain').send(buildSeedResponseMessage(seedSummary));
-                        } catch (error) {
-                            console.error('Development seed failed:', error);
-                            res.status(500).send('Database seeding failed. Please try again later.');
-                        }
-                    });
-
+                if (privilegedDevToolsEnabled) {
+                    application.use(devSeedRoute);
                     application.use(devRuntimeRoute);
                 }
             }

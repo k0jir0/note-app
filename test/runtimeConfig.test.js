@@ -23,8 +23,21 @@ describe('Runtime Config Validation', () => {
         const config = validateRuntimeConfig(createValidEnv());
 
         expect(config.dbURI).to.equal('mongodb://localhost:27017/noteApp');
+        expect(config.database).to.deep.equal({
+            uri: 'mongodb://localhost:27017/noteApp',
+            tlsRequired: false,
+            tlsEnabled: false,
+            local: true
+        });
         expect(config.googleAuthEnabled).to.equal(false);
         expect(config.cipherAlgo).to.equal('aes-256-gcm');
+    });
+
+    it('does not treat .local MongoDB hosts as local-only deployments', () => {
+        const env = createValidEnv();
+        env.MONGODB_URI = 'mongodb://mongo.local:27017/noteApp';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('MONGODB_URI must enable TLS');
     });
 
     it('accepts a supported cipher algorithm override', () => {
@@ -124,13 +137,21 @@ describe('Runtime Config Validation', () => {
             mode: 'disabled',
             reason: ''
         });
+        expect(config.database).to.deep.equal({
+            uri: 'mongodb://localhost:27017/noteApp',
+            tlsRequired: false,
+            tlsEnabled: false,
+            local: true
+        });
         expect(config.immutableLogging).to.deep.equal({
             enabled: false,
+            required: false,
             endpoint: '',
             token: '',
             timeoutMs: 2000,
             source: 'note-app',
-            format: 'json'
+            format: 'json',
+            requireForwardSuccess: false
         });
     });
 
@@ -154,11 +175,13 @@ describe('Runtime Config Validation', () => {
 
         expect(config.immutableLogging).to.deep.equal({
             enabled: true,
+            required: false,
             endpoint: 'https://logs.example.com/append',
             token: 'remote-write-only-token',
             timeoutMs: 3500,
             source: 'note-app-web',
-            format: 'json'
+            format: 'json',
+            requireForwardSuccess: false
         });
     });
 
@@ -180,6 +203,23 @@ describe('Runtime Config Validation', () => {
         env.IMMUTABLE_LOGGING_FORMAT = 'cef';
 
         expect(() => validateRuntimeConfig(env)).to.throw('IMMUTABLE_LOGGING_FORMAT');
+    });
+
+    it('requires immutable logging outside local development and test environments', () => {
+        const env = createValidEnv();
+        env.NODE_ENV = 'production';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('IMMUTABLE_LOGGING_ENABLED');
+    });
+
+    it('requires an https immutable logging sink when immutable logging is mandatory', () => {
+        const env = createValidEnv();
+        env.NODE_ENV = 'production';
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'http://logs.example.com/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
+
+        expect(() => validateRuntimeConfig(env)).to.throw('IMMUTABLE_LOGGING_URL must use https');
     });
 
     it('accepts valid HTTPS and mTLS transport settings', () => {
@@ -333,6 +373,12 @@ describe('Runtime Config Validation', () => {
     it('builds a sanitized runtime diagnostic view without secrets', () => {
         const diagnostics = toDiagnosticRuntimeConfig({
             dbURI: 'mongodb://localhost:27017/noteApp',
+            database: {
+                uri: 'mongodb://localhost:27017/noteApp',
+                tlsRequired: true,
+                tlsEnabled: true,
+                local: false
+            },
             sessionSecret: 'super-secret-value',
             noteEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
             cipherAlgo: 'aes-256-gcm',
@@ -356,11 +402,13 @@ describe('Runtime Config Validation', () => {
             },
             immutableLogging: {
                 enabled: true,
+                required: true,
                 endpoint: 'https://logs.example.com/append',
                 token: 'write-only-token',
                 timeoutMs: 2500,
                 format: 'syslog',
-                source: 'note-app-web'
+                source: 'note-app-web',
+                requireForwardSuccess: true
             },
             automation: {
                 logBatch: {
@@ -383,6 +431,11 @@ describe('Runtime Config Validation', () => {
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true
         });
+        expect(diagnostics.database).to.deep.equal({
+            tlsRequired: true,
+            tlsEnabled: true,
+            local: false
+        });
         expect(diagnostics.transport).to.deep.equal({
             protocol: 'https',
             httpsEnabled: true,
@@ -395,6 +448,7 @@ describe('Runtime Config Validation', () => {
         });
         expect(diagnostics.immutableLogging).to.deep.equal({
             enabled: true,
+            required: true,
             endpointConfigured: true,
             timeoutMs: 2500,
             format: 'syslog',

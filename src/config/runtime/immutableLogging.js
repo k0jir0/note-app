@@ -5,9 +5,11 @@ const {
     parseBooleanEnv,
     parseIntegerEnv
 } = require('./helpers');
+const { isProtectedRuntimeEnvironment } = require('./database');
 
 function buildImmutableLoggingConfig(env, errors) {
     const enabled = parseBooleanEnv('IMMUTABLE_LOGGING_ENABLED', env, errors);
+    const required = isProtectedRuntimeEnvironment(env);
     const timeoutMs = parseIntegerEnv('IMMUTABLE_LOGGING_TIMEOUT_MS', env, {
         defaultValue: 2000,
         min: 250,
@@ -22,14 +24,20 @@ function buildImmutableLoggingConfig(env, errors) {
         errors.push(`IMMUTABLE_LOGGING_FORMAT must be one of: ${IMMUTABLE_LOG_FORMATS.join(', ')}`);
     }
 
+    if (required && !enabled) {
+        errors.push('IMMUTABLE_LOGGING_ENABLED must be true outside local development and test environments');
+    }
+
     if (!enabled) {
         return {
             enabled: false,
+            required,
             endpoint: '',
             token: '',
             timeoutMs,
             source,
-            format: IMMUTABLE_LOG_FORMATS.includes(format) ? format : 'json'
+            format: IMMUTABLE_LOG_FORMATS.includes(format) ? format : 'json',
+            requireForwardSuccess: required
         };
     }
 
@@ -40,6 +48,10 @@ function buildImmutableLoggingConfig(env, errors) {
             const parsed = new URL(endpoint);
             if (!['http:', 'https:'].includes(parsed.protocol)) {
                 throw new Error('Invalid protocol');
+            }
+
+            if (required && parsed.protocol !== 'https:') {
+                errors.push('IMMUTABLE_LOGGING_URL must use https when immutable logging is required');
             }
         } catch (_error) {
             errors.push('IMMUTABLE_LOGGING_URL must be a valid http or https URL when immutable logging is enabled');
@@ -52,11 +64,13 @@ function buildImmutableLoggingConfig(env, errors) {
 
     return {
         enabled: true,
+        required,
         endpoint,
         token,
         timeoutMs,
         source,
-        format
+        format,
+        requireForwardSuccess: required
     };
 }
 

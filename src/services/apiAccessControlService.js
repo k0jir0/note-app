@@ -2,7 +2,12 @@ const PROTECTED_API_PATH_PREFIXES = ['/api/'];
 const PROTECTED_API_PATHS = ['/__runtime-config', '/__realtime-status'];
 const PUBLIC_API_PATHS = ['/__test/csrf'];
 
-const { canControlBreakGlass } = require('./breakGlassService');
+const {
+    canManageBreakGlassRuntime,
+    canMutatePrivilegedRuntime,
+    canReadPrivilegedRuntime,
+    hasRecentHardwareStepUp
+} = require('./privilegedRuntimeAccessService');
 
 const SANITIZATION_BLOCKED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -96,18 +101,56 @@ function evaluateApiAccessPolicy(req = {}) {
     }
 
     if (path === '/api/runtime/break-glass') {
-        const allowed = canControlBreakGlass(req.user);
+        const hasRequiredRole = canManageBreakGlassRuntime(req.user);
+        const hasRecentStepUp = method === 'GET' || hasRecentHardwareStepUp(req.session);
+        const allowed = hasRequiredRole && hasRecentStepUp;
         return {
             allowed,
-            policyId: 'break-glass-control',
-            requirement: 'break_glass_operator',
+            policyId: hasRequiredRole ? 'break-glass-control' : 'break-glass-role-required',
+            requirement: method === 'GET'
+                ? 'break_glass_operator'
+                : 'break_glass_operator_with_recent_hardware_step_up',
             reason: allowed
                 ? 'The current user is allowed to operate the break-glass runtime control.'
-                : 'Break-glass runtime control requires an admin or break_glass role.',
+                : (hasRequiredRole
+                    ? 'Break-glass runtime changes require a recent hardware-first MFA step-up.'
+                    : 'Break-glass runtime control requires an admin or break_glass role.'),
             metadata: {
                 method,
                 path,
                 missionRole: String(req.user && req.user.accessProfile && req.user.accessProfile.missionRole || '').trim().toLowerCase()
+            }
+        };
+    }
+
+    if (path === '/api/runtime/realtime') {
+        const allowed = canMutatePrivilegedRuntime(req.user) && hasRecentHardwareStepUp(req.session);
+        return {
+            allowed,
+            policyId: 'privileged-runtime-mutation',
+            requirement: 'admin_with_recent_hardware_step_up',
+            reason: allowed
+                ? 'The current user is allowed to mutate privileged runtime controls.'
+                : 'Privileged runtime changes require an admin session with recent hardware-first MFA.',
+            metadata: {
+                method,
+                path
+            }
+        };
+    }
+
+    if (path === '/__runtime-config' || path === '/__realtime-status') {
+        const allowed = canReadPrivilegedRuntime(req.user);
+        return {
+            allowed,
+            policyId: 'privileged-runtime-read',
+            requirement: 'admin',
+            reason: allowed
+                ? 'The current user is allowed to inspect privileged runtime diagnostics.'
+                : 'Privileged runtime diagnostics require an admin session.',
+            metadata: {
+                method,
+                path
             }
         };
     }

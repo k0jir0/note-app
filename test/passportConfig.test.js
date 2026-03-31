@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const sinon = require('sinon');
+const bcrypt = require('bcrypt');
 
 const User = require('../src/models/User');
 const passportConfig = require('../src/config/passport');
@@ -40,9 +41,16 @@ describe('Passport configuration', () => {
         sinon.restore();
     });
 
-    it('decrypts the user name during deserializeUser before views use req.user', (done) => {
-        const fakePassport = {
-            use() {},
+    function createFakePassport() {
+        return {
+            use(strategy) {
+                if (strategy && strategy.name === 'local') {
+                    this.localStrategy = strategy;
+                    return;
+                }
+
+                this.googleStrategy = strategy;
+            },
             serializeUser(handler) {
                 this.serializeHandler = handler;
             },
@@ -50,6 +58,10 @@ describe('Passport configuration', () => {
                 this.deserializeHandler = handler;
             }
         };
+    }
+
+    it('decrypts the user name during deserializeUser before views use req.user', (done) => {
+        const fakePassport = createFakePassport();
 
         passportConfig(fakePassport);
 
@@ -65,5 +77,95 @@ describe('Passport configuration', () => {
             expect(user.name).to.equal('Analyst User');
             done();
         });
+    });
+
+    it('blocks local authentication when the account is already locked', (done) => {
+        const fakePassport = createFakePassport();
+
+        passportConfig(fakePassport);
+
+        sinon.stub(User, 'findOne').resolves({
+            email: 'analyst@example.com',
+            authenticationState: {
+                lockoutUntil: new Date(Date.now() + 60 * 1000)
+            }
+        });
+        const compareStub = sinon.stub(bcrypt, 'compare');
+
+        fakePassport.localStrategy._verify(
+            { ip: '203.0.113.25' },
+            'analyst@example.com',
+            'password123',
+            (error, user, info) => {
+                expect(error).to.equal(null);
+                expect(user).to.equal(false);
+                expect(info.code).to.equal('ACCOUNT_LOCKED');
+                expect(compareStub.called).to.equal(false);
+                done();
+            }
+        );
+    });
+
+    it('blocks Google authentication when the linked account is already locked', (done) => {
+        process.env.GOOGLE_CLIENT_ID = 'google-client-id';
+        process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+
+        const fakePassport = createFakePassport();
+        passportConfig(fakePassport);
+
+        sinon.stub(User, 'findOne').resolves({
+            email: 'analyst@example.com',
+            googleId: 'google-subject-1',
+            authenticationState: {
+                lockoutUntil: new Date(Date.now() + 60 * 1000)
+            }
+        });
+
+        fakePassport.googleStrategy._verify(
+            'https://accounts.google.com',
+            {
+                id: 'google-subject-1',
+                emails: [{ value: 'analyst@example.com' }]
+            },
+            (error, user, info) => {
+                expect(error).to.equal(null);
+                expect(user).to.equal(false);
+                expect(info.code).to.equal('ACCOUNT_LOCKED');
+                done();
+            }
+        );
+    });
+
+    it('blocks Google account linking when the matching local account is locked', (done) => {
+        process.env.GOOGLE_CLIENT_ID = 'google-client-id';
+        process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+
+        const fakePassport = createFakePassport();
+        passportConfig(fakePassport);
+
+        sinon.stub(User, 'findOne')
+            .onFirstCall()
+            .resolves(null)
+            .onSecondCall()
+            .resolves({
+                email: 'analyst@example.com',
+                authenticationState: {
+                    lockoutUntil: new Date(Date.now() + 60 * 1000)
+                }
+            });
+
+        fakePassport.googleStrategy._verify(
+            'https://accounts.google.com',
+            {
+                id: 'google-subject-2',
+                emails: [{ value: 'analyst@example.com' }]
+            },
+            (error, user, info) => {
+                expect(error).to.equal(null);
+                expect(user).to.equal(false);
+                expect(info.code).to.equal('ACCOUNT_LOCKED');
+                done();
+            }
+        );
     });
 });

@@ -1,4 +1,5 @@
 const { expect } = require('chai');
+const sinon = require('sinon');
 
 const router = require('../src/routes/breakGlassRoutes');
 const { requireAuthAPI } = require('../src/middleware/auth');
@@ -44,7 +45,9 @@ describe('Break-glass routes', () => {
         const postLayer = findRouteLayer('post', '/api/runtime/break-glass');
 
         expect(getLayer.route.stack[0].handle).to.equal(requireAuthAPI);
+        expect(getLayer.route.stack).to.have.length(3);
         expect(postLayer.route.stack[0].handle).to.equal(requireAuthAPI);
+        expect(postLayer.route.stack).to.have.length(4);
     });
 
     it('renders the emergency page with 503 when break-glass mode is active', async () => {
@@ -80,23 +83,103 @@ describe('Break-glass routes', () => {
         expect(res.payload.breakGlass.mode).to.equal('read_only');
     });
 
-    it('updates the runtime break-glass mode for authorized operators', async () => {
+    it('requires a recent hardware-first step-up before mutating break-glass mode', async () => {
         const layer = findRouteLayer('post', '/api/runtime/break-glass');
         const req = {
+            session: {},
+            user: {
+                email: 'admin@example.com',
+                accessProfile: { missionRole: 'admin' }
+            }
+        };
+        const res = createRes();
+
+        await layer.route.stack[2].handle(req, res, sinon.stub());
+
+        expect(res.statusCode).to.equal(403);
+        expect(res.payload.message).to.equal('A recent hardware-first MFA step-up is required for this privileged action.');
+    });
+
+    it('updates the persisted break-glass mode for authorized operators after recent step-up', async () => {
+        const layer = findRouteLayer('post', '/api/runtime/break-glass');
+        const currentState = buildBreakGlassState({ mode: 'disabled' });
+        const persistedState = buildBreakGlassState({ mode: 'offline', reason: 'Containment', activatedBy: 'admin@example.com' });
+        const breakGlassStateStore = {
+            getCurrentState: sinon.stub().resolves(currentState),
+            updateState: sinon.stub().resolves(persistedState)
+        };
+        const req = {
             body: { mode: 'offline', reason: 'Containment' },
+            session: {
+                hardwareFirstMfa: {
+                    verifiedAt: new Date().toISOString(),
+                    expiresAt: new Date(Date.now() + 60000).toISOString(),
+                    method: 'hardware_token',
+                    assurance: 'hardware_first',
+                    credentialLabel: 'AdminKey',
+                    source: 'simulation'
+                }
+            },
             user: {
                 email: 'admin@example.com',
                 accessProfile: { missionRole: 'admin' }
             },
-            app: { locals: { breakGlass: buildBreakGlassState({ mode: 'disabled' }) } }
+            app: {
+                locals: {
+                    breakGlass: currentState,
+                    breakGlassStateStore
+                }
+            }
         };
         const res = createRes();
 
-        await layer.route.stack[2].handle(req, res);
+        await layer.route.stack[3].handle(req, res);
 
         expect(res.statusCode).to.equal(200);
         expect(req.app.locals.breakGlass.mode).to.equal('offline');
         expect(req.app.locals.breakGlass.reason).to.equal('Containment');
+        expect(breakGlassStateStore.updateState.calledOnce).to.equal(true);
         expect(res.payload.success).to.equal(true);
+    });
+
+    it('returns 503 when strict break-glass persistence rejects a runtime mutation', async () => {
+        const layer = findRouteLayer('post', '/api/runtime/break-glass');
+        const currentState = buildBreakGlassState({ mode: 'disabled' });
+        const breakGlassStateStore = {
+            getCurrentState: sinon.stub().resolves(currentState),
+            updateState: sinon.stub().rejects(new Error('Unable to persist break-glass runtime state.'))
+        };
+        const req = {
+            body: { mode: 'offline', reason: 'Containment' },
+            session: {
+                hardwareFirstMfa: {
+                    verifiedAt: new Date().toISOString(),
+                    expiresAt: new Date(Date.now() + 60000).toISOString(),
+                    method: 'hardware_token',
+                    assurance: 'hardware_first',
+                    credentialLabel: 'AdminKey',
+                    source: 'simulation'
+                }
+            },
+            user: {
+                email: 'admin@example.com',
+                accessProfile: { missionRole: 'admin' }
+            },
+            app: {
+                locals: {
+                    breakGlass: currentState,
+                    breakGlassStateStore
+                }
+            }
+        };
+        const res = createRes();
+
+        await layer.route.stack[3].handle(req, res);
+
+        expect(res.statusCode).to.equal(503);
+        expect(res.payload).to.deep.equal({
+            success: false,
+            message: 'Break-glass runtime state could not be persisted.'
+        });
     });
 });

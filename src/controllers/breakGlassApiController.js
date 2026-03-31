@@ -20,7 +20,7 @@ exports.getOverview = async (req, res) => {
     try {
         const overview = breakGlassResearchService.buildBreakGlassModuleOverview({
             baseUrl: resolveBaseUrl(req),
-            breakGlass: req.app && req.app.locals ? req.app.locals.breakGlass : null,
+            breakGlass: req.breakGlassState || (req.app && req.app.locals ? req.app.locals.breakGlass : null),
             user: req.user || null
         });
 
