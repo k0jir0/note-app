@@ -5,6 +5,7 @@ const { execSync } = require('child_process');
 const projectRoot = path.join(__dirname, '..');
 const outputDirectory = path.join(projectRoot, 'sbom');
 const outputFile = path.join(outputDirectory, 'note-app.cdx.json');
+const SBOM_NPM_VERSION = '10.9.2';
 
 function readSbomFile(filePath) {
     if (!fs.existsSync(filePath)) {
@@ -82,7 +83,7 @@ function generateSbom({ rootDir = projectRoot, destination = outputFile } = {}) 
     fs.mkdirSync(destinationDirectory, { recursive: true });
 
     const stableSbom = readCommittedSbom({ rootDir, destination }) || readExistingSbom(destination);
-    const rawSbom = execSync('npm sbom --package-lock-only --sbom-format cyclonedx', {
+    const rawSbom = execSync(`npx --yes npm@${SBOM_NPM_VERSION} sbom --package-lock-only --sbom-format cyclonedx`, {
         cwd: rootDir,
         encoding: 'utf8'
     });
