@@ -1,0 +1,20 @@
+Note App: Secure Research Workspace
+==================================
+
+A next-generation, security-first note-taking and research platform for professionals who demand more than just notes. 
+Built with Node.js, Express, and MongoDB, it unifies:
+
+- **Zero-trust authentication** (local, Google OAuth, hardware-backed MFA)
+- **Mission Assurance**: RBAC+ABAC policy engine, device trust, and break-glass controls
+- **End-to-end encryption**: AES-256-GCM for notes at rest
+- **Comprehensive input validation** and CSRF/XSS/injection defenses
+- **Session management**: strict timeouts, concurrent-login prevention, PKI/mTLS support
+- **Security automation**: Log analysis, scan import, and real-time alerting
+- **ML-powered triage**: Model-ops dashboard, explainability, and autonomous response
+- **Browser automation**: Playwright & Selenium modules with self-healing locators
+- **CI/CD ready**: 461 passing tests, artifact-driven reporting, and hardened local/CI launch
+
+All modules are visible, auditable, and protected by global access gates. 
+The app is production-ready, test-driven, and designed for rapid research, secure collaboration, and continuous improvement.
+
+Try it. Break it. Trust it.

@@ -1,0 +1,18 @@
+Report 4: March 21, 2026
+
+This report summarizes the latest autonomy and ML-module follow-up work in the test-app project.
+
+1. Added direct unit coverage for the autonomy demo service.
+   The new tests verify that the demo seeds one high-severity block candidate and one medium-severity notify candidate, both using an autonomy-eligible source. They also verify that dry-run injection records notify/block response summaries without needing live Slack, email, or webhook providers.
+
+2. Expanded ML overview coverage.
+   A new training-service test now confirms that the ML overview correctly reports autonomous provider readiness, block decisions, and action-status breakdowns from stored alert response metadata. This protects the dashboard panels that explain whether autonomy is configured and what happened after evaluation.
+
+3. Strengthened end-to-end proof for the ML Module.
+   The integration flow now re-requests `/api/ml/overview` after `POST /api/ml/autonomy-demo` and asserts that the observed autonomous outcome counts change. This directly covers the user-facing proof path behind the "Autonomy Demo Inject" button and guards against regressions where the numbers stay stuck at zero.
+
+4. Documentation refresh.
+   README.md and DEVELOPMENT_NOTES.txt were updated to reflect the current verified test count, the autonomy demo proof flow, and the latest debugging fix for the ML Module's observed autonomy counters.
+
+5. Local-only artifact handling.
+   This report is intentionally kept out of version control by adding `report4.txt` to `.gitignore`.

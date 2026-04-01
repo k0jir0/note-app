@@ -1,0 +1,145 @@
+Report 5: The ML Module as a Model-Operations Workspace
+
+Abstract
+
+The ML Module in this project represents a shift from "machine learning hidden behind a route" to "machine learning exposed as a product surface." Rather than functioning only as a training trigger, the module now joins together supervision, model fitting, runtime inspection, explainability, and audited downstream autonomy. This paper explains why that change matters, how the module fits into the broader application architecture, and what engineering lessons emerge from giving ML a visible and inspectable place in the user experience.
+
+1. Introduction
+
+This application started as a secure note-taking system and then expanded into a broader research environment. The Security Module introduced structured alert generation, scan ingestion, correlations, and realtime status. Once those ingredients existed, the next question was no longer whether the application could host a machine-learning model, but whether the application could make that model understandable and operationally useful.
+
+The ML Module is the answer to that question. It is not merely a dashboard for running a model-training script. It is a workspace that exposes how alert triage is learned, how it is applied, and how its outputs influence downstream incident-response policy. In practical terms, the page makes machine learning part of the product's day-to-day operational language instead of keeping it behind the scenes.
+
+2. System Context
+
+The larger product now has three important layers:
+
+- a note-taking layer for authenticated user content
+- a security-research layer for alerts, scans, correlations, and automation status
+- an ML-assisted triage layer for scoring, prioritization, and autonomy auditing
+
+The Security Module produces evidence. It converts logs, imported scans, and scheduled or realtime ingest events into stored `SecurityAlert` and `ScanResult` documents. The ML Module sits downstream from that evidence. It uses analyst feedback and alert features to train a logistic-regression triage model, rescore stored alerts, and display the results in a way that remains interpretable to human operators.
+
+That separation is valuable. It means the project does not treat machine learning as a replacement for the deterministic security pipeline. Instead, it treats ML as a ranking and decision-support layer built on top of already structured signals.
+
+3. Why the ML Module Matters
+
+Machine learning often enters applications as an invisible optimization. A model is trained offline, loaded into the backend, and asked to emit a score. From the outside, users see a changed ordering or a new confidence value, but they do not see where the value came from or why it should be trusted.
+
+The ML Module resists that pattern. It makes the following questions visible inside the product:
+
+- What model is currently active?
+- Was the model trained from bootstrap data or from hybrid real-plus-synthetic data?
+- How many examples were available during training?
+- Are current scores coming from heuristics or from learned weights?
+- Which features are pushing alerts upward or downward?
+- Have the scores changed any downstream behavior?
+
+These questions are not decorative. They are the core of safe operational use. A model that cannot answer them remains difficult to debug and difficult to trust.
+
+4. The Module as a Model-Operations Surface
+
+The strongest design decision in the current module is that it acts like a compact model-operations workspace instead of a single-purpose training control. The page now plays several roles at once.
+
+First, it is a training console. Users can fit a bootstrap or hybrid model from the authenticated UI without leaving the application.
+
+Second, it is a runtime inspection console. The page shows whether a trained model artifact is currently active or whether the application has fallen back to heuristic scoring.
+
+Third, it is an explainability console. The page exposes score buckets, score labels, score provenance, alert-type priority patterns, and learned feature influence.
+
+Fourth, it is a supervision console. Analyst feedback is not treated as a side effect; it is treated as data that feeds future training quality.
+
+Fifth, it is an autonomy audit console. The page shows whether model outputs are merely informative or are actually affecting notify-block policy decisions downstream.
+
+This combination is what elevates the feature from an ML experiment to an operational subsystem.
+
+5. Training Modes and Their Meaning
+
+The two training modes available in the UI reflect different maturity states of the application.
+
+`Train Bootstrap Model` is designed for cold-start environments. When a project does not yet have enough analyst-labeled alerts, a synthetic-first training path allows the team to stand up the full pipeline and demonstrate runtime scoring. This is useful for product development, interface testing, and workflow rehearsal. It is less useful as a claim about real-world model quality.
+
+`Train Hybrid Model` represents a more meaningful production direction. It blends real analyst-labeled alerts with synthetic support examples when the real label supply is still sparse. This mode moves the project away from pure demo data and toward learned behavior rooted in actual operator judgment.
+
+The existence of both modes is important because it encodes honesty about data maturity. The application does not pretend that a synthetic-only model is equivalent to a model shaped by real feedback. Instead, it gives both modes a place and makes their different purposes explicit.
+
+6. Explainability as Product Design
+
+Explainability in this project is not confined to one tooltip or one "reason" field. It is distributed across the ML Module as a design principle.
+
+Score labels show how the model bins confidence into a product-friendly language such as low, medium, and high. Score-source distributions reveal whether the system is operating mostly from heuristics, trained model output, or feedback-adjusted variants. Score buckets provide a fast visual sense of how concentrated or uncertain the current alert set is. Alert-type priority views reveal whether certain categories of alerts are consistently ranking high. Feature-influence panels expose which learned weights are helping drive those outcomes.
+
+Together, these views create a more intelligible model surface. A single score is rarely enough to understand behavior. A score combined with provenance, feature influence, dataset size, and label supply begins to explain itself.
+
+This matters because trust in ML systems is often less about perfect accuracy and more about legibility. Operators need to know why a model is behaving the way it is before they are willing to lean on it during triage.
+
+7. Relationship to Autonomous Response
+
+One of the most important architectural developments in the project is that machine learning is no longer isolated from downstream action. The application now contains an autonomous-response policy layer that can translate alert severity, ML score, trained-model status, feedback, and alert source into bounded `none`, `notify`, or `block` decisions.
+
+The ML Module is where that policy becomes visible. Recent alerts now show not only their score and reasons, but also the recorded response decision and any action outcomes. This closes an important loop:
+
+security evidence -> scored alert -> policy decision -> recorded action outcome
+
+Without a visible surface for that loop, the project could claim to have autonomous response, but operators would have little way to prove it was functioning. With the current design, that proof becomes inspectable.
+
+8. The Importance of the Autonomy Demo
+
+The `Autonomy Demo Inject` workflow is a good example of product-aware systems design. It creates a safe, dry-run notify-plus-block scenario and records the resulting decision path on stored alerts. It does not require live provider side effects in order to prove that the autonomy loop executed.
+
+This is significant for two reasons.
+
+First, it avoids ambiguity. Instead of asking users to infer that autonomy "probably works" because the backend code exists, the module can visibly move the `Observed Autonomous Outcomes` counters after a known input.
+
+Second, it keeps the proof path safe. Dry-run outcomes can be recorded honestly as skipped or simulated without sending real Slack messages or firing a real block webhook.
+
+This is one of the clearest examples in the project of how to make advanced backend behavior user-verifiable without making the product dangerous.
+
+9. Engineering Lessons
+
+Several engineering lessons emerge from the ML Module's current form.
+
+The first is that machine learning benefits from the same design discipline as any other production subsystem. Models need runtime state, fallback behavior, explicit configuration, and test coverage.
+
+The second is that explainability should be treated as a default requirement when the model influences prioritization or policy. If the product exposes scores but not their context, it creates confidence without accountability.
+
+The third is that feedback loops must be visible. If analyst labels are central to training quality, the product should help users understand whether those labels exist in meaningful numbers.
+
+The fourth is that autonomy should always be auditable. A system that can notify or block based on model output should leave behind visible evidence of what it decided and why.
+
+The fifth is that UI structure matters. By giving the ML Module its own page instead of burying it inside the Security Module, the application creates a clear conceptual space for model training and inspection without overwhelming the operator-facing security workflow.
+
+10. Limitations
+
+The current module is useful, but it is not complete.
+
+The model itself is intentionally lightweight. Logistic regression provides interpretability, but it limits expressive power compared with more complex models.
+
+The training data may still be sparse or synthetic-heavy. That means the module can prove the pipeline works before it can prove the model is deeply trustworthy.
+
+The autonomy policy is bounded, but any automated response system still depends on good thresholds, careful source scoping, and disciplined operator review.
+
+The module also remains a compact operations workspace rather than a full experiment-management platform. It does not yet compare multiple historical model artifacts side by side, replay benchmark datasets, or show longitudinal drift metrics.
+
+These limitations do not negate the current design. They simply define the next frontier.
+
+11. Future Directions
+
+The most valuable next improvements would likely be:
+
+- model-version comparison views
+- benchmark-replay support
+- drift and label-balance monitoring
+- richer provenance for each training run
+- staged approval for higher-impact autonomous actions
+- richer visual histories for score distribution changes over time
+
+Each of these would deepen the module's ability to serve as a disciplined operational surface instead of a one-time training page.
+
+12. Conclusion
+
+The most important result of the ML Module is not that the application can train a model. Many projects can do that. The important result is that this application now makes model behavior visible, explainable, and operationally relevant.
+
+The module turns training, runtime model state, learned feature influence, score provenance, feedback-aware supervision, and autonomy outcomes into first-class product behavior. That makes it easier to understand the model, debug it, trust it appropriately, and improve it over time.
+
+In short, the ML Module matters because it transforms machine learning from a hidden implementation detail into a transparent part of the application's decision pipeline.

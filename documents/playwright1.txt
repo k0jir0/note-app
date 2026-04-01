@@ -1,0 +1,52 @@
+Playwright in the Research Workspace
+
+Introduction
+
+The Playwright Module extends the application's Research Workspace with a second browser-automation surface that complements the existing Selenium Module. Its purpose is not to execute browser tests inside the application itself, but to turn the application's own module structure into exportable Playwright smoke suites. In that sense, the module acts as an in-product research and test-design environment: it explains what browser coverage exists, what routes matter, what assertions are stable, and what script template should be exported when a user wants to operationalize that knowledge in a real automation project.
+
+Conceptual Purpose
+
+Playwright is valuable in this application because the project has already grown beyond a single-page note tool. The app now contains multiple protected, stateful, and behavior-rich areas: the Research Workspace, the Security Module, the ML Module, and the Selenium Module itself. Once an application reaches that level of modularity, browser validation becomes a first-class concern. The Playwright Module responds to that need by converting those product surfaces into structured browser scenarios rather than leaving browser testing as an external afterthought.
+
+Architecture
+
+The Playwright implementation follows the same modular architecture used elsewhere in the project. A dedicated service defines scenario metadata, prerequisites, workflow guidance, and generated Playwright spec content. A controller exposes that data through authenticated JSON endpoints. A page route renders a dedicated frontend, and a browser script loads the overview, renders scenario cards, and fetches a generated spec preview for the selected scenario.
+
+This architecture matters because it keeps product knowledge centralized. The Playwright Module is not a random static page with a code sample pasted into it. It is a thin user interface over structured scenario data. That means the system can evolve consistently as the Research Workspace evolves. When new module routes appear, the browser-automation model can expand with them instead of drifting into stale documentation.
+
+Scenario Design
+
+The module defines several smoke scenarios that reflect actual application navigation:
+
+1. Research Workspace navigation
+2. Security Module smoke validation
+3. ML Module smoke validation
+4. Selenium Module smoke validation
+5. Playwright Module smoke validation
+6. A full research-suite flow that touches all major modules
+
+This scenario catalog is important because it encodes intent, not just code. Each scenario includes a route list, purpose statement, assertions, tags, and optional dependencies. That makes the module useful even before a user exports or runs a spec. It teaches what should be considered stable browser coverage in this codebase.
+
+Generated Output
+
+The generated Playwright artifact is a JavaScript spec using @playwright/test. It includes a shared sign-in helper, stable route-based navigation, and text-oriented assertions. This is a practical design choice. It avoids brittle UI automation patterns such as deep CSS chains, pixel-sensitive checks, or fragile click-sequence dependence. Instead, the generated specs emphasize high-signal page behavior: headings, visible controls, route transitions, and module-specific panels.
+
+That approach fits this application well. The Security Module, ML Module, and Selenium Module each expose meaningful UI sections that are better validated through durable semantic content than through low-level presentation checks.
+
+Why the Module Belongs in Research
+
+Placing Playwright inside the Research Workspace is conceptually strong. The Research Workspace is already the place where the application surfaces higher-order system capabilities rather than ordinary note CRUD. Security analysis, ML training, and browser automation all belong there because they represent operational and investigative work. The Playwright Module therefore strengthens the idea that the workspace is not just a dashboard, but a place where the system explains itself and generates actionable operational artifacts.
+
+Relationship to the Selenium Module
+
+The Selenium and Playwright modules now form a pair. Selenium represents one established browser-automation path centered on selenium-webdriver and driver-managed automation. Playwright represents a newer testing style centered on @playwright/test, stronger locator ergonomics, and integrated browser tooling. By implementing both as parallel modules, the application creates a comparative research environment for browser automation rather than committing to only one paradigm.
+
+This pairing is educational as well as practical. Users can inspect the same application coverage from two automation frameworks and see how each expresses the same browser goals differently.
+
+Testing and Confidence
+
+The Playwright Module is not merely present in the UI; it is covered by service, controller, route, and end-to-end integration tests. That coverage matters. A research feature without verification becomes documentation theater. Here, the module is integrated into the test suite so that route mounts, API responses, and rendered page content remain stable as the codebase changes.
+
+Conclusion
+
+The Playwright Module is valuable because it translates product structure into browser-automation structure. It gives the application a second first-class automation framework inside the Research Workspace, reinforces the modular nature of the product, and provides an exportable path from in-app research to real browser testing. In a project that already treats security, ML, and operational visibility as product-level concerns, Playwright is not an external extra. It is a natural extension of the application's research and validation identity.

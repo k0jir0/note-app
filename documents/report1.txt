@@ -1,0 +1,49 @@
+Recent Changes Report
+Project: test-app
+Date: 2026-03-20
+
+Overview
+This report summarizes the recent code cleanup and hardening work completed in the project. 
+The main goals were to remove redundant paths, consolidate overlapping logic, and fix reliability issues in the realtime ingestion flow.
+
+1. Note Flow Consolidation
+The note create/edit flow was simplified so the server-rendered form is once again the authoritative submission path. 
+The note form now posts with a hidden CSRF field and no longer depends on a separate client-side submit script to function correctly.
+
+A shared helper was introduced to centralize note payload validation, sanitization, and update shaping. 
+Both the page routes and the note API controller now use the same note mutation logic, reducing duplication and helping keep validation behavior consistent across the application.
+
+As part of that consolidation, legacy or redundant note code was removed:
+- requestValidator middleware for note create/update
+- legacy noteRoutes router
+- legacy noteController module
+- unused note-form JavaScript submit handler
+- unused applyPagination helper export
+
+2. Security Module and Realtime Worker Hardening
+The realtime worker was updated to handle failures more safely. Previously, malformed or failing messages could remain stuck in the Redis consumer group pending list indefinitely. The worker now dead-letters failed messages, acknowledges the original stream item, and can reclaim stale pending messages with XAUTOCLAIM.
+
+The worker metric for pending work was also corrected. It now reflects actual pending consumer-group messages instead of total stream length, which makes the metric more trustworthy for monitoring and debugging.
+
+3. Shared Utility Consolidation
+The duplicated buildAutomationSection view-model logic was extracted into a shared utility so the note-related research page and the Security Module page no longer maintain parallel copies of the same transformation code.
+
+4. Dead Code Removal
+Several files that no longer contributed to the live app were removed. This included old note route/controller code and an unused security-automation front-end script that was no longer referenced by any template.
+
+5. Test and Verification Updates
+The test suite was updated to match the simplified route/controller surface. New tests were added for:
+- shared note mutation utilities
+- realtime dead-letter behavior
+- realtime stale-message claiming
+- realtime pending metric updates
+
+Verification completed after the changes:
+- npm run lint: passing
+- npm test: passing (214 tests)
+
+6. Documentation Cleanup
+Project documentation was adjusted so it no longer references removed files in the validation notes, development notes, and README structure listing.
+
+Outcome
+The project is now leaner and easier to reason about. The note flow has a single clear source of truth, the realtime pipeline is more fault-tolerant, and confirmed dead code has been removed to reduce maintenance overhead.

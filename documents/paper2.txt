@@ -1,0 +1,149 @@
+Paper 2: Why the ML Module Is Machine Learning
+
+Abstract
+
+The ML Module in this project is properly described as machine learning because it does more than apply fixed rules to security alerts. It collects structured inputs, turns them into features, learns parameters from labeled examples, persists a trained model artifact, and uses that learned model to score future alerts. This paper explains why those characteristics qualify the module as machine learning, how the module differs from the deterministic security logic elsewhere in the application, and why its current design should be understood as a real supervised-learning subsystem rather than a cosmetic analytics page.
+
+1. Introduction
+
+Software teams sometimes label a feature "AI" or "ML" when the feature is actually just a collection of rules, thresholds, or dashboards. That distinction matters. A rules engine may be useful, but it is not the same thing as a model that is trained from data. The question for this project is therefore precise: does the ML Module merely visualize security alerts, or does it perform machine learning in a meaningful sense?
+
+The answer is yes, it does perform machine learning. The module trains a logistic-regression triage model using alert features and labeled outcomes, stores the resulting model weights, and applies those learned weights to future alerts. It therefore satisfies the core properties of supervised machine learning: data representation, training, parameter estimation, inference, and feedback-driven improvement.
+
+2. What Counts as Machine Learning
+
+At a theoretical level, machine learning is the process of fitting a model to data so that the model can generalize from examples to new cases. A system qualifies as machine learning when it contains at least the following ingredients:
+
+- a representation of examples
+- a set of features derived from those examples
+- labels or a target signal, in the supervised case
+- a training procedure that adjusts parameters based on data
+- an inference procedure that applies learned parameters to unseen examples
+
+If a system only applies hand-written if-else logic, it is not machine learning. If it adjusts behavior through learned parameters estimated from examples, it is.
+
+By this definition, the ML Module in this application is machine learning because it learns a scoring function from alert data and analyst feedback, then uses that learned function to rank future alerts.
+
+3. The Difference Between the Security Module and the ML Module
+
+The clearest way to understand why the ML Module is truly machine learning is to compare it with the Security Module.
+
+The Security Module primarily uses deterministic logic. It parses logs, imports scan results, identifies suspicious behavior, and builds correlations. Those operations rely on explicit rules such as pattern matching, threshold checks, parser logic, and known heuristic mappings. They are computationally useful, but they are not learned from data at runtime.
+
+The ML Module sits downstream from that deterministic layer. It takes structured alerts that already exist, derives numerical and categorical features from them, and then learns a triage model from labeled examples. That learned model is not a hand-authored rules table. It is a parameterized statistical function shaped by data.
+
+This distinction is important. The Security Module is the evidence-production layer. The ML Module is the learned prioritization layer.
+
+4. Feature Extraction as the First ML Step
+
+Machine learning depends on turning real-world inputs into a usable feature space. The ML Module performs exactly that step. Security alerts are transformed into structured model inputs such as:
+
+- alert type
+- severity
+- count and repetition characteristics
+- ratios and frequency indicators
+- context drawn from the alert summary or details
+- feedback state and other derived signals
+
+These features are not the final decision by themselves. They are the representation that the model learns from. In other words, the ML Module does not simply store alerts and display them. It converts alerts into machine-readable examples.
+
+This featureization step is essential because learning algorithms operate on structured input vectors rather than raw product concepts like "this alert feels dangerous." The ML Module therefore performs one of the central tasks of applied machine learning: representing a domain problem in a form that a trainable model can consume.
+
+5. Labels and Supervision
+
+Another defining property of this module is that it incorporates supervision. Analyst feedback such as important, needs_review, false_positive, and resolved provides training signal. Those labels tell the system which historical alerts were more meaningful and which ones were noise.
+
+Once labels exist, the problem becomes a supervised-learning task. The model can estimate how strongly particular features tend to align with higher-priority or lower-priority outcomes. This is not the same as hardcoding that certain alert types are always important. Instead, the model learns how combinations of features correlate with the target signal found in labeled examples.
+
+Even the bootstrap path reinforces the ML nature of the module. Synthetic examples are still examples. They provide an initial labeled dataset from which the model learns weights. That may not be as trustworthy as real analyst feedback, but it is still training from data rather than simply executing fixed rules.
+
+6. Training and Parameter Estimation
+
+The central reason the module is machine learning is that it contains a training phase. During training, the model estimates weights for features using logistic regression. Those weights are not hand-assigned constants written directly into the UI. They are the result of fitting a statistical model to the training data.
+
+This training phase changes the model's future behavior. If the label distribution or feature patterns change, the learned weights can change as well. That is the hallmark of machine learning: model behavior is shaped by data.
+
+In practical terms, training produces:
+
+- a learned weight vector
+- a learned bias term
+- model metadata and metrics
+- a saved model artifact for later inference
+
+The presence of a persisted model artifact is especially important. It shows that the application is not merely calculating one-off scores during a page request. It is maintaining a learned object that can be reused and inspected across sessions.
+
+7. Inference on New Alerts
+
+Machine learning is not only about training. It is also about applying the trained model to future examples. The ML Module does that through runtime scoring.
+
+Once a model has been trained, the application uses it to assign:
+
+- `mlScore`
+- `mlLabel`
+- `mlReasons`
+- `scoreSource`
+
+to stored and newly ingested alerts. Those values are generated by applying the learned parameters to alert features. This is classic inference behavior. The model receives an unseen alert represented as features and predicts its likely importance or risk level.
+
+That process is fundamentally different from a static rule such as "if severity is high, rank first." In the ML Module, severity is only one input among several, and its influence depends on learned weights rather than a single fixed branch in application code.
+
+8. Feedback Loops and Improvement
+
+A true ML subsystem should have a path for improvement as more data arrives. The ML Module has exactly that. Analyst feedback feeds future training runs, and hybrid training combines real labeled alerts with synthetic support data when the real sample size is still limited.
+
+This means the module is not frozen. It can evolve as the application gathers more judgments and more alert patterns. Over time, the model can become more aligned with actual operator preferences, not just initial engineering assumptions.
+
+That feedback loop is one of the strongest signals that the module is genuine machine learning. A deterministic heuristic system may be tuned manually by developers, but it does not improve through labeled examples in the same way. The ML Module does.
+
+9. Explainability Does Not Make It Less ML
+
+Some people assume that because a system is explainable, it must not really be machine learning. That assumption is incorrect. A logistic-regression model is still a learned model even though its weights and influences can be inspected.
+
+The ML Module exposes:
+
+- score distributions
+- score provenance
+- feature influence
+- recent scored alerts
+- training metrics
+- autonomy outcomes downstream of scoring
+
+These views do not reduce the model to a simple dashboard. They expose the consequences of a genuine training-and-inference system. In fact, explainability strengthens the ML Module because it makes the learned behavior auditable instead of opaque.
+
+10. Why the Module Is More Than Analytics
+
+It would be possible to build a page that simply charts alerts and calls itself an ML dashboard. That would not be enough. The reason this module goes beyond analytics is that the page is attached to a real model lifecycle:
+
+- it shows the current model state
+- it triggers training
+- it reflects training mode differences
+- it surfaces the learned outputs
+- it connects those outputs to downstream policy behavior
+
+In other words, the module is not just observing machine learning from the outside. It is operating as the user-facing control and inspection surface for the model.
+
+11. Relationship to Autonomous Response
+
+The ML Module is also machine learning because its learned scores have consequences. The application's autonomous-response policy can use model output as part of deciding whether to notify, block, or take no action for eligible ingested incidents.
+
+This does not mean the model alone controls everything. The policy also considers source eligibility, thresholds, trained-model requirements, and target availability. But the learned score is part of the decision path. That makes the model operational, not ornamental.
+
+The Autonomy Demo Inject flow makes this especially visible. It provides a safe demonstration that the model and policy pipeline are connected. The system records outcomes on stored alerts, allowing users to see that learned scoring is influencing later stages of the application.
+
+12. Limitations and Honest Framing
+
+Calling the ML Module machine learning does not mean it is a perfect or highly advanced ML system. It is important to be accurate about its limitations.
+
+The model is intentionally lightweight. Logistic regression is interpretable, but it is not the most expressive modeling approach available.
+
+Some of the training signal may still be sparse or synthetic-heavy, depending on the environment.
+
+The downstream policy path remains bounded and audited, which is a strength for safety but also a reminder that ML output should not be treated as unquestionable truth.
+
+These limitations matter, but they do not invalidate the ML label. A simple supervised model is still machine learning if it learns from data and generalizes that learned behavior to future cases.
+
+13. Conclusion
+
+The ML Module is properly called machine learning because it learns from examples rather than relying only on hand-coded rules. It extracts features from alerts, incorporates labels, fits a logistic-regression model, saves the learned artifact, scores future alerts through inference, and supports retraining as more feedback becomes available.
+
+That makes it a real supervised-learning subsystem inside the application. It may be compact and intentionally interpretable, but it is still machine learning in the core technical sense. The value of the module is not only that it trains a model, but that it makes the model's lifecycle visible, inspectable, and useful within the larger security-research workflow.

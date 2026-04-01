@@ -1,0 +1,54 @@
+Report 3: Recent Changes Summary
+
+Date: 2026-03-21
+
+This report summarizes the latest round of local development work completed on the test-app project.
+
+1. Realtime enablement on localhost
+
+The local environment was configured so the Security Module realtime features can run on this machine.
+An ignored .env.local file is now the source of truth for local-only runtime settings, including
+APP_BASE_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, REDIS_URL, and ENABLE_REALTIME.
+
+Redis was brought up locally on 127.0.0.1:6379, the web application was restarted on localhost:3000,
+and the realtime worker was updated so it loads .env and .env.local on startup. This allows the
+worker to run correctly outside the main web process while preserving the repo's safe handling of
+untracked secrets.
+
+2. Security Module realtime reliability
+
+The Security Module had a user-visible issue where pressing "Disconnect Realtime" did not always
+fully disconnect the browser from the realtime stream. The client-side realtime controller was
+refined to track explicit connection states: disconnected, connecting, and connected.
+
+The updated implementation now cancels in-flight availability probes, closes the active EventSource
+more reliably, and prevents repeated button presses from leaving behind an unintended pending
+connection. This makes the connect/disconnect behavior more predictable during manual testing.
+
+3. End-to-end application coverage
+
+New integration tests were added under the test directory to exercise full request flows across the
+current application. The latest coverage includes:
+
+- Note API CRUD behavior for authenticated users
+- Server-rendered note create and edit flows
+- Security Module workflows for page load, log analysis, scan import, correlations, and realtime probe
+
+The test harness was also updated so the test suite loads a dedicated setup file, runs in test mode,
+and disables Redis usage where appropriate. This keeps the automated suite deterministic while still
+covering the main app behavior end to end.
+
+4. Verification status
+
+At the time of these changes:
+
+- lint passed successfully
+- the test suite completed successfully with 224 passing tests
+- the app responded on localhost:3000 as expected
+- realtime status confirmed as available and enabled in the local environment
+
+5. Repository hygiene
+
+This report is intended to remain local only. The file has been added to .gitignore so it will not
+be committed to the repository by accident, matching the handling of report1.txt, report2.txt,
+essay1.txt, .env.local, and other machine-specific artifacts.

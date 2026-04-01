@@ -1,0 +1,75 @@
+Report 2: Optimization and Consolidation Pass
+Date: 2026-03-20
+
+Overview
+This report summarizes the latest optimization pass across the test-app project. The goal of the work was to reduce unnecessary data loading, consolidate repeated logic, improve maintainability in the security module, and preserve existing behavior while keeping lint and tests green.
+
+1. Database and Query Optimizations
+The note, alert, and scan models were updated with compound indexes that better match real query patterns used by the application.
+
+- Notes now include an index on user + updatedAt for the main list view.
+- Security alerts now include indexes for:
+  - user + detectedAt + createdAt
+  - user + source + detectedAt
+  - user + source + details._fingerprint + detectedAt
+- Scan results now include indexes for:
+  - user + importedAt + createdAt
+  - user + source + fingerprint + importedAt
+
+Query paths were also tightened:
+- Note list reads now select only list-view fields instead of full note documents.
+- Scan list reads now select only the fields rendered in the Security Module.
+- Alert and correlation reads now use lean queries and select only the fields consumed by the UI or correlation engine.
+- The sample correlation controller path now inserts scans and alerts in parallel with Promise.all.
+
+2. Security Module UI Cleanup
+The client-side Security Module code was refactored to reduce unnecessary work in the browser.
+
+Previously, many actions triggered a full three-panel refresh even when only one or two areas changed. The workspace script now supports targeted panel refreshes:
+- alerts only
+- scans only
+- correlations only
+- full refresh when needed
+
+Specific improvements:
+- log analysis refreshes alerts and correlations, but not scans
+- scan import refreshes scans and correlations, but not alerts
+- correlation demo injection reuses the returned correlation payload directly and only refreshes the alert and scan panels
+- automation sample refreshes the whole workspace, but handles partial refresh failures more gracefully
+
+The realtime code was also split out of the main workspace script into its own browser file so the page logic is easier to reason about and maintain.
+
+3. Runtime and Routing Consolidation
+Development-only runtime debug and realtime-toggle endpoints were extracted from index.js into a dedicated route module.
+
+Benefits:
+- index.js is slimmer and easier to scan
+- runtime toggle behavior is grouped in one place
+- the old router-stack introspection used to infer SSE mounting was removed
+- the dev runtime endpoints now return simpler, more explicit status data
+
+4. Automation Service Consolidation
+The automation service retains the recent consolidation work from the previous pass:
+- shared fingerprint-based file batch runner logic
+- shared timer registration helper
+- shared alert side-effect handling for metrics, blocking, and notifications
+
+This keeps the log, scan, and intrusion poller code more uniform and easier to extend.
+
+5. Test Updates
+The test suite was updated to match the refined query chains and new development runtime route module.
+
+Coverage now includes:
+- dev runtime route registration and behavior
+- targeted controller query stubs that include select/lean chains
+- existing note and security controller coverage updated for the optimized data-access paths
+
+6. Verification
+The repository was verified after the change set:
+
+- npm run lint: passed
+- npm test: passed
+- total tests passing at verification time: 220
+
+Conclusion
+This pass did not add major user-facing features, but it materially improved performance characteristics, code organization, and maintainability. The biggest gains came from aligning indexes with query patterns, reducing over-fetching, narrowing client refresh behavior, and extracting repeated runtime/UI logic into clearer modules.

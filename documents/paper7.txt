@@ -1,0 +1,205 @@
+PHD THESIS
+
+Title:
+Architectural Security as an Application Primitive:
+A Study of Mission Assurance, Hardware-First Authentication,
+Session Control, Browser Hardening, and Server-Side Access Verification
+in a Research-Oriented Full-Stack Web Application
+
+Author:
+Ryan V
+
+Date:
+March 26, 2026
+
+
+ABSTRACT
+
+This thesis examines the transformation of a full-stack Express and MongoDB application from a secure note-taking platform into a broader research environment for applied security architecture. The work of today centered on a decisive shift in emphasis: from isolated security features toward visible, testable, architectural controls. Rather than treating security as a collection of route-specific checks or user-interface affordances, the project now frames security as an end-to-end systems property. The resulting application exposes that property through dedicated research modules for Mission Assurance, Hardware-First Multi-Factor Authentication, Session Management, Injection Prevention, XSS Defense, and Access Control.
+
+The principal result of the day's progress is the conversion of several abstract security concerns into first-class application surfaces backed by actual enforcement logic. Mission access decisions are now explained and evaluated through explicit role and attribute models. Hardware-first assurance is grounded in WebAuthn-backed token registration and PKI-aware session posture. Session handling now reflects the assumption that terminals may be abandoned and that concurrent logins should be treated as a security event rather than a convenience. Injection prevention and XSS defense are no longer silent middleware decisions alone; they are documented, rendered, and made inspectable through module-level views. Finally, broken access control, one of the most persistent and consequential application failures, is addressed by a protected-by-default server-side API gate that re-verifies identity independently of the frontend.
+
+The project therefore demonstrates a useful pedagogical principle: a modern security-oriented application should not merely implement controls, but reveal them. What can be inspected can be reasoned about; what can be reasoned about can be tested; and what can be tested can be maintained with greater confidence. The present state of the application, verified locally at 466 passing tests, illustrates how architectural security work can remain concrete, explainable, and development-friendly.
+
+
+1. INTRODUCTION
+
+Many applications contain security mechanisms but do not present security as a coherent system. Authentication may exist in one layer, authorization in another, session behavior in a third, and frontend assumptions elsewhere. The result is often a fragmented implementation in which the user sees convenience, the developer sees middleware, and the attacker sees inconsistency. The work completed today sought to address that inconsistency.
+
+The application under study began as a notes platform augmented by a research workspace. Over time it gained modules for security analytics, machine-learning-assisted alert triage, browser automation, and self-healing locator research. Today's work extended that line of development by concentrating on a more foundational question: how should a web application express and enforce trust?
+
+This question was approached through six concrete areas:
+
+1. Mission-aware access policy.
+2. Hardware-first multi-factor authentication.
+3. Session invalidation and abandonment control.
+4. Injection prevention at the request and database layers.
+5. XSS defense through rendering and browser policy.
+6. Server-side access verification independent of frontend state.
+
+The significance of this effort lies not only in the implementation of those controls, but in their integration into the application's research model. Each control is represented both as behavior and as explanation. This duality is essential. Systems that merely deny access may be secure in a narrow sense, yet remain opaque to maintainers. Systems that explain their logic but do not enforce it remain illustrative rather than operational. The goal of today's progress was to unite both.
+
+
+2. RESEARCH PROBLEM
+
+The central problem addressed by the day was the common separation between application security theory and application security reality. In many systems:
+
+- role checks exist, but are too coarse to reflect actual mission context;
+- multi-factor authentication exists, but is framed as commodity convenience rather than as strong assurance;
+- sessions expire only by age and ignore field conditions such as abandonment or superseding login;
+- injection and XSS defenses operate silently and are not visible enough to be validated at the system level;
+- frontend visibility still influences how developers think about authorization, even when the server should decide everything.
+
+This disconnect makes software difficult to audit and easy to misunderstand. The application therefore required a restructuring in which security concerns became named, inspectable, route-backed capabilities rather than incidental code paths.
+
+
+3. MISSION ASSURANCE AS POLICY INFRASTRUCTURE
+
+The Mission Assurance work of today represents a decisive move from coarse authorization toward policy reasoning. In ordinary applications, "user" and "admin" often serve as the only meaningful roles. Such a structure is inadequate wherever access depends not merely on identity, but on mission, clearance, trust posture, or context.
+
+The new Mission Assurance module treats access as the result of both role-based and attribute-based evaluation. The model now considers factors such as:
+
+- mission role,
+- clearance level,
+- mission assignment,
+- device trust tier,
+- network zone,
+- break-glass state,
+- and, where relevant, strong-factor authentication posture.
+
+This yields a more realistic security model. A user is not simply privileged or unprivileged; a user is situated. The system thereby becomes capable of representing not just who someone is, but under what conditions they may act.
+
+The architectural achievement here is not merely that decisions are made, but that they are surfaced in a dedicated module. By allowing policy evaluation to be inspected, the application reduces the risk that security becomes folklore in the codebase. The module becomes a lens through which access-control assumptions can be tested and taught.
+
+
+4. HARDWARE-FIRST MFA AND PKI-AWARE ASSURANCE
+
+Today's work also advanced authentication from a generic second-factor framing toward a stronger model of assurance. Software tokens and fallback mechanisms are common in web systems, but they do not all provide equal resistance to compromise. The project therefore adopted a hardware-first stance.
+
+The Hardware-First MFA module now provides a concrete place to inspect and reason about strong-factor posture. Most importantly, the work moved beyond mock representation. WebAuthn-backed registration and assertion flows are now part of the application's logic, and PKI-aware session assurance is grounded in trusted certificate evidence rather than mere placeholder strings.
+
+This matters because it changes the semantics of authentication. The question is no longer "did the user complete some second step?" It becomes "what level of assurance does the current session deserve?" That is a more useful question for high-trust environments and more honest for system design in general.
+
+The module also serves an educational purpose by making visible the difference between identity and assurance. One may know who a user is and yet remain uncertain that the current session is sufficiently hardened for sensitive actions. Today's work gives the application a way to represent and enforce that distinction.
+
+
+5. SESSION MANAGEMENT UNDER FIELD CONDITIONS
+
+Session handling is often implemented as passive expiration. This is insufficient wherever environmental assumptions are hostile. A session is not merely a cookie plus time-to-live; it is an operational risk surface. Today's Session Management work treats it as such.
+
+The project now models:
+
+- idle timeout,
+- absolute timeout,
+- concurrent-login prevention,
+- and superseded-session invalidation.
+
+This is important for two reasons. First, it replaces the default assumption that multiple active sessions are harmless. Second, it recognizes that a terminal may be abandoned and that access control must respond accordingly. The application now reflects a stricter understanding of continuity: a session must remain justified, not merely present.
+
+By representing this behavior in a module, the system also makes its assumptions legible. Developers and testers can inspect session policy, reason about lockout conditions, and observe how the application responds when one login supersedes another. The result is an application that better matches real operational constraints.
+
+
+6. INJECTION PREVENTION AS REQUEST POSTURE
+
+Injection prevention is frequently discussed as an implementation detail, yet it is better understood as a request posture. The application's Injection Prevention work today formalized that posture across the middleware and database layers.
+
+Unsafe Mongo-style operator payloads are now rejected early through request guarding, and the Mongoose layer is configured with safer defaults such as `sanitizeFilter` and `strictQuery`. This matters not because it is novel, but because it reduces entire classes of accidental trust in user-controlled structure.
+
+Just as importantly, the new module explains these decisions rather than hiding them. The application now shows that injection prevention is not simply a collection of ad hoc field validations, but a philosophy: user input may describe data, but it may not smuggle control syntax into the query model.
+
+
+7. XSS DEFENSE THROUGH RENDERING AND POLICY
+
+Cross-site scripting is best prevented by treating output safety as a composition of rendering discipline and browser policy. Today's XSS Defense work made that composition explicit.
+
+The project now foregrounds two facts:
+
+1. server-rendered content must be escaped safely;
+2. the browser must be constrained by a strict Content Security Policy.
+
+This dual model is stronger than either side alone. Escaping reduces the chance of untrusted content being interpreted as executable markup; CSP limits the consequences when rendering assumptions fail. By placing both in a dedicated module, the application becomes capable of demonstrating not just that XSS was considered, but how it is structurally resisted.
+
+This is a particularly important pedagogical development. Security often degrades when developers view XSS as a matter of sanitizing strings in isolated code paths. The present architecture instead teaches that XSS defense is a system property involving templates, browser headers, and policy consistency.
+
+
+8. BROKEN ACCESS CONTROL AND THE SERVER AS FINAL AUTHORITY
+
+The most consequential work of the day was the addition of a protected-by-default server-side API gate and the Access Control module that explains it. Broken access control remains one of the most pervasive application failures because systems continue to leak authority through frontend assumptions, stale route patterns, or insufficient server checks.
+
+The project now adopts a more disciplined model:
+
+- protected API paths are treated as protected by default;
+- verified identity is required at the server;
+- route-level auth remains explicit where appropriate;
+- ownership and mission policy are still evaluated separately;
+- frontend visibility no longer implies permission.
+
+This design is especially valuable because it addresses the most subtle form of access-control drift: the belief that hiding a button is itself a security control. The Access Control module now demonstrates, in concrete scenarios, that the server must re-evaluate identity and policy regardless of what the browser presents.
+
+The result is not merely a safer API. It is a clearer architecture. Developers reading the code or using the module can understand that the server is the final authority and that frontend state is, at most, advisory.
+
+
+9. GOOGLE OAUTH ERROR HANDLING AS SYSTEM POLISH
+
+Though smaller in scope than the architectural modules above, today's Google OAuth callback hardening is still worth attention. The application previously handled one class of token-exchange failure but allowed another Passport-surfaced callback error shape to bubble upward as a noisy exception.
+
+This was corrected by treating both `TokenError` and `InternalOAuthError` as part of the same operational category: Google callback exchange failure. The consequence is subtle but meaningful. The system now responds with a clear login-page error and diagnostic guidance rather than confronting the operator with a raw stack trace.
+
+This improvement illustrates a broader principle. Security architecture is not only about preventing compromise; it is also about preserving clarity under failure. A controlled error path is part of trustworthiness.
+
+
+10. VERIFICATION AND EVIDENCE
+
+The value of architectural change depends on verification. Today's work is supported by several forms of evidence:
+
+- expanded route and module coverage across the research surfaces,
+- focused auth-route coverage for Google callback failure handling,
+- a documented local verification baseline of 466 passing tests,
+- refreshed browser artifact reruns covering the current module surface, including 20 passing Chromium Playwright scenarios and 17 passing Selenium scenarios,
+- live route checks confirming that protected modules are mounted,
+- and running application checks on `localhost:3000`.
+
+These forms of evidence matter because they tie explanation back to execution. A thesis about software architecture that cannot point to verification would be little more than a design essay. Here, the code, tests, routes, and documentation all move together.
+
+
+11. CONTRIBUTION TO PRACTICE
+
+The broader contribution of today's progress is a demonstration that security features need not live in silence. They can be represented as modules, surfaced to operators, and backed by deterministic enforcement. This has at least four practical consequences:
+
+First, maintainability improves. A control that is named and grouped is easier to revise than one hidden in scattered conditionals.
+
+Second, onboarding improves. A new contributor can understand the security model through the modules rather than by reverse-engineering dozens of middleware interactions.
+
+Third, testing improves. Once a control is explicit, it becomes easier to write route, controller, integration, and browser tests that map cleanly onto intended behavior.
+
+Fourth, pedagogy improves. The application serves not just as software, but as a research object for understanding how architectural security can be expressed in a modern web stack.
+
+
+12. LIMITATIONS
+
+This thesis would be incomplete without acknowledging present limitations.
+
+- Local runtime stability still depends on launching the server through a sufficiently persistent host process.
+- PKI and mutual-TLS support, while made materially more real, still depend on external certificate material and deployment context.
+- The application remains a research-oriented environment rather than a fully governed production platform.
+
+These are not defects in the argument, but boundaries on its present implementation.
+
+
+13. CONCLUSION
+
+The work completed today strengthened the application by converting security principles into inspectable, enforceable, and testable system components. Mission assurance became explicit policy. Hardware-first MFA became an assurance model rather than a checkbox. Sessions became governed objects rather than passive cookies. Injection and XSS defense became visible architecture rather than hidden habits. Access control became decisively server-centered. OAuth callback failure handling became calmer and clearer.
+
+Taken together, these changes suggest a guiding thesis:
+
+Security in software is most effective when it is architectural, visible, and verified.
+
+The project now embodies that principle more convincingly than it did at the start of the day. Its modules tell a story, its routes enforce that story, and its tests provide evidence that the story is not merely aspirational. That is substantial progress for a single development cycle, and it provides a sound foundation for the work that follows.
+
+
+REFERENCES TO PROJECT STATE
+
+- Repository: `Class1/fullstack/repos/test-app`
+- Verified local baseline: `466` passing tests
+- Principal date of analysis: March 26, 2026
+- Core themes of the day's work: mission policy, hardware assurance, session control, injection prevention, XSS defense, access control, local startup stability, and Google OAuth callback hardening
