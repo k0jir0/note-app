@@ -60,29 +60,45 @@ describe('SBOM generation helpers', () => {
     it('detects when the committed SBOM no longer matches the lockfile-derived content', () => {
         const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'note-app-sbom-'));
         const destination = path.join(tempDirectory, 'note-app.cdx.json');
+        fs.writeFileSync(path.join(tempDirectory, 'package.json'), JSON.stringify({
+            name: 'note-app'
+        }, null, 2));
         const rawSbom = JSON.stringify({
             serialNumber: 'urn:uuid:new-serial',
             metadata: {
                 timestamp: '2026-04-01T00:11:38.856Z',
-                tools: [{ vendor: 'npm', name: 'cli', version: '10.9.2' }]
+                tools: [{ vendor: 'npm', name: 'cli', version: '10.9.2' }],
+                component: {
+                    name: 'temp-folder-name'
+                }
             },
             components: [{ name: 'example', version: '1.0.0' }]
         });
 
         fs.writeFileSync(destination, buildStabilizedSbom({
+            rootDir: tempDirectory,
             destination,
             rawSbom
         }), 'utf8');
 
-        expect(isSbomCurrent({ destination, rawSbom })).to.equal(true);
+        expect(isSbomCurrent({
+            rootDir: tempDirectory,
+            destination,
+            rawSbom
+        })).to.equal(true);
+        expect(JSON.parse(fs.readFileSync(destination, 'utf8')).metadata.component.name).to.equal('note-app');
 
         expect(isSbomCurrent({
+            rootDir: tempDirectory,
             destination,
             rawSbom: JSON.stringify({
                 serialNumber: 'urn:uuid:new-serial',
                 metadata: {
                     timestamp: '2026-04-01T00:11:38.856Z',
-                    tools: [{ vendor: 'npm', name: 'cli', version: '10.9.2' }]
+                    tools: [{ vendor: 'npm', name: 'cli', version: '10.9.2' }],
+                    component: {
+                        name: 'different-temp-folder-name'
+                    }
                 },
                 components: [{ name: 'example', version: '2.0.0' }]
             })
