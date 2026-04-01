@@ -7,6 +7,14 @@ const outputDirectory = path.join(projectRoot, 'sbom');
 const outputFile = path.join(outputDirectory, 'note-app.cdx.json');
 const SBOM_NPM_VERSION = '10.9.2';
 
+function readPackageManifest(rootDir) {
+    try {
+        return JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
+    } catch {
+        return null;
+    }
+}
+
 function readSbomFile(filePath) {
     if (!fs.existsSync(filePath)) {
         return null;
@@ -55,11 +63,15 @@ function readCommittedSbom({ rootDir, destination }) {
     }
 }
 
-function stabilizeSbom(rawSbom, stableSbom = null) {
+function stabilizeSbom(rawSbom, stableSbom = null, { rootDir = projectRoot } = {}) {
     const parsedSbom = JSON.parse(rawSbom);
     const stableMetadata = stableSbom && stableSbom.metadata && typeof stableSbom.metadata === 'object'
         ? stableSbom.metadata
         : null;
+    const packageManifest = readPackageManifest(rootDir);
+    const packageName = packageManifest && typeof packageManifest.name === 'string'
+        ? packageManifest.name.trim()
+        : '';
 
     if (stableSbom && typeof stableSbom.serialNumber === 'string') {
         parsedSbom.serialNumber = stableSbom.serialNumber;
@@ -75,19 +87,52 @@ function stabilizeSbom(rawSbom, stableSbom = null) {
         }
     }
 
+    if (packageName
+        && parsedSbom.metadata
+        && parsedSbom.metadata.component
+        && typeof parsedSbom.metadata.component === 'object') {
+        parsedSbom.metadata.component.name = packageName;
+    }
+
     return `${JSON.stringify(parsedSbom, null, 2)}\n`;
 }
 
-function generateSbom({ rootDir = projectRoot, destination = outputFile } = {}) {
+function buildStabilizedSbom({ rootDir = projectRoot, destination = outputFile, rawSbom = '' } = {}) {
+    const stableSbom = readCommittedSbom({ rootDir, destination }) || readExistingSbom(destination);
+    const resolvedRawSbom = typeof rawSbom === 'string' && rawSbom.trim()
+        ? rawSbom
+        : execSync(`npx --yes npm@${SBOM_NPM_VERSION} sbom --package-lock-only --sbom-format cyclonedx`, {
+            cwd: rootDir,
+            encoding: 'utf8'
+        });
+
+    return stabilizeSbom(resolvedRawSbom, stableSbom, { rootDir });
+}
+
+function isSbomCurrent({ rootDir = projectRoot, destination = outputFile, rawSbom = '' } = {}) {
+    if (!fs.existsSync(destination)) {
+        return false;
+    }
+
+    const expectedSbom = buildStabilizedSbom({
+        rootDir,
+        destination,
+        rawSbom
+    });
+    const committedSbom = fs.readFileSync(destination, 'utf8');
+
+    return committedSbom === expectedSbom;
+}
+
+function generateSbom({ rootDir = projectRoot, destination = outputFile, rawSbom = '' } = {}) {
     const destinationDirectory = path.dirname(destination);
     fs.mkdirSync(destinationDirectory, { recursive: true });
 
-    const stableSbom = readCommittedSbom({ rootDir, destination }) || readExistingSbom(destination);
-    const rawSbom = execSync(`npx --yes npm@${SBOM_NPM_VERSION} sbom --package-lock-only --sbom-format cyclonedx`, {
-        cwd: rootDir,
-        encoding: 'utf8'
+    const stabilizedSbom = buildStabilizedSbom({
+        rootDir,
+        destination,
+        rawSbom
     });
-    const stabilizedSbom = stabilizeSbom(rawSbom, stableSbom);
 
     fs.writeFileSync(destination, stabilizedSbom, 'utf8');
     return destination;
@@ -99,7 +144,9 @@ if (require.main === module) {
 }
 
 module.exports = {
+    buildStabilizedSbom,
     generateSbom,
+    isSbomCurrent,
     readCommittedSbom,
     readCommittedTimestamp,
     readExistingSbom,

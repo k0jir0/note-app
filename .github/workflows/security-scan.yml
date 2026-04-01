@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20.8.0'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies (cached)
@@ -31,21 +31,25 @@ jobs:
         run: npm test --silent
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v4
 
       - name: Build hardened app image
         run: docker build --tag note-app:ci .
 
       - name: Run Trivy image scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'note-app:ci'
+          scanners: 'vuln'
           format: 'json'
           output: 'trivy-report.json'
-          exit-code: '0' # don't fail CI on findings; publish report instead
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
           scan-type: 'image'
 
       - name: Upload trivy report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report

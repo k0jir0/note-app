@@ -1,0 +1,66 @@
+name: Monthly Security Review
+description: Record monthly audit-health, privileged-access, and vulnerability-review evidence.
+title: "[ITSG-33] Monthly security review: "
+body:
+  - type: input
+    id: review-date
+    attributes:
+      label: Review date
+      placeholder: YYYY-MM-DD
+    validations:
+      required: true
+  - type: input
+    id: reviewer
+    attributes:
+      label: Reviewer
+      placeholder: Name or handle
+    validations:
+      required: true
+  - type: textarea
+    id: audit-health
+    attributes:
+      label: Immutable logging and high-risk audit review
+      description: Summarize the latest protected-environment health check and any privileged-denial or break-glass events reviewed.
+      placeholder: immutableLogging healthy=true, degraded=false; reviewed privileged denial events for the month; no unexplained break-glass changes.
+    validations:
+      required: true
+  - type: textarea
+    id: privileged-assignments
+    attributes:
+      label: Privileged assignment review
+      description: Summarize current admin and break_glass assignments and any changes made.
+      placeholder: Reviewed 2 admin accounts and 0 break_glass accounts; removed none; justification confirmed.
+    validations:
+      required: true
+  - type: textarea
+    id: vulnerability-review
+    attributes:
+      label: Vulnerability and exception review
+      description: Summarize open dependency, image, or code-scan findings and whether any exception remains active.
+      placeholder: No open HIGH/CRITICAL findings; no active exceptions.
+    validations:
+      required: true
+  - type: textarea
+    id: secret-rotation
+    attributes:
+      label: Secret rotation or auth credential activity
+      description: Record completed rotations, skipped rotations, or not-applicable rationale.
+      placeholder: Rotated OAuth client secret on YYYY-MM-DD.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence-links
+    attributes:
+      label: Evidence links
+      description: Link workflow runs, health captures, tickets, or stored artifacts.
+      placeholder: https://..., ticket-123, artifact path
+    validations:
+      required: true
+  - type: textarea
+    id: follow-up
+    attributes:
+      label: Follow-up actions
+      description: Record remediation work or state that none is required.
+      placeholder: None.
+    validations:
+      required: true

@@ -236,6 +236,60 @@ function createPersistentAuditClient({
     clock = () => new Date(),
     osLib = os
 } = {}) {
+    const hasRemoteForwarder = Boolean(baseClient && baseClient.enabled && typeof baseClient.capture === 'function');
+    const deliveryState = {
+        healthy: true,
+        degraded: false,
+        persistedHealthy: true,
+        remoteHealthy: true,
+        requireRemoteSuccess: Boolean(requireRemoteSuccess),
+        lastAttemptAt: '',
+        lastSuccessAt: '',
+        lastFailureAt: '',
+        lastError: '',
+        lastOutcome: {
+            persisted: null,
+            forwarded: hasRemoteForwarder ? null : true
+        }
+    };
+
+    function toIsoTimestamp(value) {
+        if (value instanceof Date) {
+            return value.toISOString();
+        }
+
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+    }
+
+    function updateDeliveryState({ persisted, forwarded, error = null, occurredAt = clock() } = {}) {
+        const attemptTimestamp = toIsoTimestamp(occurredAt);
+        const persistedHealthy = Boolean(persisted);
+        const remoteHealthy = hasRemoteForwarder ? Boolean(forwarded) : true;
+        const healthy = persistedHealthy && remoteHealthy;
+
+        deliveryState.persistedHealthy = persistedHealthy;
+        deliveryState.remoteHealthy = remoteHealthy;
+        deliveryState.healthy = healthy;
+        deliveryState.degraded = !healthy;
+        deliveryState.lastAttemptAt = attemptTimestamp;
+        deliveryState.lastOutcome = {
+            persisted: persistedHealthy,
+            forwarded: remoteHealthy
+        };
+
+        if (healthy) {
+            deliveryState.lastSuccessAt = attemptTimestamp;
+            deliveryState.lastError = '';
+            return;
+        }
+
+        deliveryState.lastFailureAt = attemptTimestamp;
+        deliveryState.lastError = error && error.message
+            ? error.message
+            : 'Immutable audit delivery degraded.';
+    }
+
     async function persist(level, message, metadata = {}) {
         const normalizedMetadata = normalizeMetadata(enrichMetadataWithRequestContext(metadata));
         const normalizedMessage = typeof message === 'string' ? message : String(message || 'Application log event');
@@ -295,6 +349,7 @@ function createPersistentAuditClient({
                 ? baseClient.capture(level, message, metadata)
                 : Promise.resolve(false)
         ]);
+        const captureSucceeded = Boolean(persisted || forwarded);
 
         if (requireRemoteSuccess && !(persisted && forwarded)) {
             const failure = new Error('Required immutable audit delivery failed.');
@@ -305,6 +360,12 @@ function createPersistentAuditClient({
                 persisted,
                 forwarded
             };
+
+            updateDeliveryState({
+                persisted,
+                forwarded,
+                error: failure
+            });
 
             if (typeof onRequiredFailure === 'function') {
                 await onRequiredFailure(failure);
@@ -317,12 +378,24 @@ function createPersistentAuditClient({
             return false;
         }
 
-        return Boolean(persisted || forwarded);
+        updateDeliveryState({
+            persisted,
+            forwarded,
+            error: captureSucceeded ? null : new Error('Immutable audit delivery failed.')
+        });
+
+        return captureSucceeded;
     }
 
     return {
         enabled: true,
         requireRemoteSuccess: Boolean(requireRemoteSuccess),
+        getDeliveryState: () => ({
+            ...deliveryState,
+            lastOutcome: {
+                ...deliveryState.lastOutcome
+            }
+        }),
         capture,
         info: (message, metadata) => capture('info', message, metadata),
         warn: (message, metadata) => capture('warn', message, metadata),

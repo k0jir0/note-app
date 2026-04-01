@@ -1,0 +1,57 @@
+name: Break-Glass Drill
+description: Record emergency-access activation, rollback, and audit evidence.
+title: "[ITSG-33] Break-glass drill: "
+body:
+  - type: input
+    id: exercise-date
+    attributes:
+      label: Drill date
+      placeholder: YYYY-MM-DD
+    validations:
+      required: true
+  - type: input
+    id: operator
+    attributes:
+      label: Operator
+      placeholder: Name or handle
+    validations:
+      required: true
+  - type: input
+    id: ticket-id
+    attributes:
+      label: Incident or maintenance ticket
+      placeholder: INC-123 or CHG-456
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Scenario and reason
+      description: Describe why break-glass was activated and what was tested.
+      placeholder: Simulated authentication provider outage; verified emergency maintenance path.
+    validations:
+      required: true
+  - type: textarea
+    id: activation
+    attributes:
+      label: Activation and reset details
+      description: Record mode changes, timestamps, and reset confirmation.
+      placeholder: Enabled read-only mode at 14:05 UTC, reset to disabled at 14:17 UTC.
+    validations:
+      required: true
+  - type: textarea
+    id: audit-evidence
+    attributes:
+      label: Audit and health evidence
+      description: Link or summarize the activation audit, reset audit, and any related health checks.
+      placeholder: Linked persisted audit events and protected /healthz capture.
+    validations:
+      required: true
+  - type: textarea
+    id: findings
+    attributes:
+      label: Findings and follow-up
+      description: Record issues found or state that none were found.
+      placeholder: None.
+    validations:
+      required: true
