@@ -56,9 +56,19 @@ try {
     }
 
     $responsePayload = if (Test-Path $tempResponse) { Get-Content $tempResponse -Raw } else { "" }
+    $responseDocument = $null
+    $expectedArtifactKey = $null
 
     $functionError = $null
     $statusCode = $null
+
+    if ($responsePayload) {
+        try {
+            $responseDocument = $responsePayload | ConvertFrom-Json
+        } catch {
+            $responseDocument = $null
+        }
+    }
 
     if ($invokeMetadata.PSObject.Properties.Match("FunctionError").Count -gt 0) {
         $functionError = $invokeMetadata.FunctionError
@@ -76,16 +86,28 @@ try {
         throw "Lambda returned unexpected status code '$statusCode'. Payload: $responsePayload"
     }
 
+    if ($responseDocument -and $responseDocument.PSObject.Properties.Match("status").Count -gt 0 -and $responseDocument.status -ne "ok") {
+        throw "Lambda returned unexpected status '$($responseDocument.status)'. Payload: $responsePayload"
+    }
+
+    if ($responseDocument -and $responseDocument.PSObject.Properties.Match("key").Count -gt 0) {
+        $expectedArtifactKey = [string]$responseDocument.key
+    }
+
     Write-Host "Waiting for a new S3 artifact under s3://$BucketName/$Prefix ..."
     $artifact = $null
     $deadline = (Get-Date).AddSeconds($ArtifactWaitSeconds)
     while ((Get-Date) -lt $deadline) {
         $listing = Invoke-AwsJson -Arguments @("s3api", "list-objects-v2", "--bucket", $BucketName, "--prefix", $Prefix, "--region", $Region)
         $contents = @($listing.Contents) | Where-Object { $_ }
-        $artifact = $contents |
-            Sort-Object { [DateTimeOffset]$_.LastModified } -Descending |
-            Where-Object { [DateTimeOffset]$_.LastModified -ge $invokeStartedAt.AddSeconds(-5) } |
-            Select-Object -First 1
+        if ($expectedArtifactKey) {
+            $artifact = $contents | Where-Object { $_.Key -eq $expectedArtifactKey } | Select-Object -First 1
+        } else {
+            $artifact = $contents |
+                Sort-Object { [DateTimeOffset]$_.LastModified } -Descending |
+                Where-Object { [DateTimeOffset]$_.LastModified -ge $invokeStartedAt.AddSeconds(-5) } |
+                Select-Object -First 1
+        }
 
         if ($artifact) {
             break
