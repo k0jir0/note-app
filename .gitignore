@@ -168,3 +168,6 @@ storage/note-images/
 
 # Ignore marketing pitch
 pitch.txt
+# Ignore saved VS Code workspace file
+documents/McGillSoftware.code-workspace
+*.code-workspace
