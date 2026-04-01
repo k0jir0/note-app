@@ -78,16 +78,42 @@ function stabilizeSbom(rawSbom, stableSbom = null) {
     return `${JSON.stringify(parsedSbom, null, 2)}\n`;
 }
 
-function generateSbom({ rootDir = projectRoot, destination = outputFile } = {}) {
+function buildStabilizedSbom({ rootDir = projectRoot, destination = outputFile, rawSbom = '' } = {}) {
+    const stableSbom = readCommittedSbom({ rootDir, destination }) || readExistingSbom(destination);
+    const resolvedRawSbom = typeof rawSbom === 'string' && rawSbom.trim()
+        ? rawSbom
+        : execSync(`npx --yes npm@${SBOM_NPM_VERSION} sbom --package-lock-only --sbom-format cyclonedx`, {
+            cwd: rootDir,
+            encoding: 'utf8'
+        });
+
+    return stabilizeSbom(resolvedRawSbom, stableSbom);
+}
+
+function isSbomCurrent({ rootDir = projectRoot, destination = outputFile, rawSbom = '' } = {}) {
+    if (!fs.existsSync(destination)) {
+        return false;
+    }
+
+    const expectedSbom = buildStabilizedSbom({
+        rootDir,
+        destination,
+        rawSbom
+    });
+    const committedSbom = fs.readFileSync(destination, 'utf8');
+
+    return committedSbom === expectedSbom;
+}
+
+function generateSbom({ rootDir = projectRoot, destination = outputFile, rawSbom = '' } = {}) {
     const destinationDirectory = path.dirname(destination);
     fs.mkdirSync(destinationDirectory, { recursive: true });
 
-    const stableSbom = readCommittedSbom({ rootDir, destination }) || readExistingSbom(destination);
-    const rawSbom = execSync(`npx --yes npm@${SBOM_NPM_VERSION} sbom --package-lock-only --sbom-format cyclonedx`, {
-        cwd: rootDir,
-        encoding: 'utf8'
+    const stabilizedSbom = buildStabilizedSbom({
+        rootDir,
+        destination,
+        rawSbom
     });
-    const stabilizedSbom = stabilizeSbom(rawSbom, stableSbom);
 
     fs.writeFileSync(destination, stabilizedSbom, 'utf8');
     return destination;
@@ -99,7 +125,9 @@ if (require.main === module) {
 }
 
 module.exports = {
+    buildStabilizedSbom,
     generateSbom,
+    isSbomCurrent,
     readCommittedSbom,
     readCommittedTimestamp,
     readExistingSbom,

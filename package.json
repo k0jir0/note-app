@@ -38,6 +38,11 @@
     "audit:deps": "npm audit --audit-level=high",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "audit:report": "npm audit --json",
+    "itsg33:k8s-pins:check": "node scripts/check-k8s-image-pins.js",
+    "itsg33:k8s-pins:refresh": "node scripts/refresh-k8s-support-image-digests.js",
+    "itsg33:docs:check": "node scripts/check-itsg33-docs.js",
+    "itsg33:repo-checks": "npm run itsg33:k8s-pins:check && npm run itsg33:docs:check",
+    "sbom:check": "node scripts/check-sbom.js",
     "sbom:generate": "node scripts/generate-sbom.js",
     "lint": "eslint . --ext .js"
   },

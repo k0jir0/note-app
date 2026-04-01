@@ -1,0 +1,88 @@
+name: ITSG-33 Monthly Review
+
+on:
+  schedule:
+    - cron: '5 9 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-monthly-review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Open or refresh monthly review issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const now = new Date();
+            const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+            const title = `[ITSG-33] Monthly security review: ${period}`;
+            const labels = [
+              { name: 'itsg33', color: '0e8a16', description: 'ITSG-33 evidence and governance tracking' },
+              { name: 'evidence', color: '1d76db', description: 'Evidence collection and review records' },
+              { name: 'monthly-review', color: '5319e7', description: 'Recurring monthly ITSG-33 review work' }
+            ];
+
+            async function ensureLabel(label) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: label.name });
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+
+                await github.rest.issues.createLabel({ owner, repo, ...label });
+              }
+            }
+
+            for (const label of labels) {
+              await ensureLabel(label);
+            }
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'itsg33,monthly-review',
+              per_page: 100
+            });
+            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
+
+            if (existing) {
+              await core.summary.addRaw(`Monthly review already open: #${existing.number}`).write();
+              return;
+            }
+
+            const body = [
+              'This issue was created automatically for the monthly ITSG-33 security review.',
+              '',
+              `Review period: ${period}`,
+              '',
+              'References:',
+              '- docs/itsg33-evidence-checklist.md',
+              '- docs/itsg33-operations-runbook.md',
+              '- .github/ISSUE_TEMPLATE/monthly-security-review.yml',
+              '',
+              'Checklist',
+              '- [ ] Review immutable logging health and high-risk audit events.',
+              '- [ ] Confirm whether any environment reported immutableLogging.degraded.',
+              '- [ ] Review open dependency, image, and code-scan findings.',
+              '- [ ] Review current admin and break_glass assignments.',
+              '- [ ] Confirm secret rotation activity or document the exception rationale.',
+              '- [ ] Attach or link evidence before closing this issue.'
+            ].join('\n');
+
+            const issue = await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: labels.map((label) => label.name)
+            });
+
+            await core.summary.addRaw(`Created monthly review issue #${issue.data.number}.`).write();

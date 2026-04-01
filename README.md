@@ -86,6 +86,7 @@ npm run test:e2e   # Run Playwright browser tests in Chromium
 npm run lint       # ESLint
 npm run audit:deps # Fail on high-severity dependency CVEs across all installed deps
 npm run audit:prod # Fail on high-severity dependency CVEs in production deps only
+npm run sbom:check # Fail if the committed CycloneDX SBOM no longer matches package-lock.json
 npm run sbom:generate # Regenerate the CycloneDX dependency manifest
 ```
 

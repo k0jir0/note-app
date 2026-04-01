@@ -147,12 +147,24 @@ function createApp({
             ? res.locals.breakGlass
             : (req.app && req.app.locals ? req.app.locals.breakGlass : null);
         const offline = Boolean(breakGlass && breakGlass.offline);
+        const auditClient = req.app && req.app.locals ? req.app.locals.immutableLogClient : null;
+        const auditDelivery = auditClient && typeof auditClient.getDeliveryState === 'function'
+            ? auditClient.getDeliveryState()
+            : null;
 
         return res.status(offline ? 503 : 200).json({
             ok: !offline,
             breakGlass: {
                 mode: breakGlass && breakGlass.mode ? breakGlass.mode : 'disabled',
                 enabled: Boolean(breakGlass && breakGlass.enabled)
+            },
+            immutableLogging: {
+                enabled: Boolean(auditClient && auditClient.enabled),
+                healthy: auditDelivery ? Boolean(auditDelivery.healthy) : true,
+                degraded: auditDelivery ? Boolean(auditDelivery.degraded) : false,
+                requireRemoteSuccess: auditDelivery
+                    ? Boolean(auditDelivery.requireRemoteSuccess)
+                    : Boolean(auditClient && auditClient.requireRemoteSuccess)
             }
         });
     });

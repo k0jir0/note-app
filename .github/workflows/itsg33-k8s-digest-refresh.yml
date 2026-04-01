@@ -1,0 +1,49 @@
+name: ITSG-33 K8s Digest Refresh
+
+on:
+  schedule:
+    - cron: '45 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: itsg33-k8s-digest-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh-digests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Refresh pinned Kubernetes support-image digests
+        run: node scripts/refresh-k8s-support-image-digests.js
+
+      - name: Validate pinned support images
+        run: npm run itsg33:k8s-pins:check
+
+      - name: Create pull request for digest refresh
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/itsg33-k8s-digest-refresh
+          commit-message: build(k8s): refresh pinned support image digests
+          title: build(k8s): refresh pinned support image digests
+          body: |
+            Refreshes the pinned `mongo` and `nginx` support-image digests in `ops/kubernetes/immutable-stack.yaml`.
+
+            This PR was created automatically by `.github/workflows/itsg33-k8s-digest-refresh.yml`.
+
+            Validation:
+            - `node scripts/refresh-k8s-support-image-digests.js`
+            - `npm run itsg33:k8s-pins:check`
+          delete-branch: true
