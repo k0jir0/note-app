@@ -101,15 +101,34 @@ try {
     Write-Host "Created artifact: s3://$BucketName/$($artifact.Key)"
 
     $logGroupName = "/aws/lambda/$LambdaName"
-    $logStreams = Invoke-AwsJson -Arguments @("logs", "describe-log-streams", "--log-group-name", $logGroupName, "--order-by", "LastEventTime", "--descending", "--limit", "5", "--region", $Region)
-    $latestStream = @($logStreams.logStreams) | Select-Object -First 1
+    $latestStream = $null
+    $logStreamDeadline = (Get-Date).AddSeconds(60)
+    while ((Get-Date) -lt $logStreamDeadline) {
+        $logStreams = Invoke-AwsJson -Arguments @("logs", "describe-log-streams", "--log-group-name", $logGroupName, "--order-by", "LastEventTime", "--descending", "--limit", "5", "--region", $Region)
+        $latestStream = @($logStreams.logStreams) | Select-Object -First 1
+        if ($latestStream) {
+            break
+        }
+
+        Start-Sleep -Seconds 5
+    }
+
     if (-not $latestStream) {
         throw "No CloudWatch log streams found in $logGroupName."
     }
 
     $startTime = [int64]$invokeStartedAt.AddMinutes(-1).ToUnixTimeMilliseconds()
-    $events = Invoke-AwsJson -Arguments @("logs", "get-log-events", "--log-group-name", $logGroupName, "--log-stream-name", $latestStream.logStreamName, "--start-time", "$startTime", "--limit", "50", "--region", $Region)
-    $messages = @($events.events | ForEach-Object { $_.message }) | Where-Object { $_ }
+    $messages = @()
+    $logEventDeadline = (Get-Date).AddSeconds(60)
+    while ((Get-Date) -lt $logEventDeadline) {
+        $events = Invoke-AwsJson -Arguments @("logs", "get-log-events", "--log-group-name", $logGroupName, "--log-stream-name", $latestStream.logStreamName, "--start-time", "$startTime", "--limit", "50", "--region", $Region)
+        $messages = @($events.events | ForEach-Object { $_.message }) | Where-Object { $_ }
+        if ($messages) {
+            break
+        }
+
+        Start-Sleep -Seconds 5
+    }
 
     if (-not $messages) {
         throw "No recent CloudWatch log events found for $LambdaName."
