@@ -20,7 +20,7 @@ What is already automated
 
 - CI, test, lint, dependency audit, image scanning, and SBOM freshness enforcement already run through GitHub Actions.
 - Dependabot is configured in `.github/dependabot.yml` to open update PRs against `main` for npm dependencies, GitHub Actions, and the root Dockerfile base images.
-- `.github/workflows/itsg33-k8s-digest-refresh.yml` now refreshes the pinned `mongo` and `nginx` `linux/amd64` support-image digests and opens a pull request when upstream digests change.
+- `.github/workflows/itsg33-k8s-support-image-refresh.yml` now refreshes the pinned `mongo` and `nginx` `linux/amd64` support-image digests and opens a pull request when upstream digests change.
 - `.github/workflows/itsg33-release-evidence.yml` now rolls up required workflow status into a PR comment and artifact whenever the required security or CI workflows complete for a pull request.
 - `.github/workflows/itsg33-monthly-review.yml`, `.github/workflows/itsg33-quarterly-review.yml`, and `.github/workflows/itsg33-annual-review.yml` now open the recurring ITSG-33 review issues automatically on schedule.
 - `npm run itsg33:repo-checks` now enforces digest-pinned Kubernetes support images and the presence of the required ITSG-33 artifacts through CI.
@@ -68,7 +68,7 @@ Suggested implementation
 - Add `scripts/check-k8s-image-pins.js` to fail when mutable support-image tags reappear.
 - Add a lightweight doc-link checker in CI for the ITSG-33 docs.
 - Keep `.github/dependabot.yml` for npm, GitHub Actions, and Dockerfile updates.
-- Keep `.github/workflows/itsg33-k8s-digest-refresh.yml` for automatic pull requests that refresh the pinned support-image digests in `ops/kubernetes/immutable-stack.yaml`.
+- Keep `.github/workflows/itsg33-k8s-support-image-refresh.yml` for automatic pull requests that refresh the pinned support-image digests in `ops/kubernetes/immutable-stack.yaml`.
 
 What can be partially automated
 -------------------------------

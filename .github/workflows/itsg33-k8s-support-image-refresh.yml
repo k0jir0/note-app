@@ -1,4 +1,4 @@
-name: ITSG-33 K8s Digest Refresh PR
+name: ITSG-33 K8s Support Image Refresh
 
 on:
   workflow_dispatch: {}
@@ -41,7 +41,7 @@ jobs:
           body: |
             Refreshes the pinned `mongo` and `nginx` support-image digests in `ops/kubernetes/immutable-stack.yaml`.
 
-            This PR was created automatically by `.github/workflows/itsg33-k8s-digest-refresh.yml`.
+            This PR was created automatically by `.github/workflows/itsg33-k8s-support-image-refresh.yml`.
 
             Validation:
             - `node scripts/refresh-k8s-support-image-digests.js`
