@@ -44,11 +44,36 @@ try {
         throw "Lambda invoke failed.`n$invokeRaw"
     }
 
-    $invokeMetadata = (($invokeRaw | Out-String).Trim() | ConvertFrom-Json)
+    $invokeMetadataText = ($invokeRaw | Out-String).Trim()
+    $invokeMetadata = if ($invokeMetadataText) {
+        $invokeMetadataText | ConvertFrom-Json
+    } else {
+        [pscustomobject]@{}
+    }
+
+    if ($invokeMetadata -is [System.Array]) {
+        $invokeMetadata = $invokeMetadata[-1]
+    }
+
     $responsePayload = if (Test-Path $tempResponse) { Get-Content $tempResponse -Raw } else { "" }
 
-    if ($invokeMetadata.FunctionError) {
-        throw "Lambda returned FunctionError '$($invokeMetadata.FunctionError)'. Payload: $responsePayload"
+    $functionError = $null
+    $statusCode = $null
+
+    if ($invokeMetadata.PSObject.Properties.Match("FunctionError").Count -gt 0) {
+        $functionError = $invokeMetadata.FunctionError
+    }
+
+    if ($invokeMetadata.PSObject.Properties.Match("StatusCode").Count -gt 0) {
+        $statusCode = [int]$invokeMetadata.StatusCode
+    }
+
+    if ($functionError) {
+        throw "Lambda returned FunctionError '$functionError'. Payload: $responsePayload"
+    }
+
+    if ($statusCode -and ($statusCode -lt 200 -or $statusCode -ge 300)) {
+        throw "Lambda returned unexpected status code '$statusCode'. Payload: $responsePayload"
     }
 
     Write-Host "Waiting for a new S3 artifact under s3://$BucketName/$Prefix ..."
