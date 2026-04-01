@@ -1,0 +1,105 @@
+name: Deploy Rotation Lambda (OIDC)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
+      apply:
+        description: Apply the planned changes
+        required: true
+        type: boolean
+        default: true
+  push:
+    tags:
+      - rotation-v*
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: rotation-lambda-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy rotation lambda
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || 'production' }}
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || 'production' }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_ROTATION_ROLE_ARN: ${{ vars.AWS_ROTATION_ROLE_ARN }}
+      ROTATION_BACKUP_PREFIX: ${{ vars.ROTATION_BACKUP_PREFIX || 'rotations/' }}
+      ROTATION_BUCKET_NAME: ${{ vars.ROTATION_BUCKET_NAME }}
+      ROTATION_KMS_KEY_ARN: ${{ vars.ROTATION_KMS_KEY_ARN }}
+      ROTATION_LAMBDA_NAME: ${{ vars.ROTATION_LAMBDA_NAME || 'rotation-lambda' }}
+      ROTATION_SCHEDULE_EXPRESSION: ${{ vars.ROTATION_SCHEDULE_EXPRESSION || 'rate(7 days)' }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ops/terraform/rotation_lambda
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate workflow configuration
+        run: |
+          missing=0
+          for name in AWS_ROTATION_ROLE_ARN ROTATION_BUCKET_NAME ROTATION_KMS_KEY_ARN; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not set for environment ${DEPLOY_ENV}"
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROTATION_ROLE_ARN }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: |
+          terraform plan -input=false -out=tfplan \
+            -var "region=${AWS_REGION}" \
+            -var "bucket_name=${ROTATION_BUCKET_NAME}" \
+            -var "kms_key_arn=${ROTATION_KMS_KEY_ARN}" \
+            -var "lambda_name=${ROTATION_LAMBDA_NAME}" \
+            -var "backup_prefix=${ROTATION_BACKUP_PREFIX}" \
+            -var "schedule_expression=${ROTATION_SCHEDULE_EXPRESSION}"
+
+      - name: Terraform apply
+        if: ${{ github.event_name == 'push' || github.event.inputs.apply == 'true' }}
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Verify staging deployment
+        if: ${{ (github.event_name == 'push' || github.event.inputs.apply == 'true') && env.DEPLOY_ENV == 'staging' }}
+        shell: pwsh
+        run: |
+          ./integration-test.ps1 `
+            -LambdaName $env:ROTATION_LAMBDA_NAME `
+            -BucketName $env:ROTATION_BUCKET_NAME `
+            -Region $env:AWS_REGION `
+            -Prefix $env:ROTATION_BACKUP_PREFIX

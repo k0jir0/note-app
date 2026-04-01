@@ -1,22 +1,25 @@
-Rotation Lambda — scaffold
+Rotation Lambda
 
-This branch contains scaffold and notes for the rotation lambda feature.
+This branch tracks the rotation Lambda feature work.
 
-Contents
-- `index.js` — lambda handler (not included here yet)
-- `deploy-rotation.ps1` — deployment helper (already in repo when implemented)
+Relevant files
+- `ops/terraform/rotation_lambda/index.js` — Lambda handler
+- `ops/terraform/rotation_lambda/main.tf` — Terraform module
+- `ops/terraform/rotation_lambda/deploy-rotation.ps1` — local deploy helper
+- `ops/terraform/rotation_lambda/integration-test.ps1` — staging verification helper
+- `.github/workflows/deploy-rotation-oidc.yml` — GitHub Actions OIDC deployment workflow
+- `documents/rotation-runbook.md` — manual trigger, verification, rollback, and audit guide
 
 Notes for contributors
-- This branch is a feature branch; open PRs and request reviews. Do not push binaries into the repo.
-- Terraform provider binaries and `.terraform/` directories are intentionally gitignored; run `terraform init` in module dirs to fetch providers.
+- This is a feature branch with an open draft PR; keep changes small and push incremental commits.
+- Do not commit generated artifacts such as `.terraform/`, `tfplan`, or zip bundles.
+- Run `terraform init` in `ops/terraform/rotation_lambda` before planning locally.
 
-Checklist
-- [ ] Implement `index.js` lambda handler
-- [ ] Add unit tests under `test/`
-- [ ] Add deployment/CI steps and documentation
+Current checklist
+- [x] Restore the Terraform module source files
+- [x] Remove the wildcard KMS fallback and require a specific KMS key ARN
+- [x] Add an OIDC deployment workflow and a staging integration script
+- [x] Publish a short rotation runbook
+- [ ] Run a staging deployment and verify the Lambda end-to-end
+- [ ] Mark the draft PR ready for review after staging validation
 
-How to test locally
-1. Install dependencies: `npm ci`
-2. Run unit tests: `npm test`
-
-If you need to add infra changes, update `ops/terraform/rotation_lambda` and follow the `ops/terraform/README.md` guidance.
