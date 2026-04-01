@@ -22,7 +22,7 @@ const requiredArtifacts = [
     '.github/workflows/itsg33-monthly-review.yml',
     '.github/workflows/itsg33-quarterly-review.yml',
     '.github/workflows/itsg33-annual-review.yml',
-    '.github/workflows/itsg33-k8s-digest-refresh.yml'
+    '.github/workflows/itsg33-k8s-support-image-refresh.yml'
 ];
 
 function checkItsg33Artifacts({ rootDir = projectRoot } = {}) {

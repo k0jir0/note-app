@@ -44,7 +44,7 @@ Implemented Remediations
    - Rationale: release evidence, monthly reviews, contingency drills, privileged-access reviews, and annual governance refreshes now have standardized templates and documented procedures rather than informal ad hoc tracking.
 
 8. Repository automation now enforces ITSG-33 drift checks and recurring evidence reminders.
-   - Files: `.github/workflows/ci.yml`, `.github/workflows/itsg33-release-evidence.yml`, `.github/workflows/itsg33-monthly-review.yml`, `.github/workflows/itsg33-quarterly-review.yml`, `.github/workflows/itsg33-annual-review.yml`, `.github/workflows/itsg33-k8s-digest-refresh.yml`, `scripts/check-k8s-image-pins.js`, `scripts/check-itsg33-docs.js`, `scripts/refresh-k8s-support-image-digests.js`, `.github/dependabot.yml`
+   - Files: `.github/workflows/ci.yml`, `.github/workflows/itsg33-release-evidence.yml`, `.github/workflows/itsg33-monthly-review.yml`, `.github/workflows/itsg33-quarterly-review.yml`, `.github/workflows/itsg33-annual-review.yml`, `.github/workflows/itsg33-k8s-support-image-refresh.yml`, `scripts/check-k8s-image-pins.js`, `scripts/check-itsg33-docs.js`, `scripts/refresh-k8s-support-image-digests.js`, `.github/dependabot.yml`
    - Rationale: the repository now checks for mutable support-image drift, validates the required ITSG-33 artifact set, publishes release-evidence rollups to pull requests, creates recurring review issues automatically, refreshes support-image digest pins through reviewable pull requests, and keeps core dependency-update automation active.
 
 Residual Non-Code Controls

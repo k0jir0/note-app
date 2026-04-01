@@ -32,7 +32,7 @@ $nginx = docker manifest inspect nginx:1.27-alpine --verbose | ConvertFrom-Json
 $nginx | Where-Object { $_.Descriptor.platform.os -eq 'linux' -and $_.Descriptor.platform.architecture -eq 'amd64' } | Select-Object -First 1 -ExpandProperty Ref
 ```
 
-The repository also includes `.github/workflows/itsg33-k8s-digest-refresh.yml`, which refreshes these pinned support-image digests on a schedule and opens a pull request when upstream `linux/amd64` digests change. The manual commands above remain the fallback path.
+The repository also includes `.github/workflows/itsg33-k8s-support-image-refresh.yml`, which refreshes these pinned support-image digests on a schedule and opens a pull request when upstream `linux/amd64` digests change. The manual commands above remain the fallback path.
 
 ## Apply and rotate
 
