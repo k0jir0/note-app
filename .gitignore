@@ -171,3 +171,10 @@ pitch.txt
 # Ignore saved VS Code workspace file
 documents/McGillSoftware.code-workspace
 *.code-workspace
+
+# Terraform runtime files and state
+*.tfstate
+*.tfstate.backup
+**/.terraform/
+ops/terraform/**/.terraform/
+
