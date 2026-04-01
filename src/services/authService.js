@@ -49,18 +49,124 @@ function isGoogleTokenExchangeError(error) {
         || errorMessage.includes('Failed to obtain access token');
 }
 
+function normalizeBasePath(pathname = '') {
+    const trimmedPathname = String(pathname || '').trim();
+    if (!trimmedPathname || trimmedPathname === '/') {
+        return '';
+    }
+
+    return `/${trimmedPathname.replace(/^\/+/, '').replace(/\/+$/, '')}`;
+}
+
+function normalizeRequestPath(pathname = '') {
+    const trimmedPathname = String(pathname || '').trim();
+    if (!trimmedPathname || trimmedPathname === '/') {
+        return '/';
+    }
+
+    return `/${trimmedPathname.replace(/^\/+/, '')}`;
+}
+
+function joinBasePath(basePath = '', requestPath = '/') {
+    const normalizedBasePath = normalizeBasePath(basePath);
+    const normalizedRequestPath = normalizeRequestPath(requestPath);
+
+    if (!normalizedBasePath) {
+        return normalizedRequestPath;
+    }
+
+    if (normalizedRequestPath === normalizedBasePath || normalizedRequestPath.startsWith(`${normalizedBasePath}/`)) {
+        return normalizedRequestPath;
+    }
+
+    return normalizedRequestPath === '/'
+        ? normalizedBasePath
+        : `${normalizedBasePath}${normalizedRequestPath}`;
+}
+
+function canTrustForwardedHeaders(req) {
+    const trustProxyFn = req && req.app && typeof req.app.get === 'function'
+        ? req.app.get('trust proxy fn')
+        : null;
+
+    if (typeof trustProxyFn !== 'function') {
+        return false;
+    }
+
+    const remoteAddress = req && req.socket ? req.socket.remoteAddress : undefined;
+    return trustProxyFn(remoteAddress, 0);
+}
+
+function getRequestHost(req) {
+    if (req && typeof req.host === 'string' && req.host.trim()) {
+        return req.host.trim();
+    }
+
+    if (!req || typeof req.get !== 'function') {
+        return '';
+    }
+
+    const host = req.get('host');
+    return typeof host === 'string' ? host.trim() : '';
+}
+
+function getTrustedForwardedPrefix(req) {
+    if (!canTrustForwardedHeaders(req) || !req || typeof req.get !== 'function') {
+        return '';
+    }
+
+    const rawPrefix = req.get('x-forwarded-prefix');
+    if (typeof rawPrefix !== 'string') {
+        return '';
+    }
+
+    const normalizedPrefix = normalizeBasePath(rawPrefix.split(',')[0]);
+    return normalizedPrefix;
+}
+
+function buildVisibleRequestUrl(req) {
+    const host = getRequestHost(req);
+    const protocol = req && typeof req.protocol === 'string' && req.protocol.trim()
+        ? req.protocol.trim()
+        : 'http';
+    const requestTarget = req && typeof req.originalUrl === 'string' && req.originalUrl
+        ? req.originalUrl
+        : (req && typeof req.url === 'string' && req.url ? req.url : '/');
+
+    if (!host) {
+        return null;
+    }
+
+    const requestUrl = new URL(requestTarget, `${protocol}://${host}`);
+    const forwardedPrefix = getTrustedForwardedPrefix(req);
+    requestUrl.pathname = joinBasePath(forwardedPrefix, requestUrl.pathname);
+    return requestUrl;
+}
+
+function buildCanonicalAppUrl(appBaseUrl, requestUrl) {
+    const canonicalUrl = new URL(appBaseUrl);
+    canonicalUrl.pathname = joinBasePath(canonicalUrl.pathname, requestUrl.pathname);
+    canonicalUrl.search = requestUrl.search;
+    return canonicalUrl;
+}
+
 function maybeRedirectToConfiguredAppBaseUrl(req, res) {
     const appBaseUrl = getConfiguredAppBaseUrl();
     if (!appBaseUrl || !req || typeof req.get !== 'function') {
         return false;
     }
 
-    const currentOrigin = `${req.protocol}://${req.get('host')}`;
-    if (currentOrigin === appBaseUrl) {
+    const visibleRequestUrl = buildVisibleRequestUrl(req);
+    if (!visibleRequestUrl) {
         return false;
     }
 
-    res.redirect(`${appBaseUrl}${req.originalUrl}`);
+    const canonicalTargetUrl = buildCanonicalAppUrl(appBaseUrl, visibleRequestUrl);
+    if (visibleRequestUrl.toString() === canonicalTargetUrl.toString()) {
+        return false;
+    }
+
+    res.redirect(canonicalTargetUrl.toString());
     return true;
 }
 

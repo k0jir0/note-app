@@ -53,19 +53,30 @@ function sanitizeRequestValue(value, depth = 0) {
     return value;
 }
 
+function setRequestSurface(req, key, value) {
+    Object.defineProperty(req, key, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value
+    });
+
+    return req[key];
+}
+
 function sanitizeRequestSurfaces(req = {}) {
     const body = sanitizeRequestValue(req.body);
     const query = sanitizeRequestValue(req.query);
     const params = sanitizeRequestValue(req.params);
 
-    req.body = isPlainObject(body) || Array.isArray(body) ? body : (body == null ? {} : body);
-    req.query = isPlainObject(query) ? query : {};
-    req.params = isPlainObject(params) ? params : {};
+    const sanitizedBody = isPlainObject(body) || Array.isArray(body) ? body : (body == null ? {} : body);
+    const sanitizedQuery = isPlainObject(query) ? query : {};
+    const sanitizedParams = isPlainObject(params) ? params : {};
 
     return {
-        body: req.body,
-        query: req.query,
-        params: req.params
+        body: setRequestSurface(req, 'body', sanitizedBody),
+        query: setRequestSurface(req, 'query', sanitizedQuery),
+        params: setRequestSurface(req, 'params', sanitizedParams)
     };
 }
 

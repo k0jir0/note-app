@@ -100,6 +100,114 @@ describe('Auth Routes', () => {
             }
         });
 
+        it('redirects Google auth to a canonical APP_BASE_URL path prefix exactly once', () => {
+            const handler = getHandler('get', '/login/federated/google');
+            const originalAppBaseUrl = process.env.APP_BASE_URL;
+            const originalClientId = process.env.GOOGLE_CLIENT_ID;
+            const originalClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+            try {
+                process.env.APP_BASE_URL = 'https://example.com/app';
+                process.env.GOOGLE_CLIENT_ID = 'client-id';
+                process.env.GOOGLE_CLIENT_SECRET = 'client-secret';
+
+                const authenticateStub = sinon.stub(passport, 'authenticate');
+                const req = {
+                    protocol: 'https',
+                    originalUrl: '/auth/login/federated/google?prompt=consent',
+                    get: sinon.stub().withArgs('host').returns('example.com')
+                };
+                const res = buildRes();
+                const next = sinon.stub();
+
+                handler(req, res, next);
+
+                expect(res.redirect.calledWith('https://example.com/app/auth/login/federated/google?prompt=consent')).to.be.true;
+                expect(authenticateStub.called).to.be.false;
+            } finally {
+                if (originalAppBaseUrl === undefined) {
+                    delete process.env.APP_BASE_URL;
+                } else {
+                    process.env.APP_BASE_URL = originalAppBaseUrl;
+                }
+
+                if (originalClientId === undefined) {
+                    delete process.env.GOOGLE_CLIENT_ID;
+                } else {
+                    process.env.GOOGLE_CLIENT_ID = originalClientId;
+                }
+
+                if (originalClientSecret === undefined) {
+                    delete process.env.GOOGLE_CLIENT_SECRET;
+                } else {
+                    process.env.GOOGLE_CLIENT_SECRET = originalClientSecret;
+                }
+            }
+        });
+
+        it('does not redirect Google auth again when a trusted forwarded prefix already matches APP_BASE_URL', () => {
+            const handler = getHandler('get', '/login/federated/google');
+            const originalAppBaseUrl = process.env.APP_BASE_URL;
+            const originalClientId = process.env.GOOGLE_CLIENT_ID;
+            const originalClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+            try {
+                process.env.APP_BASE_URL = 'https://example.com/app';
+                process.env.GOOGLE_CLIENT_ID = 'client-id';
+                process.env.GOOGLE_CLIENT_SECRET = 'client-secret';
+
+                const authMiddleware = sinon.stub();
+                const authenticateStub = sinon.stub(passport, 'authenticate').returns(authMiddleware);
+                const req = {
+                    protocol: 'https',
+                    originalUrl: '/auth/login/federated/google',
+                    app: {
+                        get: sinon.stub().withArgs('trust proxy fn').returns(() => true)
+                    },
+                    socket: {
+                        remoteAddress: '127.0.0.1'
+                    },
+                    get: sinon.stub().callsFake((name) => {
+                        if (name === 'host') {
+                            return 'example.com';
+                        }
+
+                        if (name === 'x-forwarded-prefix') {
+                            return '/app';
+                        }
+
+                        return undefined;
+                    })
+                };
+                const res = buildRes();
+                const next = sinon.stub();
+
+                handler(req, res, next);
+
+                expect(res.redirect.called).to.equal(false);
+                expect(authenticateStub.calledOnceWithExactly('google')).to.equal(true);
+                expect(authMiddleware.calledOnceWithExactly(req, res, next)).to.equal(true);
+            } finally {
+                if (originalAppBaseUrl === undefined) {
+                    delete process.env.APP_BASE_URL;
+                } else {
+                    process.env.APP_BASE_URL = originalAppBaseUrl;
+                }
+
+                if (originalClientId === undefined) {
+                    delete process.env.GOOGLE_CLIENT_ID;
+                } else {
+                    process.env.GOOGLE_CLIENT_ID = originalClientId;
+                }
+
+                if (originalClientSecret === undefined) {
+                    delete process.env.GOOGLE_CLIENT_SECRET;
+                } else {
+                    process.env.GOOGLE_CLIENT_SECRET = originalClientSecret;
+                }
+            }
+        });
+
         it('renders a helpful login error when Google token exchange is unauthorized', () => {
             const handler = getHandler('get', '/oauth2/redirect/google');
             const originalClientId = process.env.GOOGLE_CLIENT_ID;

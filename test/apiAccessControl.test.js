@@ -1,7 +1,9 @@
 const sinon = require('sinon');
 const { expect } = require('chai');
+const expressRequest = require('express/lib/request');
 
 const { enforceServerSideApiAccessControl } = require('../src/middleware/apiAccessControl');
+const { sanitizeRequestSurfaces } = require('../src/services/apiAccessControlService');
 
 function buildRes() {
     return {
@@ -12,6 +14,44 @@ function buildRes() {
 }
 
 describe('API access control middleware', () => {
+    it('sanitizes getter-backed Express query objects before downstream controllers read them', () => {
+        const req = Object.create(expressRequest);
+        req.app = {
+            get(setting) {
+                if (setting === 'query parser fn') {
+                    return () => ({
+                        limit: ' 10 ',
+                        constructor: {
+                            polluted: true
+                        }
+                    });
+                }
+
+                if (setting === 'trust proxy fn') {
+                    return () => false;
+                }
+
+                return undefined;
+            }
+        };
+        req.url = '/api/security/alerts?limit=%2010%20';
+        req.body = {
+            title: '  Mission note\u0000  '
+        };
+        req.params = {
+            id: ' alert-1 '
+        };
+
+        const sanitized = sanitizeRequestSurfaces(req);
+
+        expect(req.body.title).to.equal('Mission note');
+        expect(req.query.limit).to.equal('10');
+        expect(Object.prototype.hasOwnProperty.call(req.query, 'constructor')).to.equal(false);
+        expect(req.params.id).to.equal('alert-1');
+        expect(Object.prototype.hasOwnProperty.call(req, 'query')).to.equal(true);
+        expect(sanitized.query).to.equal(req.query);
+    });
+
     it('skips non-api page requests', () => {
         const req = {
             method: 'GET',
