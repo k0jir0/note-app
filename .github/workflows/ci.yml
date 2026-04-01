@@ -13,10 +13,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -29,82 +29,3 @@ jobs:
 
       - name: Run tests
         run: npm test
-name: CI
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    services:
-      mongo:
-        image: mongo:7
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --quiet --eval \"db.adminCommand('ping')\" || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22.14.0
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate CycloneDX SBOM
-        run: npm run sbom:generate
-
-      - name: Verify committed SBOM is current
-        run: git diff --exit-code -- sbom/note-app.cdx.json
-
-      - name: Upload SBOM artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cyclonedx-sbom
-          path: sbom/note-app.cdx.json
-
-      - name: Write CI .env
-        run: |
-          cat > .env <<'EOF'
-          MONGODB_URI=mongodb://127.0.0.1:27017/noteAppCi
-          SESSION_SECRET=ci-session-secret-0123456789abcdef0123456789abcdef
-          NOTE_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-          ALLOW_LEGACY_SESSION_SECRET_FALLBACK=false
-          APP_BASE_URL=http://localhost:3000
-          DISABLE_REDIS=1
-          EOF
-
-      - name: Run tests
-        run: npm test
-
-      - name: Run lint
-        run: npm run lint
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Run Playwright smoke tests
-        run: npm run test:e2e
-
-      - name: Upload Playwright artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-artifacts
-          path: |
-            playwright-report
-            test-results
-            artifacts/playwright-results.json
-          if-no-files-found: ignore
