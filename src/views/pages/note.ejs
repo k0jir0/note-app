@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= note.title || 'Note' %></title>
+    <%- include('../partials/head-assets') %>
+    <script src="/js/image-fallback.js" defer></script>
+    <script src="/js/theme-toggle.js" defer></script>
+    </head>
+
+<body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
+    <%- include('../partials/theme-toggle') %>
+    <div class="container mt-5 mb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <!-- Header with actions -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="mb-0 notes-title"><%= note.title %></h1>
+                    <div class="btn-group">
+                        <a href="/notes/<%= note._id %>/edit" class="btn btn-outline-dark">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <a href="/" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Back
+                        </a>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <small class="text-muted small fst-italic">This note is stored encrypted at rest using the application's note-encryption key; it is decrypted by the server only for your authenticated session.</small>
+                </div>
+
+                <!-- Note Card -->
+                <div class="card shadow-sm">
+                    <% const noteImageSrc = note.image ? `/notes/${note._id}/image?v=${new Date(note.updatedAt || note.createdAt || Date.now()).getTime()}` : '/placeholder.jpg'; %>
+                    <img
+                        src="<%= noteImageSrc %>"
+                        class="note-image"
+                        alt="<%= note.title %>"
+                        data-fallback-src="/placeholder.jpg"
+                    >
+                    
+                    <div class="card-body">
+                        <!-- Metadata -->
+                        <div class="mb-4 pb-3 border-bottom">
+                            <div class="metadata-item text-muted small">
+                                <i class="bi bi-calendar-plus"></i>
+                                <strong>Created:</strong> <%= new Date(note.createdAt).toLocaleString('en-US', { 
+                                    weekday: 'long', 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                }) %>
+                            </div>
+                            <% if (note.updatedAt && note.updatedAt !== note.createdAt) { %>
+                                <div class="metadata-item text-muted small">
+                                    <i class="bi bi-clock-history"></i>
+                                    <strong>Last Updated:</strong> <%= new Date(note.updatedAt).toLocaleString('en-US', { 
+                                        weekday: 'long', 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    }) %>
+                                </div>
+                            <% } %>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="note-content">
+                            <% if (note.content && note.content.trim().length > 0) { %>
+                                <%= note.content %>
+                            <% } else { %>
+                                <p class="text-muted fst-italic">No content</p>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

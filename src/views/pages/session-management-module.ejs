@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title><%= title %></title>
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <%- include('../partials/head-assets') %>
+    <script src="/js/theme-toggle.js" defer></script>
+    <script src="/js/session-management-module.js" defer></script>
+</head>
+
+<body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
+    <%- include('../partials/theme-toggle') %>
+    <div
+        class="container mt-5 mb-5"
+        id="session-management-module-root"
+        data-session-management-overview-endpoint="/api/session-management/overview"
+        data-session-management-evaluate-endpoint="/api/session-management/evaluate">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div>
+                <h1 class="notes-title mb-1">Session Security Module</h1>
+                <p class="text-muted mb-2">A research workspace for strict session timeout policy, abandoned-terminal lockout, and concurrent-login prevention.</p>
+                <p class="text-muted mb-0">Inspect the live session state, review the timeout policy in force for the current network zone, and simulate whether an abandoned or superseded session should be locked immediately.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/research" class="btn btn-outline-dark">Back to Research</a>
+                <a href="/mission-assurance/module" class="btn btn-outline-dark">Open Mission Access Assurance Module</a>
+                <a href="/hardware-mfa/module" class="btn btn-outline-dark">Open Hardware-Backed MFA Module</a>
+                <a href="/notes" class="btn btn-secondary">Back to Notes</a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Session State</p>
+                        <p class="display-6 mb-1" id="session-management-state-badge">Loading</p>
+                        <p class="text-muted mb-0">Current server-side session verdict.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Idle Timeout</p>
+                        <p class="display-6 mb-1" id="session-management-idle-timeout">0m</p>
+                        <p class="text-muted mb-0">Maximum inactivity before the session locks.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Absolute Lifetime</p>
+                        <p class="display-6 mb-1" id="session-management-absolute-timeout">0h</p>
+                        <p class="text-muted mb-0">Maximum total session lifetime before re-authentication.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Single Session</p>
+                        <p class="display-6 mb-1 fs-3" id="session-management-concurrent-badge">Loading</p>
+                        <p class="text-muted mb-0">Whether a newer login revokes the older one.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card automation-card mb-4">
+            <div class="card-body d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
+                <div>
+                    <h2 class="h5 mb-1">Session Control Posture</h2>
+                    <p class="text-muted mb-1">The session layer should enforce inactivity lockouts, maximum session lifetimes, and server-side invalidation when the same account signs in elsewhere.</p>
+                    <p class="text-muted small mb-0" id="session-management-status-copy">Loading current session posture...</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" id="session-management-refresh-btn" class="btn btn-outline-secondary">Refresh Module</button>
+                </div>
+            </div>
+            <div class="card-body pt-0">
+                <div id="session-management-status"></div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-5">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Current Session</span>
+                        <h2 class="h4 mt-2 mb-1">Live Session State</h2>
+                        <p class="text-muted small mb-3">This is the server-side session state currently bound to the authenticated browser.</p>
+                        <div id="session-management-summary"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-7">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Controls</span>
+                        <h2 class="h4 mt-2 mb-1">Session Security Controls</h2>
+                        <p class="text-muted small mb-3">These controls are the backbone of abandoned-terminal lockout and single-session enforcement.</p>
+                        <div id="session-management-controls" class="row g-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Simulation</span>
+                        <h2 class="h4 mt-2 mb-1">Evaluate Lockdown Scenarios</h2>
+                        <p class="text-muted small mb-3">Simulate a field-abandonment or concurrent-login event and confirm whether the session should stay alive or lock immediately.</p>
+                        <form id="session-management-form" class="row g-3">
+                            <div class="col-12">
+                                <label for="session-management-scenario-select" class="form-label">Scenario</label>
+                                <select id="session-management-scenario-select" class="form-select">
+                                    <option value="">Loading scenarios...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="session-management-network-zone" class="form-label">Network Zone</label>
+                                <select id="session-management-network-zone" class="form-select">
+                                    <option value="corp">Corp</option>
+                                    <option value="mission">Mission</option>
+                                    <option value="public">Public</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="session-management-idle-minutes" class="form-label">Idle Minutes</label>
+                                <input type="number" min="0" step="1" class="form-control" id="session-management-idle-minutes" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="session-management-elapsed-hours" class="form-label">Elapsed Hours</label>
+                                <input type="number" min="0" step="0.5" class="form-control" id="session-management-elapsed-hours" value="0">
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="1" id="session-management-concurrent-toggle">
+                                    <label class="form-check-label" for="session-management-concurrent-toggle">
+                                        Simulate a newer login for the same account
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <button type="button" id="session-management-evaluate-btn" class="btn btn-dark">Evaluate Scenario</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Decision</span>
+                        <h2 class="h4 mt-2 mb-1">Lockdown Decision</h2>
+                        <p class="text-muted small mb-3">The result explains whether the session survives or gets locked, and which control forced that outcome.</p>
+                        <div id="session-management-evaluation"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

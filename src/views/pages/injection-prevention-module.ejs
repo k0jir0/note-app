@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title><%= title %></title>
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <%- include('../partials/head-assets') %>
+    <script src="/js/theme-toggle.js" defer></script>
+    <script src="/js/injection-prevention-module.js" defer></script>
+</head>
+
+<body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
+    <%- include('../partials/theme-toggle') %>
+    <div
+        class="container mt-5 mb-5"
+        id="injection-prevention-module-root"
+        data-injection-prevention-overview-endpoint="/api/injection-prevention/overview"
+        data-injection-prevention-evaluate-endpoint="/api/injection-prevention/evaluate">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div>
+                <h1 class="notes-title mb-1">Query Injection Prevention Module</h1>
+                <p class="text-muted mb-2">Architectural injection defense for a Mongoose-backed application.</p>
+                <p class="text-muted mb-0">This app uses MongoDB, so the equivalent of parameterized SQL is fixed query shapes, field allowlists, operator-key blocking, and Mongoose filter hardening.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/research" class="btn btn-outline-dark">Back to Research</a>
+                <a href="/mission-assurance/module" class="btn btn-outline-dark">Open Mission Access Assurance Module</a>
+                <a href="/notes" class="btn btn-secondary">Back to Notes</a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Data Layer</p>
+                        <p class="display-6 mb-1 fs-3" id="injection-prevention-data-layer">Loading</p>
+                        <p class="text-muted mb-0">ORM or query layer enforcing structured access.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">sanitizeFilter</p>
+                        <p class="display-6 mb-1 fs-3" id="injection-prevention-sanitize-filter">Loading</p>
+                        <p class="text-muted mb-0">Neutralizes selector-shaped filters that escape validation.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">strictQuery</p>
+                        <p class="display-6 mb-1 fs-3" id="injection-prevention-strict-query">Loading</p>
+                        <p class="text-muted mb-0">Ignores unknown filter paths instead of broadening them silently.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Request Guard</p>
+                        <p class="display-6 mb-1 fs-3" id="injection-prevention-request-guard">Loading</p>
+                        <p class="text-muted mb-0">Rejects operator-shaped body, query, or param keys before they hit Mongoose.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card automation-card mb-4">
+            <div class="card-body d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
+                <div>
+                    <h2 class="h5 mb-1">Injection Posture</h2>
+                    <p class="text-muted mb-1">Cyber operators expect injection defense to be part of the request pipeline and the data-access layer, not just a coding convention.</p>
+                    <p class="text-muted small mb-0" id="injection-prevention-status-copy">Loading injection-prevention posture...</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" id="injection-prevention-refresh-btn" class="btn btn-outline-secondary">Refresh Module</button>
+                </div>
+            </div>
+            <div class="card-body pt-0">
+                <div id="injection-prevention-status"></div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Controls</span>
+                        <h2 class="h4 mt-2 mb-1">Architectural Controls</h2>
+                        <p class="text-muted small mb-3">These are the layers that keep request input from becoming a database operator.</p>
+                        <div id="injection-prevention-controls" class="row g-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Safe Patterns</span>
+                        <h2 class="h4 mt-2 mb-1">Structured Query Templates</h2>
+                        <p class="text-muted small mb-3">Use fixed filter shapes built from validated scalar values instead of passing raw request objects through.</p>
+                        <div id="injection-prevention-query-patterns" class="d-grid gap-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Simulation</span>
+                        <h2 class="h4 mt-2 mb-1">Evaluate Injection Scenarios</h2>
+                        <p class="text-muted small mb-3">Load a sample operator-shaped payload or paste your own request object to see whether the runtime guard blocks it.</p>
+                        <form class="row g-3">
+                            <div class="col-12">
+                                <label for="injection-prevention-scenario-select" class="form-label">Scenario</label>
+                                <select id="injection-prevention-scenario-select" class="form-select">
+                                    <option value="">Loading scenarios...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="injection-prevention-surface" class="form-label">Request Surface</label>
+                                <select id="injection-prevention-surface" class="form-select">
+                                    <option value="body">Body</option>
+                                    <option value="query">Query</option>
+                                    <option value="params">Params</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label for="injection-prevention-payload" class="form-label">Payload JSON</label>
+                                <textarea id="injection-prevention-payload" class="form-control" rows="10"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <button type="button" id="injection-prevention-evaluate-btn" class="btn btn-dark">Evaluate Scenario</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Decision</span>
+                        <h2 class="h4 mt-2 mb-1">Prevention Decision</h2>
+                        <p class="text-muted small mb-3">The decision explains whether the request is rejected and why the payload is considered unsafe.</p>
+                        <div id="injection-prevention-evaluation"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

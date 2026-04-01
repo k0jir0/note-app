@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title><%= title %></title>
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <%- include('../partials/head-assets') %>
+    <script src="/js/theme-toggle.js" defer></script>
+    <script src="/js/csrf.js" defer></script>
+    <script src="/js/ml-module.js" defer></script>
+</head>
+
+<body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
+    <%- include('../partials/theme-toggle') %>
+    <div class="container mt-5 mb-5" id="ml-module-root" data-ml-overview-endpoint="/api/ml/overview" data-ml-train-endpoint="/api/ml/train" data-ml-autonomy-demo-endpoint="/api/ml/autonomy-demo">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div>
+                <h1 class="notes-title mb-1">Alert Triage ML Module</h1>
+                <p class="text-muted mb-2">A dedicated workspace for the trainable alert-triage model that powers the Security Operations Module scoring experience.</p>
+                <p class="text-muted mb-0">The page is organized around the core stages of supervised triage: collecting labels, shaping a training set, fitting a model, and inspecting how that model ranks live security alerts.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/research" class="btn btn-outline-dark">Back to Research</a>
+                <a href="/security/module" class="btn btn-outline-dark">Open Security Operations Module</a>
+                <a href="/notes" class="btn btn-secondary">Back to Notes</a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Runtime Model</p>
+                        <p class="display-6 mb-1" id="ml-model-state">Heuristic</p>
+                        <p class="text-muted mb-1" id="ml-model-trained-at">No trained artifact loaded yet.</p>
+                        <p class="text-muted small mb-0">This module distinguishes between a learned runtime classifier and a fallback heuristic so you can tell whether scores are empirical or rule-based.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Trainable Labels</p>
+                        <p class="display-6 mb-1" id="ml-trainable-count">0</p>
+                        <p class="text-muted mb-1">Current-user alerts with analyst labels that can feed training.</p>
+                        <p class="text-muted small mb-0">In supervised learning, labeled examples are the signal that teaches the model what an analyst considers urgent, ambiguous, or noisy.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Project Dataset</p>
+                        <p class="display-6 mb-1" id="ml-project-trainable-count">0</p>
+                        <p class="text-muted mb-1">Project-wide trainable examples available for hybrid training.</p>
+                        <p class="text-muted small mb-0">A wider shared corpus reduces overfitting to one user and gives the hybrid model a broader prior over realistic security events.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Tracked Alerts</p>
+                        <p class="display-6 mb-1" id="ml-alert-total-count">0</p>
+                        <p class="text-muted mb-1">Recent alerts scored with either the heuristic baseline or the trained model.</p>
+                        <p class="text-muted small mb-0">These alerts are the inference population: the records the model can rank, compare, and re-score after every training pass.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card automation-card mb-4">
+            <div class="card-body d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
+                <div>
+                    <h2 class="h5 mb-1">ML Controls</h2>
+                    <p class="text-muted mb-1">Refresh the module state, bootstrap a synthetic-first model, train a hybrid model, or inject a dry-run autonomy demo that records notify-block decisions without calling real external providers.</p>
+                    <p class="text-muted small mb-0">Bootstrap training establishes an initial decision boundary from synthetic priors, hybrid training blends those priors with observed analyst labels, and the demo injector creates policy-eligible alerts so the autonomous response loop becomes visible immediately.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" id="ml-refresh-btn" class="btn btn-dark">Refresh Module</button>
+                    <button type="button" id="ml-autonomy-demo-btn" class="btn btn-outline-secondary">Autonomy Demo Inject</button>
+                    <button type="button" id="ml-train-hybrid-btn" class="btn btn-outline-dark">Train Hybrid Model</button>
+                    <button type="button" id="ml-train-bootstrap-btn" class="btn btn-outline-primary">Train Bootstrap Model</button>
+                </div>
+            </div>
+            <div class="card-body pt-0">
+                <div id="ml-status"></div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Autonomy</span>
+                        <h2 class="h4 mt-2 mb-1">Autonomous Response Loop</h2>
+                        <p class="text-muted small mb-3">This panel explains whether the trained scorer is only ranking alerts or also driving downstream response policy. The loop is: ingest an eligible alert, score it, compare the score to response thresholds, then record any notify or block attempt.</p>
+                        <div id="ml-autonomy-summary"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Evidence</span>
+                        <h2 class="h4 mt-2 mb-1">Observed Autonomous Outcomes</h2>
+                        <p class="text-muted small mb-3">These counts illustrate whether the autonomous loop is actually firing on stored alerts, not just theoretically enabled in code.</p>
+                        <div id="ml-autonomy-overview-grid" class="row g-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Autonomy</span>
+                        <h2 class="h4 mt-2 mb-1">Response Levels</h2>
+                        <p class="text-muted small mb-3">These proportions show how often eligible alerts end in no action, a notification path, or a block path under the current policy.</p>
+                        <div id="ml-response-level-grid" class="d-flex flex-column gap-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Autonomy</span>
+                        <h2 class="h4 mt-2 mb-1">Action Outcomes</h2>
+                        <p class="text-muted small mb-3">Provider outcomes show whether the autonomous response layer is merely deciding, or actually reaching notifiers and block hooks successfully.</p>
+                        <div id="ml-response-action-grid" class="d-flex flex-column gap-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                            <div>
+                                <span class="research-kicker">Model</span>
+                                <h2 class="h4 mt-2 mb-1">Model Snapshot</h2>
+                                <p class="text-muted small mb-0">Model provenance matters because reproducible scoring depends on knowing which artifact, weights, and training context are currently active.</p>
+                            </div>
+                            <span id="ml-model-badge" class="badge text-bg-secondary">Heuristic Fallback</span>
+                        </div>
+                        <div id="ml-model-summary"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                            <div>
+                                <span class="research-kicker">Metrics</span>
+                                <h2 class="h4 mt-2 mb-1">Training Metrics</h2>
+                                <p class="text-muted small mb-0">These metrics summarize how the trained classifier separates positive and negative examples, giving a theoretical read on fit quality and tradeoffs.</p>
+                            </div>
+                            <span class="badge text-bg-light" id="ml-model-type-badge">Awaiting model</span>
+                        </div>
+                        <div id="ml-training-metrics"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Labels</span>
+                        <h2 class="h4 mt-2 mb-1">Current User Feedback Distribution</h2>
+                        <p class="text-muted small mb-3">This view shows the local supervision signal from one analyst, which is useful for understanding personal labeling bias and data sparsity.</p>
+                        <div id="ml-user-feedback-grid" class="row g-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Dataset</span>
+                        <h2 class="h4 mt-2 mb-1">Project Training Distribution</h2>
+                        <p class="text-muted small mb-3">Project-wide label balance reveals whether the shared training corpus is representative or skewed toward one class of analyst judgment.</p>
+                        <div id="ml-project-feedback-grid" class="row g-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Runtime</span>
+                        <h2 class="h4 mt-2 mb-1">Score Labels</h2>
+                        <p class="text-muted small mb-3">Discrete score bands turn raw probabilities into operational triage buckets so the model output is easier to act on in workflow terms.</p>
+                        <div id="ml-score-label-grid" class="row g-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Runtime</span>
+                        <h2 class="h4 mt-2 mb-1">Score Sources</h2>
+                        <p class="text-muted small mb-3">Source attribution shows whether a score came from heuristics, a trained model, or an analyst-feedback override, which is critical for interpretability.</p>
+                        <div id="ml-score-source-grid" class="row g-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-5">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Runtime</span>
+                        <h2 class="h4 mt-2 mb-1">Score Buckets</h2>
+                        <p class="text-muted small mb-3">Bucketed probabilities reveal the shape of the model's confidence and help you see whether scores cluster near cautionary or high-conviction ranges.</p>
+                        <div id="ml-score-buckets-grid" class="d-flex flex-column gap-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-7">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <span class="research-kicker">Runtime</span>
+                        <h2 class="h4 mt-2 mb-1">Alert Types by Priority</h2>
+                        <p class="text-muted small mb-3">This breakdown helps expose category bias by showing whether certain alert families are consistently pushed toward high, medium, or low priority.</p>
+                        <div id="ml-alert-type-breakdown" class="d-flex flex-column gap-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card automation-card mb-4">
+            <div class="card-body">
+                <span class="research-kicker">Model Insight</span>
+                <h2 class="h4 mt-2 mb-1">Learned Feature Influence</h2>
+                <p class="text-muted small mb-3">Because this model is interpretable, the feature weights can be inspected directly to see which signals tend to raise or suppress predicted risk.</p>
+                <div class="row g-4">
+                    <div class="col-xl-6">
+                        <div class="research-panel h-100">
+                            <p class="research-kicker mb-2">Positive Drivers</p>
+                            <p class="text-muted small mb-3">Positive drivers are the features whose learned weights push an alert upward in the ranking function.</p>
+                            <div id="ml-positive-features" class="d-flex flex-column gap-3"></div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6">
+                        <div class="research-panel h-100">
+                            <p class="research-kicker mb-2">Negative Drivers</p>
+                            <p class="text-muted small mb-3">Negative drivers are the features whose learned weights dampen the score and act as evidence against escalation.</p>
+                            <div id="ml-negative-features" class="d-flex flex-column gap-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card automation-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
+                    <div>
+                        <span class="research-kicker">Review</span>
+                        <h2 class="h4 mt-2 mb-1">Recent Scored Alerts</h2>
+                        <p class="text-muted mb-0">This panel shows the model's latest inference behavior in concrete terms so you can connect abstract weights and metrics back to real alert triage decisions.</p>
+                    </div>
+                    <button type="button" id="ml-refresh-alerts-btn" class="btn btn-outline-dark">Refresh Alerts</button>
+                </div>
+                <div id="ml-recent-alerts-grid" class="row"></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

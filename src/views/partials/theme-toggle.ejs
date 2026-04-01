@@ -1,0 +1,10 @@
+<details class="settings-menu" id="settings-menu">
+    <summary class="settings-menu__trigger" aria-label="Open settings menu">Settings</summary>
+    <div class="settings-menu__panel" role="menu" aria-label="Settings">
+        <p class="settings-menu__title mb-2">Appearance</p>
+        <label for="theme-toggle" class="settings-menu__option form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="theme-toggle" name="theme-toggle" <%= (user && user.preferences && user.preferences.nightMode) ? 'checked' : '' %> />
+            <span class="form-check-label">Dark mode</span>
+        </label>
+    </div>
+</details>

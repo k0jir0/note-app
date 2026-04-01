@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title><%= title %></title>
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <%- include('../partials/head-assets') %>
+    <script src="/js/theme-toggle.js" defer></script>
+    <script src="/js/csrf.js" defer></script>
+    <script src="/js/research-workspace.js" defer></script>
+    <script src="/js/research-workspace-realtime.js" defer></script>
+</head>
+
+<body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
+    <%- include('../partials/theme-toggle') %>
+    <div class="container mt-5 mb-5" data-automation-enabled-count="<%= Number(Boolean(automation.logBatch.enabled)) + Number(Boolean(automation.scanBatch.enabled)) + Number(Boolean(automation.intrusionBatch && automation.intrusionBatch.enabled)) %>">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div>
+                <h1 class="notes-title mb-1">Security Operations Module</h1>
+                <p class="text-muted mb-0">One dedicated page for log analysis, scan importing, findings review, correlations, automation status, and demo injection.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/research" class="btn btn-outline-dark">Back to Research</a>
+                <a href="/notes" class="btn btn-outline-dark">Back to Notes</a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Alerts</p>
+                        <p class="display-6 mb-1" id="workspace-alert-count">0</p>
+                        <p class="text-muted mb-0">Recent saved security alerts from manual analysis and automation.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Scans</p>
+                        <p class="display-6 mb-1" id="workspace-scan-count">0</p>
+                        <p class="text-muted mb-0">Imported scan artifacts normalized into one findings model.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Correlations</p>
+                        <p class="display-6 mb-1" id="workspace-correlation-count">0</p>
+                        <p class="text-muted mb-0">Priority matches that connect observed activity with exposed services.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="card research-summary-card h-100">
+                    <div class="card-body">
+                        <p class="research-kicker mb-2">Automation</p>
+                        <p class="display-6 mb-1" id="workspace-automation-count"><%= Number(Boolean(automation.logBatch.enabled)) + Number(Boolean(automation.scanBatch.enabled)) + Number(Boolean(automation.intrusionBatch && automation.intrusionBatch.enabled)) %>/3</p>
+                        <p class="text-muted mb-0">Configured pollers and demo controls for the security workflow.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card automation-card mb-4">
+            <div class="card-body d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
+                <div>
+                    <h2 class="h5 mb-1">Security Controls</h2>
+                    <p class="text-muted mb-0">Run the full security workflow from one page and jump directly to each section below.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" id="workspace-refresh-all" class="btn btn-dark">Refresh Module</button>
+                    <a href="#logs" class="btn btn-outline-dark">Logs</a>
+                    <a href="#scans" class="btn btn-outline-dark">Scans</a>
+                    <a href="#correlations" class="btn btn-outline-dark">Correlations</a>
+                    <a href="#automation" class="btn btn-outline-secondary">Automation</a>
+                </div>
+            </div>
+            <div class="card-body pt-0">
+                <div id="workspace-status"></div>
+                <div id="realtime-panel" class="mt-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div>
+                            <p class="mb-1 small text-muted">Realtime Server</p>
+                            <p class="mb-0">
+                                <span id="realtime-server-badge" class="badge text-bg-<%= realtimeEnabled ? 'success' : (realtimeAvailable ? 'warning' : 'secondary') %>">
+                                    <%= realtimeEnabled ? 'Server Realtime Enabled' : (realtimeAvailable ? 'Server Realtime Off' : 'Server Realtime Unavailable') %>
+                                </span>
+                            </p>
+                        </div>
+                        <div>
+                            <p class="mb-1 small text-muted">This Browser</p>
+                            <p class="mb-0">
+                                <span
+                                    id="realtime-connection-badge"
+                                    class="badge text-bg-<%= realtimeEnabled ? 'secondary' : 'secondary' %>"
+                                    aria-live="polite">
+                                    <%= realtimeEnabled ? 'Stream Disconnected' : 'Stream Unavailable' %>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="ms-auto d-flex gap-2 flex-wrap">
+                            <button
+                                id="realtime-connect-btn"
+                                type="button"
+                                class="btn btn-outline-dark"
+                                <%= realtimeEnabled ? '' : 'disabled' %>>
+                                <%= realtimeEnabled ? 'Connect Realtime' : (realtimeAvailable ? 'Realtime Off' : 'Realtime Unavailable') %>
+                            </button>
+                            <button id="realtime-simulate-btn" type="button" class="btn btn-outline-primary">Simulate Realtime</button>
+                        </div>
+                    </div>
+                    <p class="small text-muted mt-2 mb-0">
+                        <%= realtimeEnabled
+                            ? 'The server can accept realtime streams. Use the button to connect or disconnect only this browser tab.'
+                            : (realtimeAvailable
+                                ? 'Realtime routes are mounted, but the stream is currently turned off.'
+                                : 'Configure Redis and enable realtime to use the live alert stream.') %>
+                    </p>
+                    <div id="workspace-realtime-log" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-6" id="logs">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
+                            <div>
+                                <span class="research-kicker">Detection</span>
+                                <h2 class="h4 mt-2 mb-1">Log Analysis</h2>
+                                <p class="text-muted mb-0">Paste request or auth logs, analyze them, and persist the generated alerts in place.</p>
+                            </div>
+                            <button type="button" id="workspace-load-sample-log" class="btn btn-outline-primary">Load Sample Log</button>
+                        </div>
+                        <form id="workspace-log-form">
+                            <label for="workspace-log-text" class="form-label"><strong>Log Input</strong></label>
+                            <textarea id="workspace-log-text" class="form-control" rows="10" placeholder="Paste Apache, Nginx, auth, or app logs here..."></textarea>
+                            <div class="d-flex justify-content-between align-items-center mt-3 gap-3 flex-wrap">
+                                <small class="text-muted">Tip: timestamps, IPs, status codes, and user agents produce the best detection results.</small>
+                                <button type="submit" class="btn btn-dark">Analyze Logs</button>
+                            </div>
+                        </form>
+                        <div id="workspace-log-result" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6" id="scans">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
+                            <div>
+                                <span class="research-kicker">Import</span>
+                                <h2 class="h4 mt-2 mb-1">Scan Importer</h2>
+                                <p class="text-muted mb-0">Paste Nmap, Nikto, JSON, or text output and normalize it into stored findings.</p>
+                            </div>
+                            <button type="button" id="workspace-load-sample-scan" class="btn btn-outline-primary">Load Sample Scan</button>
+                        </div>
+                        <form id="workspace-scan-form">
+                            <label for="workspace-scan-text" class="form-label"><strong>Scan Output</strong></label>
+                            <textarea id="workspace-scan-text" class="form-control font-monospace" rows="10" placeholder="Paste Nmap XML, Nikto text output, JSON, or generic scan output..."></textarea>
+                            <div class="d-flex justify-content-between align-items-center mt-3 gap-3 flex-wrap">
+                                <small class="text-muted">Supported: Nmap XML, Nikto text, JSON, and generic text with ports or CVEs.</small>
+                                <button type="submit" class="btn btn-dark">Import Scan</button>
+                            </div>
+                        </form>
+                        <div id="workspace-scan-result" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+                            <div>
+                                <span class="research-kicker">Findings</span>
+                                <h2 class="h4 mt-2 mb-1">Recent Alerts</h2>
+                            </div>
+                            <button type="button" id="workspace-refresh-alerts" class="btn btn-outline-dark">Refresh</button>
+                        </div>
+                        <div id="workspace-alerts-grid" class="row"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card automation-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+                            <div>
+                                <span class="research-kicker">Findings</span>
+                                <h2 class="h4 mt-2 mb-1">Recent Scans</h2>
+                            </div>
+                            <button type="button" id="workspace-refresh-scans" class="btn btn-outline-dark">Refresh</button>
+                        </div>
+                        <div id="workspace-scans-grid" class="row"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card automation-card mb-4" id="correlations">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
+                    <div>
+                        <span class="research-kicker">Review</span>
+                        <h2 class="h4 mt-2 mb-1">Correlation View</h2>
+                        <p class="text-muted mb-0">See which scan findings and alerts likely describe the same active risk.</p>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" id="workspace-inject-correlation-demo" class="btn btn-outline-primary">Inject 3-Target Correlation Demo</button>
+                        <button type="button" id="workspace-refresh-correlations" class="btn btn-dark">Refresh Correlations</button>
+                    </div>
+                </div>
+                <div id="workspace-correlation-result" class="mb-3"></div>
+                <div id="workspace-correlation-overview" class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <p class="text-muted mb-1">Correlation Matches</p>
+                                <p class="display-6 mb-0">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <p class="text-muted mb-1">High Priority</p>
+                                <p class="display-6 mb-0">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <p class="text-muted mb-1">Distinct Targets</p>
+                                <p class="display-6 mb-0">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="workspace-correlations-grid" class="row"></div>
+            </div>
+        </div>
+
+        <div class="card automation-card" id="automation">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
+                    <div>
+                        <span class="research-kicker">Automation</span>
+                        <h2 class="h4 mt-2 mb-1">Automation Status</h2>
+                        <p class="text-muted mb-0">These are the same background pollers that can ingest data without manual paste operations.</p>
+                    </div>
+                    <span class="badge text-bg-<%= automation.anyEnabled ? 'success' : 'secondary' %>"><%= automation.anyEnabled ? 'At least one poller active' : 'No pollers active' %></span>
+                </div>
+                <div class="card border-0 bg-light-subtle mb-4">
+                    <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                        <div>
+                            <h3 class="h6 mb-1">Automation Demo Action</h3>
+                            <p class="text-muted mb-0">Inject one sample alert batch and one sample scan, then refresh the Alerts, Scans, and Correlations panels with the saved results.</p>
+                        </div>
+                        <button type="button" id="automation-inject-sample" class="btn btn-outline-primary">Inject Automation Sample</button>
+                    </div>
+                    <div class="card-body pt-0">
+                        <div id="automation-sample-result"></div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="research-panel h-100">
+                            <p class="research-kicker mb-2">Logs</p>
+                            <h3 class="h5 mb-3">Log Batch Ingestion</h3>
+                            <dl class="automation-metadata mb-0">
+                                <div><dt>Status</dt><dd><%= automation.logBatch.statusLabel %></dd></div>
+                                <div><dt>Source</dt><dd><%= automation.logBatch.source %></dd></div>
+                                <div><dt>Interval</dt><dd><%= automation.logBatch.intervalMs %> ms</dd></div>
+                                <div><dt>Max read</dt><dd><%= automation.logBatch.maxReadBytes %> bytes</dd></div>
+                                <div><dt>Dedupe</dt><dd><%= automation.logBatch.dedupeWindowMs %> ms</dd></div>
+                                <div class="automation-path-row"><dt>Watched file</dt><dd><%= automation.logBatch.filePath || 'Not configured' %></dd></div>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="research-panel h-100">
+                            <p class="research-kicker mb-2">Scans</p>
+                            <h3 class="h5 mb-3">Scan Batch Ingestion</h3>
+                            <dl class="automation-metadata mb-0">
+                                <div><dt>Status</dt><dd><%= automation.scanBatch.statusLabel %></dd></div>
+                                <div><dt>Source</dt><dd><%= automation.scanBatch.source %></dd></div>
+                                <div><dt>Interval</dt><dd><%= automation.scanBatch.intervalMs %> ms</dd></div>
+                                <div><dt>Dedupe</dt><dd><%= automation.scanBatch.dedupeWindowMs %> ms</dd></div>
+                                <div class="automation-path-row"><dt>Watched file</dt><dd><%= automation.scanBatch.filePath || 'Not configured' %></dd></div>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

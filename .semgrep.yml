@@ -1,0 +1,36 @@
+rules:
+  - id: no-dynamic-code-execution
+    languages: [javascript]
+    pattern-either:
+      - pattern: "eval($CODE)"
+      - pattern: "new Function(...)"
+    message: "Avoid dynamic code execution primitives such as eval() and Function()."
+    severity: ERROR
+
+  - id: no-request-object-mongoose-query
+    languages: [javascript]
+    pattern-either:
+      - pattern: $MODEL.find(req.query)
+      - pattern: $MODEL.find(req.body)
+      - pattern: $MODEL.find(req.params)
+      - pattern: $MODEL.findOne(req.query)
+      - pattern: $MODEL.findOne(req.body)
+      - pattern: $MODEL.findOne(req.params)
+      - pattern: $MODEL.updateOne(req.query, ...)
+      - pattern: $MODEL.updateMany(req.query, ...)
+      - pattern: $MODEL.deleteOne(req.query)
+      - pattern: $MODEL.deleteMany(req.query)
+    message: "Do not pass raw request surfaces directly into Mongoose queries; sanitize and map allowed fields first."
+    severity: ERROR
+
+  - id: weak-random-for-sensitive-identifiers
+    languages: [javascript]
+    pattern: "Math.random()"
+    paths:
+      exclude:
+        - playwright-report/**
+        - playwright-tests/**
+        - selenium-tests/**
+        - scripts/bench-*.js
+    message: "Math.random() is not suitable for secrets, security decisions, or persistent identifiers."
+    severity: WARNING

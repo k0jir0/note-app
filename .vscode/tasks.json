@@ -1,0 +1,38 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start local app",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"local:run"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Start local app with worker",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"local:run:worker"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Check local app health",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"local:health"
+			],
+			"isBackground": false,
+			"group": "test"
+		}
+	]
+}

@@ -1,0 +1,298 @@
+================================================================================
+DEVELOPMENT NOTES & LESSONS LEARNED
+Note-Taking Application Development Process
+================================================================================
+
+PROJECT OVERVIEW
+
+This full-stack note-taking, security-research, and browser-automation-aware application demonstrates the complete lifecycle of a production-ready web application, built with Node.js, Express, MongoDB, and EJS. The project features user authentication, RESTful CRUD operations, comprehensive input validation, dedicated Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Playwright Testing, Selenium Testing, and Self-Healing Locator Repair modules, and 575 passing tests. Through the development process, multiple challenges emerged that required careful consideration of security, testing strategies, deployment readiness, explainability, and the interaction between secure defaults and developer ergonomics.
+
+Current verified state (March 31, 2026): 575 passing tests, ESLint clean, `npm audit` clean for both all-dependency and production-only gates, Chromium Playwright smoke coverage at 21 passing browser tests, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, dedicated Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Playwright Testing, Selenium Testing, Self-Healing Locator Repair, Supply Chain Security, and Audit Trail and Telemetry modules, plus focused March 29 module coverage at 13 passing tests for the new page routes and persisted audit-history backend, focused March 30 sandbox runtime coverage at 20 passing tests, and focused March 31 hardening regressions at 82 passing tests. The app now enforces a global protected-API access gate, request-level Mongo injection blocking, strict CSP-backed rendering posture, mission-aware RBAC-plus-ABAC evaluation, hardware-first session assurance with WebAuthn and PKI support, strict idle and absolute session limits with concurrent-login invalidation, startup-stable local launch behavior, TLS 1.3-only inbound transport when HTTPS is enabled, sanitized metadata/error exposure, immutable remote logging, request-scoped database state-change telemetry, SIEM-friendly JSON or syslog log formatting, a validated hardened distroless container build, a verified three-zone DMZ/app/data sandbox deployment with an unprivileged Nginx edge tier, a live authenticated audit-history feed backed by persisted `AuditEvent` records, authenticated same-origin note-image delivery backed by server-managed assets, a reusable app factory and centralized route registry, persisted break-glass runtime state, account-level login lockout, privileged dev-tool gating, strict immutable-audit fail-closed behavior, fail-safe break-glass persistence degradation, federated-account lockout parity, and stricter MongoDB TLS plus immutable-audit enforcement across protected runtime deployments.
+
+Development log (newest first):
+
+Latest March 31, 2026 hardening updates addressed the repo's ITSG-33-aligned review findings:
+- Persisted the break-glass runtime state through a shared backend store instead of relying only on in-process app locals, and required a recent hardware-first MFA step-up before the runtime break-glass mode can be changed.
+- Locked development-only runtime diagnostics and destructive seed tooling behind the explicit `ENABLE_PRIVILEGED_DEV_TOOLS=true` flag, then restricted those paths to privileged admin sessions with fresh hardware-first assurance for the mutating actions.
+- Added account-level failed-login tracking and temporary lockout for repeated local sign-in failures, closing the earlier gap where only IP-based throttling was present.
+- Tightened runtime config validation so non-local or protected-runtime MongoDB connections must use TLS and immutable remote logging becomes mandatory over HTTPS outside local development and test environments.
+- Followed up by making required immutable logging fail closed: protected-runtime startup now probes the remote sink, later mandatory-delivery failures throw instead of quietly returning `false`, and async request/console audit paths now catch strict failures without leaving unhandled rejections behind.
+- Changed strict break-glass persistence to fail safe instead of degrading to stale per-process memory: read failures move the app into an offline emergency posture, while write failures reject the runtime mutation instead of reporting success.
+- Closed the federated-auth gap by applying the same account lockout checks to Google-linked sign-in and email-based account linking, then surfaced the same lockout message in the callback UX.
+- Narrowed MongoDB local-host detection so arbitrary `*.local` hostnames no longer bypass the non-local TLS requirement.
+- Extended the local regression suite around these controls and revalidated the full Mocha suite at 575 passing tests, including a focused 82-test pass over the touched audit, break-glass, auth, and runtime-config areas.
+
+Recent updates (March 31, 2026) focused on CI stability, strict-CSP-compatible note media, and frontend recovery:
+- Implemented managed note-image delivery so remote note images are fetched by the backend, validated for protocol, size, timeout, and content type, stored under `storage/note-images`, and re-served to the browser through the authenticated route `/notes/:id/image` instead of loading third-party image URLs directly in the page.
+- Extended the `Notes` model and note service layer with `imageAssetKey` and `imageAssetContentType`, added lazy backfill for older notes that still had only an external image URL, and ensured old stored image assets are removed when a note image is cleared or replaced.
+- Updated the note list, note detail, and note form pages so note thumbnails and full note images now resolve through the same-origin route, restoring image rendering under the existing strict CSP without weakening the browser's `img-src` posture.
+- Added targeted note-service and note-route coverage for managed image storage, ingestion failure handling, and authenticated note-image streaming, contributing to the then-current local test state that has since grown to 575 passing tests.
+- Diagnosed the compressed frontend regression as a malformed `custom.css` block introduced during the self-hosted-assets and CSP tightening work, then repaired the stylesheet so the self-hosted frontend returns to the intended layout without reopening external asset dependencies.
+- Reproduced the GitHub CI failures locally and found two independent blockers before the DAST issue: ESLint failures from missing EOF newlines and a stale committed SBOM that no longer matched the installed Bootstrap-related dependencies. Fixed the lint blockers, removed unreachable code, updated the request-sanitization implementation to satisfy lint, and regenerated the committed CycloneDX SBOM.
+- Verified the main local CI gates after those repairs: `npm run lint`, `npm test --silent`, `npm run audit:deps`, `npm run audit:prod`, and `npm run test:e2e` all pass locally, and `/healthz` returns a healthy response from the app on port `3000`.
+- Investigated the remaining GitHub-hosted workflow failure and isolated it to the `Security CI` DAST job, where the earlier manual `docker run ... zap-baseline.py` step was failing to produce reports reliably on GitHub-hosted runners even though the app itself was healthy.
+- Replaced that brittle manual DAST invocation with `zaproxy/action-baseline@v0.15.0`, preserving the same `/auth/login` target and non-blocking warning posture while delegating report generation and artifact handling to the maintained GitHub Action.
+- Pushed the DAST workflow fix to `test-branch` and then merged `test-branch` into `main`, so the March 31 note-image, documentation, lint/SBOM, and DAST workflow changes are now part of the main branch history.
+
+More March 31, 2026 work focused on architecture cleanup and maintainability:
+- Extracted application assembly into a reusable `src/app/createApp.js` factory and centralized feature mounting in `src/app/routeRegistry.js`, which reduced bootstrap duplication between `index.js` and the integration test support path.
+- Moved note-page, auth, and settings route behavior behind dedicated controllers and services so route files now stay close to HTTP wiring instead of mixing transport and business logic.
+- Added a shared research workspace catalog/service seam so the `/research` page composes module cards and automation posture from reusable workspace metadata instead of hard-coded page-only structures.
+- Split runtime configuration into focused submodules, reducing a large all-in-one runtime config file into narrower concern-specific builders while preserving the existing external API.
+- Separated security workspace logic from security realtime/SSE handling and broke Playwright research generation into smaller helper modules for descriptors, latest-run summaries, and script templating.
+- Separated mission-access policy catalogs from the mission-access evaluator so static personas, actions, resources, and principles are no longer mixed into the main authorization decision logic file.
+- Revalidated the refactor with focused route/service regressions and a full Mocha pass that has since been superseded by the current 575-test local verification state.
+
+Recent updates (March 30, 2026) focused on architectural sandboxing and operator-grade network isolation:
+- Added `ops/kubernetes/immutable-stack.yaml` so the same proxy/app split now has a Kubernetes deployment path with rolling-update Deployments, default-deny ingress, and a public edge service in front of the internal application service.
+- Added a namespace-scoped daily rollout CronJob plus RBAC so the proxy and app pods are forcibly recycled every 24 hours from the pinned approved image reference instead of being left running indefinitely.
+- Added `npm run k8s:apply`, `npm run k8s:rotate`, and `npm run k8s:teardown` plus README guidance so the non-persistent deployment flow is executable and not only documented as a policy target.
+- Switched the local Kubernetes path to a self-contained kind-friendly stack by using the preloaded `note-app:hardened` image with `imagePullPolicy: Never`, adding an internal ephemeral MongoDB service, and exposing the proxy through NodePort `30080` mapped to `http://localhost:3002`.
+- Live-validated the immutable stack on a disposable `kind-note-app-local` cluster: `GET /healthz` and `GET /auth/login` returned HTTP 200 through the public proxy, `kubectl get cronjob,pods,svc -n note-app` showed the daily rollout CronJob plus healthy app/proxy/Mongo resources, and `npm run k8s:rotate` completed a successful rolling recycle.
+- Confirmed the local cluster intentionally reports `Google sign-in is not configured` until `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are injected into `note-app-secrets` and the Google OAuth client allows `http://localhost:3002/auth/oauth2/redirect/google`.
+- Added a dedicated `docker-compose.sandbox.yml` deployment that splits the stack into a DMZ-style `edge_zone`, an internal-only `app_zone`, and an internal-only `data_zone`, with only the Nginx reverse proxy published to the host.
+- Added `ops/nginx/sandbox.conf` so the DMZ edge terminates public HTTP traffic, forwards the app routes and SSE security stream to the internal Node service, and preserves forwarded-client headers for the backend.
+- Extended runtime configuration with `TRUST_PROXY_HOPS` so Express trusts exactly one proxy hop in the sandbox deployment instead of assuming direct client connections.
+- Added sandbox helper scripts to `package.json` and documented the deployment flow in the README so the isolation topology is runnable instead of only described conceptually.
+- Hardened the proxy container itself by running it as an unprivileged user on internal port `8080`, storing temp files on tmpfs, and keeping the root filesystem read-only without breaking startup.
+- Constrained the sandbox app service so Redis-backed realtime and local file-poller automation are disabled by default even if a workstation `.env` enables them, preventing host-specific automation settings from leaking into the isolated deployment.
+- Live-validated the sandbox on port `3001`: `docker compose -f docker-compose.sandbox.yml up --build -d` succeeded, `GET /healthz` and `GET /auth/login` returned HTTP 200 through the Nginx edge, and `docker compose ps` confirmed that only the proxy was host-published while the app and Mongo services stayed internal-only.
+- Revalidated the configuration layer with `npx mocha test/runtimeConfig.test.js` at 20 passing tests and kept `npm run lint` clean after the sandbox changes.
+
+Recent updates (March 29, 2026) focused on transport hardening, auditability, and operational log ingestion:
+- Enforced TLS 1.3 only for certificate-based inbound HTTPS transport, explicitly preventing negotiation of SSLv3, TLS 1.0, TLS 1.1, and TLS 1.2.
+- Sanitized response metadata and client-visible error handling so server banners, framework-identifying headers, and raw internal error details are not leaked back to callers.
+- Added immutable remote logging that mirrors console output and security-relevant HTTP request audit events to a separate write-only HTTP(S) sink with chained hashes and authenticated append requests.
+- Added request-scoped database telemetry using AsyncLocalStorage plus model-layer hooks so persisted state changes now emit Who, What, When, Where, and How summaries for create, update, delete, and tracked bulk-write operations.
+- Extended immutable logging with SIEM-oriented output formatting so the same audit pipeline can emit structured JSON for Splunk/ELK-style collectors or RFC 5424-style syslog text when the downstream collector expects syslog payloads.
+- Tightened dependency scanning by adding local `npm audit` scripts, CI gating for high-severity package CVEs, and a transitive override to remove the vulnerable `serialize-javascript` path currently pulled in by Mocha.
+- Added CycloneDX SBOM generation from the npm lockfile so the repo now keeps a reproducible manifest of third-party libraries at `sbom/note-app.cdx.json`.
+- Added a hardened Docker path with a multi-stage budil, production-only dependencies, and a non-root distroless runtime image so container deployments no longer rely on a general-purpose base image.
+- Verified the hardened image locally: `docker build -t note-app:hardened .` succeeds, the app serves HTTP 200 from `/auth/login` when pointed at host MongoDB through `host.docker.internal`, and the container now suppresses optional `keytar` loading that is not usable inside the distroless runtime.
+- Added a Supply Chain Security Module to the Research Workspace so the March 29 SBOM, dependency-audit scripts, workflow enforcement, license distribution, and container-hardening posture are visible in a dedicated authenticated frontend instead of only in docs and CI files.
+- Added an Audit Trail and Telemetry Module to the Research Workspace so immutable forwarding posture, TLS policy, request-scoped DB telemetry coverage, response-surface hardening, and JSON versus syslog previews are visible in a dedicated authenticated frontend.
+- Added a persistent `AuditEvent` model, a wrapper around the immutable log client, and an authenticated `/api/audit-telemetry/events` endpoint so audit history is stored per user and can be rendered live in the new Audit Trail and Telemetry Module.
+- Verified the new research-module path live: authenticated requests reached `/audit-telemetry/module` successfully, and repeated reads from `/api/audit-telemetry/events` increased the visible count from 2 to 3 events with the newest persisted record capturing `HTTP request completed` for `/api/audit-telemetry/events`.
+- Revalidated the new module and audit-history path with focused Mocha coverage for the new routes, service, and API, ending with 13 passing tests.
+- Revalidated the project after these security-control additions with focused logging/telemetry tests and a full local `npm test` run at 487 passing tests.
+
+Recent updates (March 26, 2026) focused on architectural security controls and making the Research Workspace reflect them as first-class modules:
+- Added a Mission Access Assurance Module that models RBAC-plus-ABAC decisions across mission role, clearance, assigned mission, device trust, network zone, MFA posture, and break-glass approval so policy reasoning is visible instead of buried in route handlers.
+- Added mission-aware middleware and policy services so sensitive research actions are evaluated server-side against the same role and attribute matrix shown by the module UI.
+- Added a Hardware-Backed MFA Module with real WebAuthn-backed hardware-token enrollment and assertion verification plus PKI-aware step-up support grounded in trusted client-certificate evidence from direct mTLS or trusted proxy headers.
+- Added HTTPS and mutual-TLS transport configuration support so PKI-backed assurance is no longer just a mock research concept; the app can now be configured to request and verify client certificates.
+- Added a Session Security Module with strict idle timeout, absolute timeout, and concurrent-login prevention logic, including server-side invalidation of superseded sessions and abandoned-terminal lockdown scenarios.
+- Added a dev-only seeded access matrix for analyst, operator, mission lead, auditor, admin, and break-glass personas, while replacing the earlier hardcoded shared seed password with a safer env-backed or randomly generated local password flow.
+- Added a Query Injection Prevention Module plus a global request guard that rejects operator-shaped Mongo payloads early and enables Mongoose `sanitizeFilter` plus `strictQuery` defaults as an architectural NoSQL-injection defense.
+- Added an XSS and CSP Defense Module and tightened the app's CSP/escaped-rendering posture so the browser-hardening model is both visible in the UI and enforced centrally through app configuration.
+- Added a Server Access Control Module and a global protected-API gate so `/api/*` endpoints are denied by default unless the server sees a verified authenticated identity, even if a frontend control is visible or a request is replayed directly.
+- Tightened `requireAuth` and `requireAuthAPI` to require a real verified `req.user._id`, keeping page access and API access aligned with the new broken-access-control posture.
+- Stabilized local startup further by fixing the launcher and current-process restart path so the live app on `localhost:3000` reflects the latest routes instead of silently serving a stale process after major route additions.
+- Hardened the Google OAuth callback flow so token-exchange failures are handled consistently even when Passport surfaces them as `InternalOAuthError` rather than `TokenError`, replacing raw callback stack traces with the same friendly login-page error and guidance.
+- Updated the README troubleshooting/authentication notes so local OAuth failures are easier to diagnose when `APP_BASE_URL`, the Google redirect URI, and the configured client secret do not belong to the same local client.
+- Revalidated the project after these changes with `npm test` at 461 passing, `npm run lint` clean, and live route checks confirming the new protected research-module pages and APIs are mounted.
+
+Recent updates (March 25, 2026) focused on making the browser-automation surfaces reflect live verification rather than static scenario catalogs:
+- Expanded the Playwright browser suite to cover auth forms, signup-login flow, server-rendered notes CRUD, Research Workspace navigation, Security Operations Module interaction flow, Selenium Testing Module smoke coverage, Playwright Testing Module interaction flow, and a broader cross-module suite.
+- Introduced a shared Playwright scenario registry plus annotated Playwright specs so `/playwright/module` can resolve each registered scenario against `artifacts/playwright-results.json` and show `Latest run: passed` when the latest annotated suite succeeds.
+- Verified the latest Playwright artifact in Chromium with 13 expected tests and 0 unexpected failures, which gives the Playwright Testing Module page an accurate latest-run view instead of "Run status unavailable".
+- Implemented a live Selenium suite against `http://localhost:3000`, including dedicated coverage for auth, signup/login into notes, notes CRUD, Research Workspace navigation, Security Operations Module interactions, Alert Triage ML Module flow, and the `/selenium/module` page itself.
+- Added `scripts/run-selenium-suite.js` so `npm run test:selenium` not only runs the Selenium suite but also writes `artifacts/selenium-results.json`, letting the Selenium Testing Module page surface suite status, browser/runtime metadata, covered test files, and per-scenario badges.
+- Reworked the Selenium Testing Module service and UI so the page is now useful as an operational browser-testing dashboard: it shows the latest suite result, refresh time, scenario coverage, generated WebDriver scripts, and scenario-by-scenario pass status from the latest artifact.
+- Hardened local realtime startup by making Redis client creation lazy/fail-fast so enabling a `REDIS_URL` without an active Redis listener no longer spams repeated `ECONNREFUSED 127.0.0.1:6379` errors during simple app startup or test imports.
+- Added a dedicated Self-Healing Locator Repair Module inside the Research Workspace with page/API routes that treat selector drift as a first-class research workflow rather than a hidden browser-test maintenance chore.
+- Implemented an ML-assisted self-healing service that reads a broken Playwright or Selenium locator, a short step goal, and the current HTML snippet, generates deterministic repair candidates across `data-testid`, `id`, `href`, `name`, role-plus-name, placeholder, and text strategies, then reranks them with a trained logistic model.
+- Added persisted self-healing history, repair feedback capture, bootstrap-versus-hybrid model training, and runtime Playwright/Selenium self-heal helpers so accepted and rejected outcomes can improve future repair ranking.
+- Grounded the Self-Healing Locator Repair Module in app-shaped sample cases from the Research Workspace, Playwright Testing Module, and auth flows so self-healing ideas can be explored against realistic failures instead of toy examples.
+- Renamed the canonical browser route from `/locator-repair/module` to `/self-healing/module` so the URL matches the module's product-facing name, while preserving `/locator-repair` and `/locator-repair/module` as legacy redirects and leaving `/api/locator-repair/*` intact for compatibility.
+- Added controller, route, service, page-route, runtime-helper, and integration coverage for the Self-Healing Locator Repair Module, raising the local suite to 320 passing tests while keeping ESLint clean.
+
+More March 25, 2026 work focused on reliability, maintainability, and keeping CI aligned with the evolved browser-automation surface:
+- Added a Playwright smoke path for the Self-Healing Locator Repair Module, covering the legacy `/locator-repair/module` redirect, the canonical `/self-healing/module` page, sample loading, and generated repair suggestions so CI exercises the newest browser-research surface directly.
+- Added `npm run lint` to the main GitHub Actions CI workflow and updated the browser workflow so Playwright boots against a deterministic CI-safe environment with MongoDB available during startup.
+- Fixed the app startup race by making the web server wait for a successful MongoDB connection before calling `listen()`, preventing the app from accepting requests while session-backed or model-backed routes are still booting.
+- Extracted shared browser-module service and client scaffolding so the Playwright Testing and Selenium Testing modules reuse more of the same artifact-loading, scenario-overview, and page-behavior foundation instead of drifting as near-duplicate stacks.
+- Split the Self-Healing service into smaller catalog, parsing, and engine layers so locator extraction, feature scoring, and ML-assisted ranking stay readable without changing the public behavior of the module.
+- Consolidated runtime env loading into a dedicated config helper, preserving `.env.local` override behavior without repeated ad hoc dotenv calls in the main entrypoint.
+- Added mtime-aware artifact caching for Playwright and Selenium result files so repeated module overview and script-generation calls stop reparsing unchanged JSON artifacts on every request.
+- Moved the large app-flow fake-model and query harness into shared test support so the main integration spec reads more like workflow coverage and less like an inline testing framework.
+- Simplified the README Features section into a shorter, clearer summary that keeps the same meaning while making the project's scope easier to scan quickly.
+
+Recent updates (March 21, 2026) focused on testing depth and clearer realtime UX:
+- Added end-to-end application coverage for authenticated note API CRUD, the server-rendered note create-edit flow, and the Security Operations Module workflow for log analysis, scan import, correlations, and realtime probing.
+- Introduced `test/testSetup.js` so `npm test` boots in `NODE_ENV=test`, disables Redis-backed realtime side effects by default, and runs the expanded integration suite deterministically.
+- Clarified the Security Operations Module realtime UI so the page now distinguishes server capability from the current browser tab's live stream state.
+- Updated the realtime connect-disconnect controls so disconnecting shows an explicit browser-side disconnected state instead of implying the whole backend realtime feature has been turned off.
+- Revalidated the branch after these changes with the then-current suite passing cleanly and a clean ESLint run before merging the work back into `main`.
+
+More March 21, 2026 work expanded the machine-learning and local-run story:
+- Added ML-ready alert triage fields, analyst feedback capture, and a trainable logistic-regression scoring path with heuristic fallback when no model artifact is present.
+- Added a dedicated Alert Triage ML Module frontend and API flow so model status, label distribution, recent scored alerts, and bootstrap-versus-hybrid training can be driven from the authenticated UI.
+- Hardened the Alert Triage ML Module browser fetch behavior to send same-origin credentials, surface clearer non-JSON/session-expiry failures, and prevent duplicate training requests while a training job is already in progress.
+- Expanded the Alert Triage ML Module dashboard with score buckets, alert-type priority breakdowns, and learned feature-influence views so the model can be inspected visually instead of only through summary counts.
+- Added theory-focused descriptions to every Alert Triage ML Module panel so the page explains the role of labels, metrics, score sources, score buckets, feature weights, and inference outputs in supervised triage.
+- Clarified the Alert Triage ML Module's role as a model-operations workspace: the page now ties together training, runtime model state, explainability, feedback-derived supervision, and autonomous-response proof rather than treating ML as an isolated backend experiment.
+- Added a Windows `run-local.ps1` launcher that opens dedicated PowerShell windows for the web app and optional realtime worker so local refreshes are not dependent on short-lived shell sessions.
+- Added `ecosystem.config.cjs` plus npm PM2 helper scripts so the app and realtime worker can run under a persistent local process manager instead of editor-owned shell sessions.
+- Updated local run guidance in the README to point developers toward `run-local.ps1` or PM2 whenever they see intermittent "site can't be reached" refresh behavior from transient launch environments.
+- Added an `incidentResponseService` policy layer that turns ML triage output into audited `none`, `notify`, or `block` decisions for scheduled automation and realtime-ingest alerts.
+- Stored autonomous response metadata directly on `SecurityAlert` documents so dashboards can show the response level, rationale, and provider outcomes instead of hiding those actions in logs.
+- Routed scheduled automation and the realtime worker through the same autonomous response service, replacing the earlier one-off realtime blocking path with a shared ML-aware decision path.
+- Updated the Security Operations Module and Alert Triage ML Module frontends so recent alerts show the recorded autonomous response state alongside triage scores and analyst feedback.
+- Added an `Autonomy Demo Inject` flow in the Alert Triage ML Module that seeds a dry-run notify-and-block scenario, then refreshed the overview logic so the `Observed Autonomous Outcomes` counters read those stored demo results correctly instead of staying at zero.
+- Added direct tests for the autonomy demo service, provider-and-action outcome aggregation in the ML overview, and the end-to-end flow where the ML overview changes after the demo injector runs.
+- The Alert Triage ML Module now carries more of the product's explainability burden: it is the place where runtime model provenance, label supply, confidence distribution, feature influence, and autonomy outcomes can be inspected together.
+
+Documentation alignment work later on March 21, 2026 clarified the ML story further:
+- Reframed the top-level project description so the application is described not only as a note-taking tool, but also as a security-research and ML-assisted triage workspace.
+- Tightened the README's Alert Triage ML Module overview so new contributors can understand the module as a compact model-operations surface for training, runtime inspection, feedback loops, explainability, and autonomy proof.
+- Preserved a longer local-only paper on the Alert Triage ML Module architecture as a personal research artifact while keeping it outside version control.
+
+Later on March 21, 2026, the Research Workspace gained a Selenium-focused browser-automation surface:
+- Added a dedicated Selenium Testing Module entry inside the Research Workspace so browser automation now sits beside the Security Operations and Alert Triage ML module pages instead of living only in external tooling.
+- Implemented Selenium page and API routes that expose scenario metadata plus generated JavaScript WebDriver templates for workspace navigation, Security Operations Module smoke coverage, Alert Triage ML Module smoke coverage, Selenium Testing Module smoke coverage, and a full cross-module research suite.
+- Structured the Selenium Testing Module as a planning-and-export surface rather than an in-browser runner: it explains browser prerequisites, route targets, assertion goals, and stable smoke-test coverage for the authenticated app.
+- Added dedicated service, controller, page-route, API-route, and integration coverage for the Selenium Testing Module so the browser-automation surface is tested at the same depth as the Security Operations and Alert Triage ML modules.
+- Updated the README to describe the project as note-taking plus security research, ML-assisted triage, and Selenium-based browser automation, aligning the docs with the current Research Workspace layout.
+
+Recent updates (March 20, 2026) focused on local developer experience and Security Operations Module stability:
+- Reworked the Security Operations Module realtime flow so the browser no longer tries to inspect the httpOnly session cookie; connection availability is derived from server state instead.
+- Added a lightweight realtime probe path so the UI can validate stream availability without opening a disposable SSE stream, and moved each connected client onto its own Redis subscriber to avoid cross-tab disconnect side effects.
+- Updated the realtime worker to fail fast when Redis is not configured, rather than spinning in a tight polling loop.
+- Tightened the development realtime toggle so it behaves like a JSON API and parses boolean enable-disable input safely.
+- Added support for `.env.local` overrides at startup, making it possible to keep machine-specific Google OAuth credentials out of the repository while still supporting local sign-in.
+- Introduced `APP_BASE_URL` as a canonical app origin so Google OAuth callback handling no longer depends on whether the browser entered through `localhost` or `127.0.0.1`.
+- Added regression tests for the canonical Google auth redirect behavior and for runtime config validation of `APP_BASE_URL`.
+
+Recent developments (March 12-13, 2026) expanded security-focused functionality:
+- Implemented note encryption at rest using AES-256-GCM with transparent model-layer encryption/decryption hooks, plus environment-driven key management via `NOTE_ENCRYPTION_KEY` (with secure fallback behavior for development).
+- Added a Log Analysis Assistant feature with server-side detection of failed login bursts, suspicious path probing, high error rates, scanner signatures, injection attempts, and directory enumeration behavior.
+- Built dedicated security alert storage (`SecurityAlert` model), secured API endpoints (`/api/security/log-analysis`, `/api/security/alerts`), and a protected dashboard route (`/security/logs`) with auto-refreshing UI updates.
+- Added sample log injection on the dashboard to streamline demos and testing, and improved client-side rendering so new alerts appear without manual page reload.
+- Implemented a Vulnerability Scan Importer with multi-format parsing support (Nmap XML, Nikto text, JSON, and generic text) and normalized finding storage (`ScanResult` model) with severity/type classification.
+- Added secured scan endpoints (`/api/security/scan-import`, `/api/security/scans`) and a dedicated scan dashboard (`/security/scans`) including sample scan loading and live list refresh after import.
+- Updated navigation and styling to integrate both security dashboards into the core product workflow.
+- Added targeted rate limiting for authentication attempts and destructive development actions.
+- Moved session storage from the default in-memory store to MongoDB-backed persistence for safer production behavior.
+- Added synchronizer-token CSRF protection for login/signup/logout forms and authenticated JSON mutation routes.
+- Updated page-route render payloads to pass `csrfToken` explicitly so EJS templates can rely on the token consistently after the CSRF rollout.
+- Removed unsafe dashboard status-message HTML injection by switching security dashboard notifications to DOM-safe rendering with `textContent`.
+- Regenerated the session on successful login, destroyed the session on logout, and cleared the session cookie instead of relying on `req.logout()` alone.
+- Removed provider-specific login failure handling and duplicate-email signup messaging to reduce account enumeration risk.
+- Removed `GET /auth/logout` and changed the development seed route to `POST /seed` so state-changing behavior is no longer exposed over GET.
+- Added a Research landing page to group Log Analysis, Scan Importer, and Correlations behind a single authenticated entry point.
+- Replaced the separate Logs, Scans, and Correlations pages with one Research Workspace, leaving the old routes as redirects into anchored workspace sections.
+- Moved `Inject Automation Sample` into the Automation module inside the Research Workspace so the demo action lives next to ingestion status and watched-file details.
+- Strengthened the automation demo sample so it now creates multiple alert types that immediately appear in the UI, including failed-login burst, suspicious path probing, scanner detection, injection attempt, and directory enumeration.
+- Adjusted demo sample persistence so explicit zero-window injection bypasses historical dedupe, making visible alert recreation reliable without weakening scheduled automation dedupe.
+- March 13, 2026: Correlation engine changed to group pairwise scan×alert matches by distinct `target` to avoid inflated pairwise totals; overview totals now report unique target groups. Updated `src/utils/correlationAnalysis.js` to merge pairwise matches into representative grouped correlations.
+- March 13, 2026: Demo injection behavior updated so `POST /api/security/correlations/sample` and the automation sample appender will append persisted alerts and scans rather than deleting prior demo records. Controller changes in `src/controllers/securityApiController.js` now build correlations from the current DB set so injected records appear alongside existing ones.
+- March 13, 2026: Client and API behavior: list endpoints now return `totalCount` (for alerts/scans/correlations) and the Research Workspace client reads `overview.total` / `totalCount` to populate summary cards. Remember to restart the server and refresh the Research page after code changes so client JS uses the updated totals.
+- Added Helmet security headers with CSP, frame protections, and inline-handler cleanup to support a stricter browser security model.
+- Added targeted rate limiting to log-analysis, scan-import, and sample-correlation endpoints to reduce authenticated abuse potential.
+- Upgraded EJS to 5.0.1, removing the `jake -> filelist -> minimatch` dependency chain and clearing the production `npm audit` report.
+- Fixed a `connect-mongo` CommonJS import mismatch by using the package's `MongoStore` export directly, restoring runtime startup after the session-store migration.
+- Extended automated coverage with new tests for log analysis, scan parsing, security/scan routes, CSRF behavior, session hardening, and automation-sample dedupe behavior, forming the basis for the larger 216-test suite now verified locally.
+
+Recent updates (March 5, 2026) hardened validation and authentication flows:
+- Added strict auth payload sanitization (`sanitizeAuthPayload`) and login password validation (`validateLoginPassword`).
+- Restricted note API payloads to allowed fields only (`title`, `content`, `image`) with explicit rejection of unexpected fields.
+- Trimmed and validated note route IDs before database operations in API and page routes.
+- Fixed a Google-auth edge case where local login attempted `bcrypt.compare` against missing password hashes.
+- Standardized local login failures to a generic invalid-credentials response so provider details are not leaked.
+- Added regression tests covering generic login failure handling and stricter auth validation behavior.
+
+
+RECENT ADDITIONS (as of March 28, 2026)
+
+- Added and stabilized the Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, and Server Access Control modules, making security architecture visible and enforceable in both UI and backend.
+- Hardened Google OAuth and local startup, improved error handling, and made OAuth troubleshooting easier.
+- Improved browser-automation modules: Playwright Testing and Selenium Testing modules now reflect live test artifacts, show per-scenario status, and export stable test templates.
+- The Self-Healing Locator Repair Module now supports ML-assisted locator repair for Playwright and Selenium, with feedback-driven ranking and artifact-backed history.
+- Security automation and CI: Integrated Falco/Trivy runners, improved artifact handling, and made security triage and reporting more reliable in CI.
+- The Alert Triage ML Module now acts as a full model-ops and explainability surface, with autonomous response proof and demo flows.
+- All modules and APIs are now protected by global access gates, with stricter session, CSRF, and input validation defaults.
+
+MARCH 29, 2026 SECURITY ADDITIONS
+
+- TLS 1.3-only HTTPS transport enforcement is now in place for certificate-based server mode.
+- Response metadata and error-message sanitization now reduce version and platform leakage.
+- Immutable remote logging now supports append-only operational and audit forwarding.
+- Database telemetry now records request-scoped state changes across core persisted models and tracked bulk writes.
+- SIEM integration now supports both structured JSON and RFC 5424-style syslog formatting.
+- Dependency scanning now blocks high-severity known CVEs through local audit scripts and CI workflow enforcement.
+- SBOM generation now provides a committed manifest of third-party libraries derived from the current npm dependency graph.
+- Container hardening now uses a distroless non-root runtime image, with CI scanning the built application image instead of a placeholder container.
+- Local Docker Desktop validation now uses a host-aware MongoDB override rather than raw `localhost`, which is container-internal and not suitable for host MongoDB access.
+- The Research Workspace now exposes the March 29 supply-chain work as a dedicated Supply Chain Security Module rather than leaving that material only in scripts, CI, and documentation.
+- The Research Workspace now exposes the March 29 auditability work as a dedicated Audit Trail and Telemetry Module backed by a persisted audit-history API.
+
+
+
+MAJOR CHALLENGES AND SOLUTIONS
+
+- Authentication/Authorization: Complex session management, role/attribute-based access, and secure OAuth required reusable middleware, strict user checks, and robust error handling.
+- Input Validation: Balancing security and usability led to centralized, layered validation and sanitization utilities, with clear separation for create/update flows.
+- Testing: Achieving and then extending the suite to 575 passing tests required extensive mocking, stubbing, and cleanup, especially for database, authentication, audit logging, telemetry logic, and the newer platform-composition seams.
+- Dependency governance: keeping a generated SBOM in source control makes supply-chain review more concrete than relying on package manifests alone.
+- Containerization: local Docker validation on Windows required treating host services explicitly with `host.docker.internal`, and optional desktop keyring integrations had to be disabled in the minimal runtime image.
+- Deployment: Technical debt (hardcoded values, insecure cookies) was resolved with environment-driven config, secure defaults, and standardized scripts.
+- Error Handling: Centralized error utilities and async wrappers ensured consistent, user-friendly responses and robust test coverage.
+- Schema Design: Used ObjectId references, realistic constraints, and compound queries for secure, flexible data relationships.
+- Legacy Migration: Updated old code with new security patterns, preserving compatibility and test coverage.
+- Naming/Organization: Standardized file naming and logical grouping improved maintainability and clarity.
+
+
+TROUBLESHOOTING (as of March 28, 2026)
+
+- Semgrep rule schema errors: Add `languages: [javascript]` to `.semgrep.yml`.
+- `npm ci` lockfile mismatch: Run `npm install`, commit the lockfile, retry.
+- Node engine mismatch in CI: Update workflow to match required Node version.
+- Optional dependency issues: Install only when needed, rely on lazy-require.
+- Trivy scan failures: Artifacts are report-only; triage and patch as needed.
+- Google OAuth/local auth issues: Ensure all OAuth env vars and redirect URIs match, use `.env.local` for workstation secrets.
+- MongoDB/Redis startup: Wait for successful DB connection before listening; Redis is now optional and fails fast if not configured.
+
+
+
+KEY LEARNINGS
+
+- Security must be foundational: validate/sanitize all input, hash secrets, use environment variables, and enforce strict session/auth controls.
+- Separation of concerns and modularity are critical for maintainability.
+- Testing is essential—mock dependencies, cover edge cases, and clean up after each test.
+- Environment config discipline prevents future refactoring and deployment issues.
+- Consistent API design and error handling improve developer and user experience.
+- Honest technical debt assessment and documentation are more valuable than chasing false perfection.
+- Git workflow discipline and clear documentation enable collaboration and future development.
+
+
+
+TECHNICAL INSIGHTS
+
+- Mongoose: Always use `runValidators: true` on updates, handle ObjectId casting, and understand virtual/timestamp behavior.
+- Express/Passport: Sessions are server-side, cookies hold only IDs, and logout requires both session destruction and `req.logout()`.
+- CSRF: Synchronizer-token pattern works, but templates must be tested for token presence.
+- CSP: Removing inline scripts enables strict policies.
+- Testing: Use stubs/mocks, group/cleanup tests, and verify both success and error paths.
+- ESLint: Automate with `--fix`, accept some warnings, and enforce consistent style.
+
+
+
+WHAT I WOULD DO DIFFERENTLY
+
+- Start with TDD for critical features and authentication.
+- Standardize code style, linter config, and naming conventions from the beginning.
+- Use environment variables and `.env.example` from day one.
+- Centralize validation and logging early.
+- Document as you go, not after the fact.
+
+
+
+FINAL REFLECTION (as of March 31, 2026)
+
+The project is now a robust, production-ready, security-focused, and test-driven application with modular architecture, strong authentication, comprehensive validation, encrypted data, and a full suite of research, automation, and browser-testing tools. The most important lesson: real progress comes from honest assessment, continuous improvement, and balancing shipping with technical debt management.
+
+================================================================================
+Project: Note App | Developer: Ryan V | Date: March 31, 2026
+Repository: https://github.com/k0jir0/note-app
+================================================================================

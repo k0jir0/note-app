@@ -1,0 +1,52 @@
+name: Security Scan CI
+
+on:
+  push:
+    branches: [ main, test-branch ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.8.0'
+          cache: 'npm'
+
+      - name: Install dependencies (cached)
+        run: npm ci --prefer-offline --no-audit --progress=false
+
+      - name: Check required env vars
+        run: npm run check-env
+        # Allow the workflow to continue if env-check fails (secrets often absent in forks/pull-requests)
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm test --silent
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build hardened app image
+        run: docker build --tag note-app:ci .
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'note-app:ci'
+          format: 'json'
+          output: 'trivy-report.json'
+          exit-code: '0' # don't fail CI on findings; publish report instead
+          scan-type: 'image'
+
+      - name: Upload trivy report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: ./trivy-report.json

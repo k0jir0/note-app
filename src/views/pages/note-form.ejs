@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <title><%= note ? "Edit Note" : "Create Note" %></title>
+    <%- include('../partials/head-assets') %>
+    <script src="/js/theme-toggle.js" defer></script>
+</head>
+<body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
+    <%- include('../partials/theme-toggle') %>
+
+    <div class="container mt-5">
+        <h1 class="mb-4 notes-title">
+            <%= note ? "Edit Note" : "Create Note" %>
+        </h1>
+
+        <% if (typeof errors !== 'undefined' && Array.isArray(errors) && errors.length > 0) { %>
+            <div class="alert alert-danger" role="alert">
+                <ul class="mb-0">
+                    <% errors.forEach(function(err){ %>
+                        <li><%= err %></li>
+                    <% }) %>
+                </ul>
+            </div>
+        <% } %>
+
+        <form method="post" action="<%= note ? ('/notes/' + note._id) : '/notes' %>">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        
+            <div class="mb-3">
+                <label class="form-label" for="title">Title</label>
+                <input
+                    type="text"
+                    name="title"
+                    id="title"
+                    class="form-control <%= (typeof fieldErrors !== 'undefined' && fieldErrors.title) ? 'is-invalid' : '' %>"
+                    required
+                    placeholder="Enter note title"
+                    value="<%= note ? note.title : '' %>"
+                />
+                <% if (typeof fieldErrors !== 'undefined' && fieldErrors.title) { %>
+                    <div class="invalid-feedback"><%= fieldErrors.title %></div>
+                <% } %>
+            </div>
+        
+            <div class="mb-3">
+                <label class="form-label" for="content">Content</label>
+                <textarea
+                    name="content"
+                    id="content"
+                    class="form-control <%= (typeof fieldErrors !== 'undefined' && fieldErrors.content) ? 'is-invalid' : '' %>"
+                    rows="10"
+                    placeholder="Write your note here..."
+                ><%= note ? note.content : '' %></textarea>
+                <% if (typeof fieldErrors !== 'undefined' && fieldErrors.content) { %>
+                    <div class="invalid-feedback d-block"><%= fieldErrors.content %></div>
+                <% } %>
+            </div>
+        
+            <div class="mb-3">
+                <label class="form-label" for="image">Image URL</label>
+                <input
+                    type="url"
+                    name="image"
+                    id="image"
+                    class="form-control <%= (typeof fieldErrors !== 'undefined' && fieldErrors.image) ? 'is-invalid' : '' %>"
+                    placeholder="https://example.com/image.jpg"
+                    value="<%= note ? note.image : '' %>"
+                />
+                <div class="form-text">Images are fetched by the server and re-served from this app so they keep working under the current security policy.</div>
+                <% if (typeof fieldErrors !== 'undefined' && fieldErrors.image) { %>
+                    <div class="invalid-feedback"><%= fieldErrors.image %></div>
+                <% } %>
+            </div>
+
+            <button type="submit" class="btn btn-dark">
+                <%= note ? "Update Note" : "Create Note" %>
+            </button>
+
+            <a href="/" class="btn btn-secondary">
+                Cancel</a>
+
+        </form>
+    </div>
+</body>
+</html>

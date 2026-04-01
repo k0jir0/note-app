@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Notes</title>
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <%- include('../partials/head-assets') %>
+    <script src="/js/csrf.js" defer></script>
+    <script src="/js/image-fallback.js" defer></script>
+    <script src="/js/notes.js" defer></script>
+    <script src="/js/theme-toggle.js" defer></script>
+</head>
+
+<body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
+    <div class="container mt-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="notes-title">Notes</h1>
+                <% if (user) { %>
+                    <p class="text-muted mb-0">Welcome, <%= user.name || user.email %></p>
+                    <div class="mt-2">
+                            <div class="alert alert-secondary small mb-0 alert-small" role="alert">
+                                Notes are encrypted at rest using the application's note-encryption key; data is decrypted by the server only for your authenticated session.
+                            </div>
+                        </div>
+                <% } %>
+            </div>
+            
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <%- include('../partials/theme-toggle') %>
+                <a href="/notes/new" class="btn btn-dark">Create Note</a>
+                <a href="/research" class="btn btn-outline-dark">Research</a>
+                <form action="/auth/logout" method="POST" class="m-0">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button type="submit" class="btn btn-outline-secondary">Logout</button>
+                </form>
+            </div>
+        </div>
+        <div>
+            <p class="text-muted small notes-description">Notes are encrypted at rest using AES-256-GCM with a dedicated server key (configured via <code>NOTE_ENCRYPTION_KEY</code>); only the server instance holding that key can decrypt stored note content.</p>
+        </div>
+
+
+        <div class="row">
+            <% if (notes && notes.length > 0) { %>
+                <% notes.forEach(note=> { %>
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100">
+                            <% const noteImageSrc = note.image ? `/notes/${note._id}/image?v=${new Date(note.updatedAt || note.createdAt || Date.now()).getTime()}` : '/placeholder.jpg'; %>
+                            <img
+                                src="<%= noteImageSrc %>"
+                                class="card-img-top note-img"
+                                alt="<%= note.title %>"
+                                data-fallback-src="/placeholder.jpg"
+                            >
+                            <div class="card-body">
+                                <h5 class="card-title"><%= note.title %></h5>
+                                <p class="card-text text-muted">
+                                    <%= note.content ? note.content.substring(0, 100) + (note.content.length > 100 ? '...' : '') : 'No content' %>
+                                </p>
+                                <div class="text-muted small mb-3">
+                                    <i class="bi bi-calendar"></i> <%= new Date(note.createdAt).toLocaleDateString() %>
+                                </div>
+                                <a href="/notes/<%= note._id %>" class="btn btn-outline-dark btn-sm">View</a>
+                                <a href="/notes/<%= note._id %>/edit" class="btn btn-outline-primary btn-sm">Edit</a>
+                                <button type="button" data-note-id="<%= note._id %>" class="btn btn-outline-danger btn-sm note-delete-button">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <div class="col-12 text-center py-5">
+                    <p class="text-muted">No notes yet. Create your first note!</p>
+                    <a href="/notes/new" class="btn btn-dark">Create Note</a>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</body>
+
+</html>

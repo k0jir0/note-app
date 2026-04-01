@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Break-Glass and Emergency Control Module</title>
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <%- include('../partials/head-assets') %>
+    <script src="/js/break-glass-module.js" defer></script>
+    <script src="/js/theme-toggle.js" defer></script>
+</head>
+
+<body class="<%= (user && user.preferences && user.preferences.nightMode) ? 'dark-mode' : '' %>">
+    <%- include('../partials/theme-toggle') %>
+    <div class="container mt-5 mb-5"
+        id="break-glass-module-root"
+        data-break-glass-overview-endpoint="/api/break-glass/overview"
+        data-break-glass-runtime-endpoint="/api/runtime/break-glass">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div>
+                <span class="research-kicker">Incident Neutralization</span>
+                <h1 class="notes-title mb-1">Break-Glass and Emergency Control Module</h1>
+                <p class="text-muted mb-0">Inspect the current kill-switch state, verify the health posture, and activate read-only or offline controls when an incident demands immediate containment.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/research" class="btn btn-secondary">Back to Research</a>
+                <a href="/notes" class="btn btn-outline-secondary">Back to Notes</a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6 col-xl-3">
+                <div class="research-summary-card p-3 h-100">
+                    <p class="research-kicker mb-2">Current mode</p>
+                    <p class="display-6 mb-1 fs-3" id="break-glass-mode">Loading</p>
+                    <p class="text-muted small mb-0">Backend-owned global posture</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="research-summary-card p-3 h-100">
+                    <p class="research-kicker mb-2">Health status</p>
+                    <p class="display-6 mb-1 fs-3" id="break-glass-health-status">Loading</p>
+                    <p class="text-muted small mb-0">Expected response from <code>/healthz</code></p>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="research-summary-card p-3 h-100">
+                    <p class="research-kicker mb-2">Control authority</p>
+                    <p class="display-6 mb-1 fs-3" id="break-glass-authority">Loading</p>
+                    <p class="text-muted small mb-0">Who can toggle the kill switch</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="research-summary-card p-3 h-100">
+                    <p class="research-kicker mb-2">Activated by</p>
+                    <p class="display-6 mb-1 fs-5" id="break-glass-activated-by">Loading</p>
+                    <p class="text-muted small mb-0">Most recent operator or system source</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="research-summary-card p-3 mb-4">
+            <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                <div>
+                    <p class="research-kicker mb-1">Current posture</p>
+                    <p class="text-muted small mb-0" id="break-glass-status-copy">Loading break-glass posture...</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" id="break-glass-refresh-btn" class="btn btn-outline-secondary">Refresh Module</button>
+                </div>
+            </div>
+            <div class="mt-3" id="break-glass-status"></div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="research-panel h-100">
+                    <span class="research-kicker">Current state</span>
+                    <h2 class="h4 mb-3">Emergency Runtime Status</h2>
+                    <div id="break-glass-state-card"></div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="research-panel h-100">
+                    <span class="research-kicker">Control guidance</span>
+                    <h2 class="h4 mb-3">Break-Glass Architecture</h2>
+                    <div id="break-glass-guidance" class="row g-3"></div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="research-panel h-100">
+                    <span class="research-kicker">Runtime toggle</span>
+                    <h2 class="h4 mb-3">Change Emergency Mode</h2>
+                    <div class="mb-3">
+                        <label for="break-glass-mode-select" class="form-label">Target mode</label>
+                        <select id="break-glass-mode-select" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="break-glass-reason" class="form-label">Reason</label>
+                        <textarea id="break-glass-reason" class="form-control" rows="5" placeholder="Document why the application is being neutralized or restored."></textarea>
+                    </div>
+                    <button type="button" id="break-glass-apply-btn" class="btn btn-dark">Apply Break-Glass Mode</button>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="research-panel h-100">
+                    <span class="research-kicker">Safe surfaces</span>
+                    <h2 class="h4 mb-3">Bypass and Health Endpoints</h2>
+                    <div id="break-glass-bypass-paths"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
