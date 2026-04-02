@@ -1,6 +1,6 @@
 # Helios
 
-Helios is a full-stack platform for operating and verifying security-sensitive applications. It combines access control, audit logging, browser testing, runtime protections, and security review workflows in one system so teams can manage sensitive software and show evidence that it is trustworthy.
+Helios is a highly secure, all-in-one software platform designed to help teams build, test, monitor, and prove that their applications are protected against cyber threats. It is a full-stack platform for operating and verifying security-sensitive applications. It combines access control, audit logging, browser testing, runtime protections, and security review workflows in one system so teams can manage sensitive software and show evidence that it is trustworthy.
 
 In plain terms, this product is built to make a hard problem feel understandable: keep important work protected, show people what the system is doing, and make trust visible instead of assumed. It gives teams one place to create, operate, verify, and explain a security-conscious application, which makes the software easier to adopt, easier to defend, and easier to sell in environments where reliability and credibility matter as much as features.
 
