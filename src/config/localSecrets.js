@@ -5,7 +5,7 @@ async function tryLoadKeytarGoogleSecrets() {
 
     try {
         const keytar = require('keytar');
-        const service = 'note-app-local';
+        const service = 'helios-local';
 
         const id = await keytar.getPassword(service, 'google_client_id');
         const secret = await keytar.getPassword(service, 'google_client_secret');

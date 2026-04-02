@@ -1,9 +1,9 @@
 Toward a Secure, Extensible, and Human-Centered Full-Stack Research Platform:
-A Thesis-Style Study of the Note App and Security Module Project
+A Thesis-Style Study of Helios and the Security Module Project
 
 Abstract
 
-This document presents a thesis-style analysis of the Note App project, a
+This document presents a thesis-style analysis of the Helios project, a
 full-stack Node.js, Express, MongoDB, and EJS application that began as a
 secure note-taking system and evolved into a broader research platform with a
 dedicated Security Module. The project combines user authentication, encrypted
@@ -38,7 +38,7 @@ environments.
 1. Introduction
 
 Software engineering projects often begin with one narrowly framed objective
-and then expand as the development team discovers adjacent needs. The Note App
+and then expand as the development team discovers adjacent needs. The Helios
 project illustrates this pattern well. At a glance, it appears to be a secure
 note-taking application. That framing is accurate, but incomplete. The codebase
 also demonstrates authentication strategy design, secure session management,
@@ -86,7 +86,7 @@ ground. They are not hyperscale distributed systems, yet they still must
 operate responsibly. They are not pure research prototypes, yet they must adapt
 to evolving requirements. They are not regulated enterprise platforms, yet they
 must handle sensitive material in a way that would stand up to reasonable
-scrutiny. The Note App project is thus best understood as an applied software
+scrutiny. The Helios project is thus best understood as an applied software
 engineering study in disciplined evolution.
 
 3. System Context and Product Evolution
@@ -109,7 +109,7 @@ session persistence, and route-level rate limiting. These features shift the
 project away from tutorial-grade patterns and toward operational credibility.
 
 The second axis is domain expansion. The introduction of the Research Workspace
-and Security Module transforms the product from a note app with a few extra
+and Security Module transforms the product from a secure notes application with a few extra
 utilities into a platform that can ingest logs, parse scan outputs, generate
 alerts, derive correlations, run automation loops, publish metrics, and present
 all of this in a single authenticated interface.
@@ -365,7 +365,7 @@ correlation rules.
 Fourth, note and security data could be tied together more explicitly. For
 example, a user might want to link a note directly to a particular alert,
 correlation, or imported finding. That would deepen the product's identity as a
-research notebook rather than merely a note app plus a separate analysis tool.
+research notebook rather than merely a notes application plus a separate analysis tool.
 
 Fifth, deployment ergonomics could be extended. APP_BASE_URL already solves one
 important class of OAuth mismatch. Similar canonical environment patterns could
@@ -373,7 +373,7 @@ be applied to notifications, metrics exposure, and worker configuration.
 
 15. Conclusion
 
-The Note App project demonstrates that software quality is rarely about
+The Helios project demonstrates that software quality is rarely about
 grandiosity. It is about care. The application does not aim to be the biggest
 note platform, the most complex analytics engine, or the most abstract
 framework. Instead, it aims to be coherent, safe, useful, and teachable. Those

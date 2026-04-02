@@ -4,10 +4,10 @@ This directory contains the Kubernetes deployment path for the non-persistent en
 
 ## What the manifest does
 
-- Creates a dedicated `note-app` namespace.
-- Deploys the internal `note-app` service as a 3-replica rolling Deployment.
+- Creates a dedicated `helios` namespace.
+- Deploys the internal `helios` service as a 3-replica rolling Deployment.
 - Deploys an internal ephemeral MongoDB service for local verification and non-persistent data rotation.
-- Deploys the public `note-app-proxy` service as a 2-replica rolling Deployment that fronts the app service, exposed locally through NodePort `30080`.
+- Deploys the public `helios-proxy` service as a 2-replica rolling Deployment that fronts the app service, exposed locally through NodePort `30080`.
 - Applies default-deny ingress controls, then opens only the proxy-to-app and app-to-Mongo paths.
 - Creates RBAC plus a daily CronJob that runs `kubectl rollout restart` against both Deployments.
 
@@ -15,10 +15,10 @@ This directory contains the Kubernetes deployment path for the non-persistent en
 
 Before you apply `immutable-stack.yaml`, confirm these values still match your target environment:
 
-- `note-app:hardened` is the current local image reference used for the kind cluster. Because kind consumes the image from the local Docker daemon, the manifest sets `imagePullPolicy: Never` and expects you to preload that image into the cluster.
+- `helios:hardened` is the current local image reference used for the kind cluster. Because kind consumes the image from the local Docker daemon, the manifest sets `imagePullPolicy: Never` and expects you to preload that image into the cluster.
 - The support images are pinned to immutable `linux/amd64` digests for reproducible local kind runs. If you intentionally move to a different architecture or upstream support-image version, refresh the pinned digests before applying the manifest.
 - `http://localhost:3002` is the current base URL baked into the ConfigMap for the local kind entry point.
-- The manifest now provides `MONGODB_URI` internally, so `note-app-secrets` must include at minimum `SESSION_SECRET` and `NOTE_ENCRYPTION_KEY`.
+- The manifest now provides `MONGODB_URI` internally, so `helios-secrets` must include at minimum `SESSION_SECRET` and `NOTE_ENCRYPTION_KEY`.
 
 ## Refreshing pinned support images
 
@@ -37,13 +37,13 @@ The repository also includes `.github/workflows/itsg33-k8s-support-image-refresh
 ## Apply and rotate
 
 ```bash
-kubectl create namespace note-app
-kubectl create secret generic note-app-secrets -n note-app \
+kubectl create namespace helios
+kubectl create secret generic helios-secrets -n helios \
   --from-literal=SESSION_SECRET='replace-with-long-random-secret' \
   --from-literal=NOTE_ENCRYPTION_KEY='replace-with-64-char-hex-key'
 kubectl apply -f ops/kubernetes/immutable-stack.yaml
-kubectl get cronjob,pods,svc -n note-app
-kubectl rollout restart deployment/note-app deployment/note-app-proxy -n note-app
+kubectl get cronjob,pods,svc -n helios
+kubectl rollout restart deployment/helios deployment/helios-proxy -n helios
 ```
 
 The scheduled CronJob runs at `03:00` cluster time each day. If the cluster uses a different local time zone expectation, adjust the cron expression to match your maintenance window.

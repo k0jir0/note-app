@@ -23,7 +23,7 @@ Procedure
    - `npm run audit:prod`
    - `npm run sbom:check`
 3. Confirm the required GitHub checks are green for the candidate commit.
-4. If dependencies changed, confirm `sbom/note-app.cdx.json` was regenerated and reviewed.
+4. If dependencies changed, confirm `sbom/helios.cdx.json` was regenerated and reviewed.
 5. Complete the pull request template evidence section and link any related recurring-control issues.
 6. Save the evidence package listed in `docs/itsg33-evidence-checklist.md`.
 

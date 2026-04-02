@@ -17,7 +17,7 @@ const { configureDatabaseTelemetry } = require('./src/utils/databaseTelemetry');
 const { createServerFactory } = require('./src/utils/serverTransport');
 const { createPersistentAuditClient } = require('./src/services/persistentAuditService');
 
-const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
+const { localEnvOverrides, protectedEnvKeys } = loadRuntimeEnvironment({ rootDir: __dirname });
 
 (async function main() {
     try {
@@ -26,7 +26,7 @@ const { localEnvOverrides } = loadRuntimeEnvironment({ rootDir: __dirname });
             console.warn('Keyring secrets not loaded (keytar missing or failed):', keyLoad.error && keyLoad.error.message ? keyLoad.error.message : keyLoad.error);
         }
 
-        reapplyLocalEnvOverrides(localEnvOverrides);
+        reapplyLocalEnvOverrides(localEnvOverrides, protectedEnvKeys);
 
         const runtimeConfig = validateRuntimeConfig();
         const mongooseSecurity = applyMongooseInjectionDefaults(mongoose);

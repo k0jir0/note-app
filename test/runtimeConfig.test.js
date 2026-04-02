@@ -13,7 +13,7 @@ const {
 describe('Runtime Config Validation', () => {
     function createValidEnv() {
         return {
-            MONGODB_URI: 'mongodb://localhost:27017/noteApp',
+            MONGODB_URI: 'mongodb://localhost:27017/helios',
             SESSION_SECRET: 'a'.repeat(MIN_SESSION_SECRET_LENGTH),
             NOTE_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
         };
@@ -22,9 +22,9 @@ describe('Runtime Config Validation', () => {
     it('accepts a valid config without Google OAuth', () => {
         const config = validateRuntimeConfig(createValidEnv());
 
-        expect(config.dbURI).to.equal('mongodb://localhost:27017/noteApp');
+        expect(config.dbURI).to.equal('mongodb://localhost:27017/helios');
         expect(config.database).to.deep.equal({
-            uri: 'mongodb://localhost:27017/noteApp',
+            uri: 'mongodb://localhost:27017/helios',
             tlsRequired: false,
             tlsEnabled: false,
             local: true
@@ -35,7 +35,7 @@ describe('Runtime Config Validation', () => {
 
     it('does not treat .local MongoDB hosts as local-only deployments', () => {
         const env = createValidEnv();
-        env.MONGODB_URI = 'mongodb://mongo.local:27017/noteApp';
+        env.MONGODB_URI = 'mongodb://mongo.local:27017/helios';
 
         expect(() => validateRuntimeConfig(env)).to.throw('MONGODB_URI must enable TLS');
     });
@@ -138,7 +138,7 @@ describe('Runtime Config Validation', () => {
             reason: ''
         });
         expect(config.database).to.deep.equal({
-            uri: 'mongodb://localhost:27017/noteApp',
+            uri: 'mongodb://localhost:27017/helios',
             tlsRequired: false,
             tlsEnabled: false,
             local: true
@@ -149,7 +149,7 @@ describe('Runtime Config Validation', () => {
             endpoint: '',
             token: '',
             timeoutMs: 2000,
-            source: 'note-app',
+            source: 'helios',
             format: 'json',
             requireForwardSuccess: false
         });
@@ -169,7 +169,7 @@ describe('Runtime Config Validation', () => {
         env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
         env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
         env.IMMUTABLE_LOGGING_TIMEOUT_MS = '3500';
-        env.IMMUTABLE_LOGGING_SOURCE = 'note-app-web';
+        env.IMMUTABLE_LOGGING_SOURCE = 'helios-web';
 
         const config = validateRuntimeConfig(env);
 
@@ -179,7 +179,7 @@ describe('Runtime Config Validation', () => {
             endpoint: 'https://logs.example.com/append',
             token: 'remote-write-only-token',
             timeoutMs: 3500,
-            source: 'note-app-web',
+            source: 'helios-web',
             format: 'json',
             requireForwardSuccess: false
         });
@@ -372,9 +372,9 @@ describe('Runtime Config Validation', () => {
 
     it('builds a sanitized runtime diagnostic view without secrets', () => {
         const diagnostics = toDiagnosticRuntimeConfig({
-            dbURI: 'mongodb://localhost:27017/noteApp',
+            dbURI: 'mongodb://localhost:27017/helios',
             database: {
-                uri: 'mongodb://localhost:27017/noteApp',
+                uri: 'mongodb://localhost:27017/helios',
                 tlsRequired: true,
                 tlsEnabled: true,
                 local: false
@@ -407,7 +407,7 @@ describe('Runtime Config Validation', () => {
                 token: 'write-only-token',
                 timeoutMs: 2500,
                 format: 'syslog',
-                source: 'note-app-web',
+                source: 'helios-web',
                 requireForwardSuccess: true
             },
             automation: {
@@ -452,7 +452,7 @@ describe('Runtime Config Validation', () => {
             endpointConfigured: true,
             timeoutMs: 2500,
             format: 'syslog',
-            source: 'note-app-web'
+            source: 'helios-web'
         });
         expect(diagnostics.sessionManagement).to.deep.equal({
             idleTimeoutMinutes: 15,

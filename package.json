@@ -1,5 +1,5 @@
 {
-  "name": "note-app",
+  "name": "helios",
   "version": "0.1.0",
   "description": "A full-stack note-taking and security-research application with authentication, encrypted notes, and security analysis dashboards",
   "main": "index.js",
@@ -13,7 +13,7 @@
     "sandbox:down": "docker compose -f docker-compose.sandbox.yml down",
     "sandbox:logs": "docker compose -f docker-compose.sandbox.yml logs -f proxy app mongo",
     "k8s:apply": "kubectl apply -f ops/kubernetes/immutable-stack.yaml",
-    "k8s:rotate": "kubectl rollout restart deployment/note-app deployment/note-app-proxy -n note-app",
+    "k8s:rotate": "kubectl rollout restart deployment/helios deployment/helios-proxy -n helios",
     "k8s:teardown": "kubectl delete -f ops/kubernetes/immutable-stack.yaml",
     "check-env": "node scripts/env-check.js",
     "migrate:encrypt-at-rest": "node scripts/migrate-encryption-at-rest.js",
@@ -21,12 +21,12 @@
     "automation:falco": "node automation/falco-runner.js",
     "ml:train": "node scripts/train-alert-triage-model.js",
     "locator-repair:train": "node scripts/train-locator-repair-model.js",
-    "pm2:start": "pm2 start ecosystem.config.cjs --only note-app-web --update-env",
-    "pm2:start:worker": "pm2 start ecosystem.config.cjs --only note-app-web,note-app-worker --update-env",
+    "pm2:start": "pm2 start ecosystem.config.cjs --only helios-web --update-env",
+    "pm2:start:worker": "pm2 start ecosystem.config.cjs --only helios-web,helios-worker --update-env",
     "pm2:restart": "pm2 restart ecosystem.config.cjs --update-env",
-    "pm2:stop": "pm2 delete note-app-web note-app-worker",
+    "pm2:stop": "pm2 delete helios-web helios-worker",
     "pm2:status": "pm2 status",
-    "pm2:logs": "pm2 logs note-app-web --lines 200",
+    "pm2:logs": "pm2 logs helios-web --lines 200",
     "worker": "node src/workers/realtimeProcessor.js",
     "test": "mocha --require ./test/testSetup.js \"test/**/*.js\"",
     "test:selenium": "node scripts/run-selenium-suite.js",
@@ -48,7 +48,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/k0jir0/note-app.git"
+    "url": "git+https://github.com/k0jir0/helios.git"
   },
   "keywords": [
     "notes",
@@ -67,12 +67,12 @@
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/k0jir0/note-app/issues"
+    "url": "https://github.com/k0jir0/helios/issues"
   },
   "overrides": {
     "serialize-javascript": "7.0.5"
   },
-  "homepage": "https://github.com/k0jir0/note-app#readme",
+  "homepage": "https://github.com/k0jir0/helios#readme",
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "chai": "^6.2.2",

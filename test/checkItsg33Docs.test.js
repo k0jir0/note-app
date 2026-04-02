@@ -16,7 +16,7 @@ function writeFile(rootDir, relativePath, content = 'placeholder\n') {
 
 describe('ITSG-33 artifact checks', () => {
     it('accepts the required documentation and workflow artifacts', () => {
-        const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'note-app-itsg33-'));
+        const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'helios-itsg33-'));
 
         requiredArtifacts.forEach((relativePath) => {
             writeFile(tempDirectory, relativePath);
@@ -29,7 +29,7 @@ describe('ITSG-33 artifact checks', () => {
     });
 
     it('rejects a missing automation analysis reference', () => {
-        const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'note-app-itsg33-'));
+        const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'helios-itsg33-'));
 
         requiredArtifacts.forEach((relativePath) => {
             writeFile(tempDirectory, relativePath);

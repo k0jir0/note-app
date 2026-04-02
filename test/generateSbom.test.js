@@ -58,10 +58,10 @@ describe('SBOM generation helpers', () => {
     });
 
     it('detects when the committed SBOM no longer matches the lockfile-derived content', () => {
-        const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'note-app-sbom-'));
-        const destination = path.join(tempDirectory, 'note-app.cdx.json');
+        const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'helios-sbom-'));
+        const destination = path.join(tempDirectory, 'helios.cdx.json');
         fs.writeFileSync(path.join(tempDirectory, 'package.json'), JSON.stringify({
-            name: 'note-app'
+            name: 'helios'
         }, null, 2));
         const rawSbom = JSON.stringify({
             serialNumber: 'urn:uuid:new-serial',
@@ -86,7 +86,7 @@ describe('SBOM generation helpers', () => {
             destination,
             rawSbom
         })).to.equal(true);
-        expect(JSON.parse(fs.readFileSync(destination, 'utf8')).metadata.component.name).to.equal('note-app');
+        expect(JSON.parse(fs.readFileSync(destination, 'utf8')).metadata.component.name).to.equal('helios');
 
         expect(isSbomCurrent({
             rootDir: tempDirectory,

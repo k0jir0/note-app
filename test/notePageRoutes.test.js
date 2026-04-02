@@ -109,7 +109,7 @@ describe('Note Page Routes', () => {
 
         expect(
             res.render.calledWith('pages/home.ejs', {
-                title: 'Note App',
+                title: 'Helios',
                 notes: fakeNotes,
                 csrfToken: 'test-csrf-token'
             })

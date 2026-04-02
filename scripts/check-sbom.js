@@ -4,10 +4,10 @@ const path = require('path');
 const { isSbomCurrent } = require('./generate-sbom');
 
 const projectRoot = path.join(__dirname, '..');
-const destination = path.join(projectRoot, 'sbom', 'note-app.cdx.json');
+const destination = path.join(projectRoot, 'sbom', 'helios.cdx.json');
 
 if (!isSbomCurrent({ rootDir: projectRoot, destination })) {
-    console.error('Committed SBOM is out of date. Run "npm run sbom:generate" and commit the updated sbom/note-app.cdx.json file.');
+    console.error('Committed SBOM is out of date. Run "npm run sbom:generate" and commit the updated sbom/helios.cdx.json file.');
     process.exit(1);
 }
 

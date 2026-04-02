@@ -20,7 +20,7 @@ Per Release or Pull Request
   - `Dependency Audit / audit`
 - [ ] Capture the `npm run sbom:check` result.
 - [ ] Capture the `npm run audit:deps` and `npm run audit:prod` results.
-- [ ] Confirm the committed `sbom/note-app.cdx.json` file is part of the reviewed state when dependency changes occurred.
+- [ ] Confirm the committed `sbom/helios.cdx.json` file is part of the reviewed state when dependency changes occurred.
 - [ ] Confirm the final PR includes any required docs or runbook updates.
 - [ ] If the change affects deployment or emergency controls, capture a staging verification result.
 
@@ -90,7 +90,7 @@ Minimum Evidence Package for This Repository
 For a compact but defensible package, retain at least the following:
 
 - Latest green workflow run URLs for the six required checks
-- Current `sbom/note-app.cdx.json` committed in git
+- Current `sbom/helios.cdx.json` committed in git
 - Passing `npm run sbom:check` output
 - Passing dependency audit output
 - One sample of a persisted audit event or authorization-denial audit event

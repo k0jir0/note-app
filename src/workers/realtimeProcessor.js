@@ -1,6 +1,7 @@
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env.local'), override: true });
+const { loadRuntimeEnvironment } = require('../config/runtimeEnv');
+
+loadRuntimeEnvironment({ rootDir: path.resolve(__dirname, '../..') });
 
 const mongoose = require('mongoose');
 const { redis, publisher } = require('../lib/redisClient');
@@ -366,7 +367,7 @@ async function startBackgroundServices(options = {}) {
     const group = options.group || GROUP;
     const consumer = options.consumer || CONSUMER;
     const metricIntervalMs = options.metricIntervalMs || METRICS_INTERVAL_MS;
-    const mongoUri = options.mongoUri || runtimeConfig.dbURI || env.MONGODB_URI || 'mongodb://127.0.0.1:27017/note-app';
+    const mongoUri = options.mongoUri || runtimeConfig.dbURI || env.MONGODB_URI || 'mongodb://127.0.0.1:27017/helios';
     const redisClient = options.redisClient || redis;
     const startAutomationFn = options.startAutomationFn || startAutomation;
 

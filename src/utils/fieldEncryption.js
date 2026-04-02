@@ -185,85 +185,93 @@ function decryptDocuments(documents, decryptDocument) {
     decryptDocument(documents);
 }
 
+function resolveHookArgs(primaryArg, secondaryArg) {
+    if (typeof primaryArg === 'function') {
+        return {
+            next: primaryArg,
+            value: secondaryArg
+        };
+    }
+
+    return {
+        next: null,
+        value: primaryArg
+    };
+}
+
+function runSynchronousHook(next, operation) {
+    try {
+        operation();
+    } catch (error) {
+        if (typeof next === 'function') {
+            next(error);
+            return;
+        }
+
+        throw error;
+    }
+
+    if (typeof next === 'function') {
+        next();
+    }
+}
+
 function applyFieldEncryption(schema, handlers) {
     const { encryptDocument, decryptDocument, encryptUpdatePayload } = handlers;
 
     schema.pre('save', function encryptSensitiveFields(next) {
-        try {
+        return runSynchronousHook(next, () => {
             encryptDocument(this);
-            next();
-        } catch (error) {
-            next(error);
-        }
+        });
     });
 
-    schema.pre('insertMany', function encryptInsertedDocuments(next, documents) {
-        try {
+    schema.pre('insertMany', function encryptInsertedDocuments(nextOrDocuments, maybeDocuments) {
+        const { next, value: documents } = resolveHookArgs(nextOrDocuments, maybeDocuments);
+
+        return runSynchronousHook(next, () => {
             if (Array.isArray(documents)) {
                 documents.forEach((document) => encryptDocument(document));
-            }
-
-            next();
-        } catch (error) {
-            next(error);
-        }
-    });
-
-    ['findOneAndUpdate', 'updateOne', 'updateMany'].forEach((operation) => {
-        schema.pre(operation, function encryptSensitiveUpdate(next) {
-            try {
-                const update = this.getUpdate();
-                this.setUpdate(encryptUpdatePayload(update));
-                next();
-            } catch (error) {
-                next(error);
             }
         });
     });
 
+    ['findOneAndUpdate', 'updateOne', 'updateMany'].forEach((operation) => {
+        schema.pre(operation, function encryptSensitiveUpdate(next) {
+            return runSynchronousHook(next, () => {
+                const update = this.getUpdate();
+                this.setUpdate(encryptUpdatePayload(update));
+            });
+        });
+    });
+
     schema.post('save', function decryptSavedDocument(document, next) {
-        try {
+        return runSynchronousHook(next, () => {
             decryptDocument(document);
-            next();
-        } catch (error) {
-            next(error);
-        }
+        });
     });
 
     schema.post('insertMany', function decryptInsertedDocuments(documents, next) {
-        try {
+        return runSynchronousHook(next, () => {
             decryptDocuments(documents, decryptDocument);
-            next();
-        } catch (error) {
-            next(error);
-        }
+        });
     });
 
     schema.post('find', function decryptFoundDocuments(documents, next) {
-        try {
+        return runSynchronousHook(next, () => {
             decryptDocuments(documents, decryptDocument);
-            next();
-        } catch (error) {
-            next(error);
-        }
+        });
     });
 
     schema.post('findOne', function decryptFoundDocument(document, next) {
-        try {
+        return runSynchronousHook(next, () => {
             decryptDocument(document);
-            next();
-        } catch (error) {
-            next(error);
-        }
+        });
     });
 
     schema.post('findOneAndUpdate', function decryptUpdatedDocument(document, next) {
-        try {
+        return runSynchronousHook(next, () => {
             decryptDocument(document);
-            next();
-        } catch (error) {
-            next(error);
-        }
+        });
     });
 }
 

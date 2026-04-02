@@ -112,7 +112,7 @@ function buildContainerChecks({ dockerfileText, dockerignoreText, securityWorkfl
         },
         {
             label: 'CI scans the built app image',
-            passed: /docker build --tag note-app:ci/i.test(securityWorkflowText) && /image-ref:\s*'note-app:ci'/i.test(securityWorkflowText),
+            passed: /docker build --tag helios:ci/i.test(securityWorkflowText) && /image-ref:\s*'helios:ci'/i.test(securityWorkflowText),
             detail: 'The security workflow scans the app image produced by this repo, not a placeholder base image.'
         }
     ];
@@ -120,7 +120,7 @@ function buildContainerChecks({ dockerfileText, dockerignoreText, securityWorkfl
 
 function buildSupplyChainModuleViewModel({ projectRoot = PROJECT_ROOT } = {}) {
     const packageJson = safeReadJson(path.join(projectRoot, 'package.json'), {});
-    const sbom = safeReadJson(path.join(projectRoot, 'sbom', 'note-app.cdx.json'), {
+    const sbom = safeReadJson(path.join(projectRoot, 'sbom', 'helios.cdx.json'), {
         metadata: {},
         components: []
     });
@@ -153,7 +153,7 @@ function buildSupplyChainModuleViewModel({ projectRoot = PROJECT_ROOT } = {}) {
             generatedAt: sbom && sbom.metadata && sbom.metadata.timestamp ? sbom.metadata.timestamp : 'Unavailable',
             format: sbom && sbom.bomFormat ? sbom.bomFormat : 'Unknown',
             specVersion: sbom && sbom.specVersion ? sbom.specVersion : 'Unknown',
-            projectName: componentMetadata.name || packageJson.name || 'note-app',
+            projectName: componentMetadata.name || packageJson.name || 'helios',
             projectVersion: componentMetadata.version || packageJson.version || '0.0.0',
             toolName: toolMetadata && toolMetadata.name ? toolMetadata.name : 'Unknown',
             toolVersion: toolMetadata && toolMetadata.version ? toolMetadata.version : 'Unknown'
@@ -225,7 +225,7 @@ function buildImmutablePreview({ immutableLogging = {} } = {}) {
     const sampleEvent = buildSampleTelemetryEvent();
     const entry = {
         schemaVersion: 1,
-        application: 'note-app',
+        application: 'helios',
         source: immutableLogging.source || DEFAULT_SOURCE,
         host: 'research-workspace',
         level: 'audit',

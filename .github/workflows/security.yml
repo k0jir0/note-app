@@ -63,7 +63,7 @@ jobs:
       NODE_ENV: development
       PORT: 3000
       APP_BASE_URL: http://127.0.0.1:3000
-      MONGODB_URI: mongodb://127.0.0.1:27017/noteAppCi
+      MONGODB_URI: mongodb://127.0.0.1:27017/heliosCi
       SESSION_SECRET: ci-session-secret-0123456789abcdef
       NOTE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       CIPHER_ALGO: AES-256-GCM

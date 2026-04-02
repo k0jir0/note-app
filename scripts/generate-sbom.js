@@ -4,7 +4,7 @@ const { execSync } = require('child_process');
 
 const projectRoot = path.join(__dirname, '..');
 const outputDirectory = path.join(projectRoot, 'sbom');
-const outputFile = path.join(outputDirectory, 'note-app.cdx.json');
+const outputFile = path.join(outputDirectory, 'helios.cdx.json');
 const SBOM_NPM_VERSION = '10.9.2';
 
 function readPackageManifest(rootDir) {

@@ -58,7 +58,7 @@ function buildPersistedEvent({ level, message, metadata, source, host, sequence,
     const eventTimestamp = clock();
     const entry = {
         schemaVersion: 1,
-        application: 'note-app',
+        application: 'helios',
         source,
         host,
         level,

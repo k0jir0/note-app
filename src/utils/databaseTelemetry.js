@@ -214,6 +214,23 @@ function readTelemetryLocals(target) {
     return target && target.$locals ? target.$locals.databaseTelemetry : null;
 }
 
+async function runAsyncHook(next, operation) {
+    try {
+        await operation();
+    } catch (error) {
+        if (typeof next === 'function') {
+            next(error);
+            return;
+        }
+
+        throw error;
+    }
+
+    if (typeof next === 'function') {
+        next();
+    }
+}
+
 function applyDatabaseTelemetry(schema, { modelName } = {}) {
     schema.pre('save', async function captureBeforeSave() {
         const before = !this.isNew && this._id
@@ -229,7 +246,7 @@ function applyDatabaseTelemetry(schema, { modelName } = {}) {
     });
 
     schema.post('save', async function emitSaveTelemetry(document, next) {
-        try {
+        return runAsyncHook(next, async () => {
             const telemetry = readTelemetryLocals(this) || {};
             await emitTelemetryEvent(buildTelemetryEvent({
                 modelName,
@@ -242,14 +259,11 @@ function applyDatabaseTelemetry(schema, { modelName } = {}) {
                     changedPaths: Array.isArray(telemetry.changedPaths) ? telemetry.changedPaths.slice().sort() : []
                 }
             }));
-            next();
-        } catch (error) {
-            next(error);
-        }
+        });
     });
 
     schema.post('insertMany', async function emitInsertManyTelemetry(documents, next) {
-        try {
+        return runAsyncHook(next, async () => {
             await Promise.all((Array.isArray(documents) ? documents : []).map((document) => emitTelemetryEvent(buildTelemetryEvent({
                 modelName,
                 action: 'create',
@@ -261,10 +275,7 @@ function applyDatabaseTelemetry(schema, { modelName } = {}) {
                     changedPaths: Object.keys(toPlainObject(document) || {}).sort()
                 }
             }))));
-            next();
-        } catch (error) {
-            next(error);
-        }
+        });
     });
 
     ['findOneAndUpdate', 'updateOne', 'updateMany', 'findOneAndDelete', 'deleteOne', 'deleteMany'].forEach((operation) => {
@@ -282,7 +293,7 @@ function applyDatabaseTelemetry(schema, { modelName } = {}) {
 
     ['findOneAndUpdate', 'updateOne', 'updateMany'].forEach((operation) => {
         schema.post(operation, async function emitUpdateTelemetry(result, next) {
-            try {
+            return runAsyncHook(next, async () => {
                 const telemetry = readTelemetryLocals(this) || {};
                 const beforeDocs = Array.isArray(telemetry.beforeDocs) ? telemetry.beforeDocs : [];
                 const ids = beforeDocs.map((document) => String(document._id));
@@ -298,17 +309,13 @@ function applyDatabaseTelemetry(schema, { modelName } = {}) {
                     after: summarizeDocument(afterById.get(String(beforeDoc._id)) || null),
                     changeSet: telemetry.updateSummary || summarizeUpdate(null)
                 }))));
-
-                next();
-            } catch (error) {
-                next(error);
-            }
+            });
         });
     });
 
     ['findOneAndDelete', 'deleteOne', 'deleteMany'].forEach((operation) => {
         schema.post(operation, async function emitDeleteTelemetry(result, next) {
-            try {
+            return runAsyncHook(next, async () => {
                 const telemetry = readTelemetryLocals(this) || {};
                 const beforeDocs = Array.isArray(telemetry.beforeDocs) ? telemetry.beforeDocs : [];
 
@@ -323,11 +330,7 @@ function applyDatabaseTelemetry(schema, { modelName } = {}) {
                         changedPaths: []
                     }
                 }))));
-
-                next();
-            } catch (error) {
-                next(error);
-            }
+            });
         });
     });
 }

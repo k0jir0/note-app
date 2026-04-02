@@ -12,7 +12,7 @@ Describe the change and the user-visible or operational impact.
 ## ITSG-33 Evidence
 
 - [ ] The required GitHub checks are green
-- [ ] `sbom/note-app.cdx.json` was reviewed or confirmed unchanged when dependencies did not change
+- [ ] `sbom/helios.cdx.json` was reviewed or confirmed unchanged when dependencies did not change
 - [ ] Deployment, emergency-control, or privileged-runtime changes include updated docs or runbook entries
 - [ ] Staging verification was captured for deployment, audit, or emergency-control changes
 - [ ] Related recurring-control records are linked when this PR depends on them

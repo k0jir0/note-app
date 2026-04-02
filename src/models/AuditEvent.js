@@ -22,7 +22,7 @@ const auditEventSchema = new mongoose.Schema({
     source: {
         type: String,
         trim: true,
-        default: 'note-app'
+        default: 'helios'
     },
     channel: {
         type: String,

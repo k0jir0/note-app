@@ -1,6 +1,14 @@
-# Note App
+# Helios
 
-A full-stack note-taking, applied security-research, and browser-automation application built with Node.js, Express, MongoDB, and EJS. Alongside encrypted notes, it includes dedicated Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Playwright Testing, Selenium Testing, and Self-Healing Locator Repair modules across a unified Research Workspace.
+Helios makes serious security work usable. It unifies security research, browser automation, operational assurance, and governance in a single auditable workspace. The platform brings together security operations, mission-grade access assurance, browser testing, and evidence-backed runtime controls so teams can investigate, operate, verify, and explain a security-conscious system from one place.
+
+Built with Node.js, Express, MongoDB, and EJS, it combines a unified Research Workspace with encrypted application data and authenticated same-origin media delivery, featuring dedicated Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, Break-Glass Runtime, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Audit Trail and Telemetry, Supply Chain Security, Playwright Testing, Selenium Testing, and Self-Healing Locator Repair modules, backed by hardened deployment, audit, and repository-control workflows.
+
+At a governance level, the project also serves as a practical ITSG-33 case study: it turns accountability, controlled change, resilient runtime behavior, supply-chain visibility, and evidence-backed review into concrete product features through auditable privileged-access controls, immutable logging health, SBOM and CI enforcement, hardened deployment paths, and recurring repository-driven security workflows. These controls make the system not only more secure, but also more inspectable, maintainable, and credible in environments where operational maturity is part of the product value. 
+
+In this repository, ITSG-33 refers to the Government of Canada's "IT Security Risk Management: A Lifecycle Approach," published by the Communications Security Establishment and supported by a security control catalogue spanning management, operational, and technical controls across a system's life cycle. Helios now fulfills meaningful portions of that posture through protected-by-default access control, audited privileged-runtime denials, immutable logging health visibility, CI-enforced SBOM and dependency review, hardened image scanning, digest-pinned support images, break-glass and privileged-access governance, and recurring release, monthly, quarterly, and annual evidence workflows that make control review more concrete, repeatable, and inspectable.
+
+In plain terms, this product is built to make a hard problem feel understandable: keep important work protected, show people what the system is doing, and make trust visible instead of assumed. It gives teams one place to create, operate, verify, and explain a security-conscious application, which makes the software easier to adopt, easier to defend, and easier to sell in environments where reliability and credibility matter as much as features.
 
 ## Features
 
@@ -35,8 +43,8 @@ A full-stack note-taking, applied security-research, and browser-automation appl
 
 1. **Clone & Install**
 ```bash
-git clone https://github.com/k0jir0/note-app.git
-cd note-app
+git clone https://github.com/k0jir0/helios.git
+cd helios
 npm install
 ```
 
@@ -73,7 +81,7 @@ node -e "const crypto=require('crypto'); console.log('SESSION_SECRET=' + crypto.
 
 **MongoDB Setup:**
 - MongoDB Atlas: Create a free cluster, copy connection string
-- Local MongoDB: Use `mongodb://localhost:27017/noteApp`
+- Local MongoDB: Use `mongodb://localhost:27017/helios`
 - Non-local or protected-runtime MongoDB deployments must use TLS through `mongodb+srv://...` or `?tls=true`.
 
 3. **Run**
@@ -100,13 +108,13 @@ Server: `http://localhost:3000`
 
 Container build:
 ```bash
-docker build -t note-app:hardened .
-docker run --rm -p 3000:3000 --env-file .env note-app:hardened
+docker build -t helios:hardened .
+docker run --rm -p 3000:3000 --env-file .env helios:hardened
 ```
 
 If MongoDB is running on your Windows host instead of inside Docker, use a container-aware override:
 ```bash
-docker run --rm -p 3000:3000 --env-file .env -e MONGODB_URI=mongodb://host.docker.internal:27017/noteApp_local note-app:hardened
+docker run --rm -p 3000:3000 --env-file .env -e MONGODB_URI=mongodb://host.docker.internal:27017/helios_local helios:hardened
 ```
 
 Container notes:
@@ -132,8 +140,8 @@ Sandbox notes:
 
 Immutable Kubernetes rotation:
 ```bash
-kubectl create namespace note-app
-kubectl create secret generic note-app-secrets -n note-app \
+kubectl create namespace helios
+kubectl create secret generic helios-secrets -n helios \
   --from-literal=SESSION_SECRET='replace-with-long-random-secret' \
   --from-literal=NOTE_ENCRYPTION_KEY='replace-with-64-char-hex-key'
 npm run k8s:apply
@@ -141,15 +149,15 @@ npm run k8s:apply
 
 Kubernetes rotation notes:
 - The Kubernetes manifests live at `ops/kubernetes/immutable-stack.yaml` and model the same public-proxy plus internal-app split used by the Docker sandbox.
-- The local kind manifest uses the preloaded hardened image tag (`note-app:hardened`) with `imagePullPolicy: Never` so the cluster reuses the verified local image instead of reaching for an external registry. For a shared or remote cluster, replace that with your approved registry digest.
+- The local kind manifest uses the preloaded hardened image tag (`helios:hardened`) with `imagePullPolicy: Never` so the cluster reuses the verified local image instead of reaching for an external registry. For a shared or remote cluster, replace that with your approved registry digest.
 - The stack now includes an internal-only ephemeral MongoDB Deployment and Service so the cluster can be stood up and rotated locally without depending on an external database.
-- The `note-app-proxy` Deployment is the only public service and fronts the internal `note-app` ClusterIP service, preserving the same edge/app separation as the Compose sandbox. In the local kind flow it is exposed through NodePort `30080`, mapped to host port `3002`.
+- The `helios-proxy` Deployment is the only public service and fronts the internal `helios` ClusterIP service, preserving the same edge/app separation as the Compose sandbox. In the local kind flow it is exposed through NodePort `30080`, mapped to host port `3002`.
 - A namespace-scoped daily CronJob runs `kubectl rollout restart` against both Deployments every 24 hours, which destroys the running pods and recreates them from the declared image even when no application release happened that day.
 - NetworkPolicy resources default-deny pod ingress, then allow traffic only from the proxy tier into the app tier and from the app tier into MongoDB, preventing direct east-west access to the internal services.
 - `npm run k8s:rotate` triggers the same forced recycle manually, and `npm run k8s:teardown` removes the immutable-stack resources when the environment is intentionally retired.
-- Create `note-app-secrets` before applying the manifests. The current manifest targets a local `http://localhost:3002` base URL, an internal in-cluster MongoDB service, and the verified local image digest, so adjust those values only if you are aiming at a different endpoint, database, or approved image.
-- Live verification on March 30, 2026 used a local `kind-note-app-local` cluster: `GET /healthz` and `GET /auth/login` both returned HTTP 200 through `http://localhost:3002`, and `npm run k8s:rotate` completed a successful rolling recycle of both the app and proxy Deployments.
-- Google OAuth is expected to show `Google sign-in is not configured` on this local cluster unless `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are added to `note-app-secrets` and the Google OAuth client includes `http://localhost:3002/auth/oauth2/redirect/google` as an allowed redirect URI.
+- Create `helios-secrets` before applying the manifests. The current manifest targets a local `http://localhost:3002` base URL, an internal in-cluster MongoDB service, and the verified local image digest, so adjust those values only if you are aiming at a different endpoint, database, or approved image.
+- Live verification on March 30, 2026 used a local `kind-helios-local` cluster: `GET /healthz` and `GET /auth/login` both returned HTTP 200 through `http://localhost:3002`, and `npm run k8s:rotate` completed a successful rolling recycle of both the app and proxy Deployments.
+- Google OAuth is expected to show `Google sign-in is not configured` on this local cluster unless `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are added to `helios-secrets` and the Google OAuth client includes `http://localhost:3002/auth/oauth2/redirect/google` as an allowed redirect URI.
 
 For a more stable Windows local launch, prefer the included launcher instead of a transient shell session:
 ```powershell
@@ -186,8 +194,8 @@ Current local verification (March 31, 2026):
 - focused March 31 hardening regressions pass with `82 passing` across the strict audit, break-glass persistence, federated lockout, and runtime-config slices
 - focused March 29 module coverage passes with `13 passing` across the new Supply Chain and Audit/Telemetry page routes plus the persisted audit-history service and API tests
 - focused sandbox runtime coverage passes with `20 passing` in `test/runtimeConfig.test.js`
-- `docker build -t note-app:hardened .` completes successfully
-- the hardened container serves `GET /auth/login` with HTTP 200 when run against local MongoDB using `MONGODB_URI=mongodb://host.docker.internal:27017/noteApp_local`
+- `docker build -t helios:hardened .` completes successfully
+- the hardened container serves `GET /auth/login` with HTTP 200 when run against local MongoDB using `MONGODB_URI=mongodb://host.docker.internal:27017/helios_local`
 - the three-zone sandbox deployment starts successfully with `docker compose -f docker-compose.sandbox.yml up --build -d`, serves both `/healthz` and `/auth/login` with HTTP 200 through the Nginx DMZ edge on port `3001` during validation, and keeps only the proxy host-published while the app and Mongo services remain internal-only
 - Live app checks on `http://localhost:3000` confirm the current protected module routes are mounted
 - authenticated live checks confirm `GET /audit-telemetry/module` returns HTTP 200 and includes the persisted history grid plus the client loader wired to `/api/audit-telemetry/events`
@@ -200,6 +208,12 @@ Current local verification (March 31, 2026):
 - Auth, settings, and note-page routes now delegate through dedicated controllers and services, and the Research Workspace page now builds from shared workspace catalog/service code instead of scattered inline composition.
 - Runtime config, security realtime/workspace logic, Playwright module helpers, and mission-access policy data were split into smaller modules, reducing oversized files while preserving the current behavior.
 
+Repository progress update (April 1, 2026):
+- The ITSG-33 repository-control program is now merged into `main`, including release-evidence rollups, recurring monthly/quarterly/annual review issue workflows, repository drift checks for required ITSG-33 artifacts, stricter immutable-audit and privileged-runtime coverage, and support-image pin enforcement for the local Kubernetes stack.
+- The Kubernetes support-image refresh automation was re-registered under `.github/workflows/itsg33-k8s-support-image-refresh.yml` after GitHub treated the earlier workflow record as non-dispatchable, preserving the scheduled/manual refresh path while keeping the repo's documentation and drift checks aligned to the new file path.
+- The merged npm Dependabot update is now compatible with the repository's CI gates: the repo ships `eslint.config.cjs` for ESLint 10 flat-config compatibility, and the committed CycloneDX SBOM was refreshed so dependency-update branches remain compatible with the `sbom:check` gate.
+- Branch hygiene improved substantially during the April 1 maintenance pass: merged feature/fix branches were pruned, local `main` was fast-forwarded to the current remote head, and only `test-branch` plus the still-open Docker Dependabot branch remain outside `main`.
+
 Recent security hardening progress (March 29, 2026):
 - inbound HTTPS transport is pinned to TLS 1.3 only when certificate-based transport is enabled
 - response metadata and client-visible error paths are sanitized to avoid leaking server/version details
@@ -207,7 +221,7 @@ Recent security hardening progress (March 29, 2026):
 - request-scoped database telemetry records Who, What, When, Where, and How for persisted state changes
 - SIEM integration now supports both structured JSON and RFC 5424-style syslog formatting through `IMMUTABLE_LOGGING_FORMAT`
 - dependency scanning now uses enforced `npm audit` scripts and CI gates, with a transitive override to avoid the known `serialize-javascript` CVE path through Mocha
-- `npm run sbom:generate` now emits a committed CycloneDX SBOM at `sbom/note-app.cdx.json` so third-party dependencies remain inventoried from the real lockfile state
+- `npm run sbom:generate` now emits a committed CycloneDX SBOM at `sbom/helios.cdx.json` so third-party dependencies remain inventoried from the real lockfile state
 - the repo now includes a hardened multi-stage Docker build that uses a non-root distroless runtime image, disables container-only `keytar` loading, and is scanned in CI as the built application image instead of a placeholder base image
 - the repo now includes a three-zone sandbox deployment with an Nginx DMZ edge, an internal-only app zone, and an internal-only data zone so the database is unreachable from the public web tier, and the hardened proxy now runs unprivileged on an internal port behind the published DMZ edge binding
 - the Research Workspace now includes a Supply Chain Security Module at `/supply-chain/module` that surfaces the committed SBOM, npm audit enforcement scripts, CI workflow coverage, license buckets, and hardened container posture in a server-rendered frontend
@@ -653,98 +667,117 @@ PUT /api/notes/:id
 
 ## Project Structure
 
-Abbreviated high-level view; the Research Workspace now includes additional module files for Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, and Server Access Control alongside the browser-automation modules shown below.
+Current high-level layout of the repository after the application refactor, ITSG-33 governance work, and deployment/runtime hardening updates.
 
 ```text
-notes-app/
-├── index.js
-├── package.json
-├── .env.example
-├── README.md
-├── .github/                # CI workflows (ci.yml, security-scan.yml)
-├── automation/             # Falco/Trivy runners, smoke/integration harnesses
-│   ├── falco-runner.js
-│   ├── trivy-runner.js
-│   ├── test-smoke.js
-│   └── test-integration.js
+helios/
+├── .github/                         # CI, security, Dependabot, ITSG-33 workflows, PR templates, issue forms
+├── automation/                      # Security automation runners and helper harnesses
+├── docs/                            # Branch protection and ITSG-33 review/control/evidence docs
+├── documents/                       # Local development notes and personal working papers
+├── ops/
+│   ├── kubernetes/                  # Immutable stack manifests and local cluster guidance
+│   ├── nginx/                       # Sandbox/edge proxy configuration
+│   ├── rotation/                    # Rotation Lambda operational assets
+│   └── terraform/                   # Terraform modules and deployment helpers
+├── sbom/                            # Committed CycloneDX dependency manifest
+├── scripts/                         # Env checks, SBOM checks, ITSG-33 checks, training, local probes
 ├── src/
+│   ├── app/                         # App assembly and centralized route registration
+│   │   ├── createApp.js
+│   │   └── routeRegistry.js
 │   ├── config/
 │   │   ├── passport.js
+│   │   ├── runtime/
 │   │   └── runtimeConfig.js
 │   ├── controllers/
-│   │   ├── mlApiController.js
-│   │   ├── locatorRepairApiController.js
 │   │   ├── noteApiController.js
-│   │   ├── playwrightApiController.js
-│   │   ├── scanApiController.js
 │   │   ├── securityApiController.js
-│   │   └── seleniumApiController.js
+│   │   ├── mlApiController.js
+│   │   ├── playwrightApiController.js
+│   │   └── ...
+│   ├── features/
+│   │   └── research/                # Shared Research Workspace module catalog and composition
+│   ├── image/                       # Same-origin managed note-image helpers
+│   ├── lib/                         # Realtime/browser/self-healing support libraries
 │   ├── middleware/
 │   │   ├── auth.js
 │   │   ├── csrf.js
-│   │   └── rateLimit.js
+│   │   ├── privilegedRuntime.js
+│   │   ├── sessionManagement.js
+│   │   └── ...
 │   ├── models/
+│   │   ├── AuditEvent.js
 │   │   ├── Notes.js
 │   │   ├── ScanResult.js
 │   │   ├── SecurityAlert.js
 │   │   └── User.js
 │   ├── routes/
 │   │   ├── authRoutes.js
-│   │   ├── locatorRepairApiRoutes.js
-│   │   ├── locatorRepairPageRoutes.js
 │   │   ├── noteApiRoutes.js
 │   │   ├── notePageRoutes.js
-│   │   ├── playwrightApiRoutes.js
-│   │   ├── playwrightPageRoutes.js
-│   │   ├── scanApiRoutes.js
-│   │   ├── scanPageRoutes.js
 │   │   ├── securityApiRoutes.js
 │   │   ├── securityPageRoutes.js
-│   │   ├── seleniumApiRoutes.js
-│   │   └── seleniumPageRoutes.js
-│   ├── services/
-│   │   ├── alertTriageTrainingService.js
-│   │   ├── automationService.js
-│   │   ├── autonomyDemoService.js
-│   │   ├── incidentResponseService.js
-│   │   ├── locatorRepairResearchService.js
-│   │   ├── playwrightResearchService.js
-│   │   └── seleniumResearchService.js
-│   ├── utils/
-│   │   ├── errorHandler.js
-│   │   ├── logAnalysis.js
-│   │   ├── intrusionParser.js   # Falco JSON parser
-│   │   ├── noteEncryption.js
-│   │   ├── pagination.js
-│   │   ├── scanParser.js
-│   │   └── validation.js
-│   └── views/
-│       ├── pages/
-│       │   ├── home.ejs
-│       │   ├── locator-repair-module.ejs
-│       │   ├── login.ejs
-│       │   ├── logout.ejs
-│       │   ├── ml-module.ejs
-│       │   ├── note-form.ejs
-│       │   ├── note.ejs
-│       │   ├── playwright-module.ejs
-│       │   ├── research.ejs
-│       │   ├── security-automation.ejs
-│       │   ├── selenium-module.ejs
-│       │   └── signup.ejs
-│       └── public/
-│           ├── css/
-│           └── js/
-└── test/
-  ├── authRoutes.test.js
-  ├── csrf.test.js
-  ├── noteApiController.test.js
-  ├── notePageRoutes.test.js
-  ├── scanApiRoutes.test.js
-  ├── securityApiRoutes.test.js
-  └── integration/
-    └── automation.test.js
+│   │   ├── missionAssurance*Routes.js
+│   │   ├── hardwareFirstMfa*Routes.js
+│   │   ├── sessionManagement*Routes.js
+│   │   ├── accessControl*Routes.js
+│   │   ├── xssDefense*Routes.js
+│   │   ├── injectionPrevention*Routes.js
+│   │   ├── playwright*Routes.js
+│   │   ├── selenium*Routes.js
+│   │   ├── locatorRepair*Routes.js
+│   │   ├── auditTelemetry*Routes.js
+│   │   ├── supplyChainPageRoutes.js
+│   │   └── ...
+│   ├── services/                    # Domain services for auth, alerts, autonomy, audit, continuity, browser tooling
+│   ├── utils/                       # Security and parsing utilities (logging, scans, validation, crypto, telemetry)
+│   ├── views/
+│   │   ├── pages/
+│   │   │   ├── research.ejs
+│   │   │   ├── security-automation.ejs
+│   │   │   ├── ml-module.ejs
+│   │   │   ├── mission-assurance-module.ejs
+│   │   │   ├── hardware-mfa-module.ejs
+│   │   │   ├── session-management-module.ejs
+│   │   │   ├── injection-prevention-module.ejs
+│   │   │   ├── xss-defense-module.ejs
+│   │   │   ├── access-control-module.ejs
+│   │   │   ├── audit-telemetry-module.ejs
+│   │   │   ├── supply-chain-module.ejs
+│   │   │   ├── playwright-module.ejs
+│   │   │   ├── selenium-module.ejs
+│   │   │   ├── locator-repair-module.ejs
+│   │   │   └── ...
+│   │   └── public/
+│   │       ├── css/
+│   │       └── js/
+│   └── workers/                     # Realtime processor and background automation workers
+├── test/                            # Mocha unit/integration coverage plus shared support
+│   ├── integration/
+│   ├── support/
+│   └── *.test.js
+├── playwright-tests/                # Browser E2E suite and theme/browser-specific checks
+├── selenium-tests/                  # Selenium browser suite and helper modules
+├── artifacts/                       # Generated test and model artifacts (ignored where appropriate)
+├── storage/                         # Local managed note-image storage
+├── Dockerfile
+├── docker-compose.sandbox.yml
+├── ecosystem.config.cjs             # PM2 local process manager config
+├── eslint.config.cjs                # ESLint 10 flat config entrypoint
+├── index.js                         # Process bootstrap entrypoint
+├── package.json
+├── README.md
+└── VALIDATION.md
 ```
+
+Key structure notes:
+
+- `src/app` is the application-composition seam. `createApp.js` builds the Express application, while `routeRegistry.js` mounts the feature route sets in one place.
+- `src/routes`, `src/controllers`, and `src/services` now follow a cleaner transport/domain split than the older README snapshot reflected.
+- The Research Workspace is no longer just Security Operations plus browser tooling. Its server-rendered modules now span mission assurance, hardware MFA, session security, injection prevention, XSS/CSP defense, access control, audit telemetry, supply-chain posture, Playwright, Selenium, and self-healing locator repair.
+- `docs/` and `.github/` now matter operationally, not just as supporting text. They contain the ITSG-33 review, control matrix, evidence checklist, runbooks, recurring review workflows, and release-evidence automation added in the April 1 governance pass.
+- `ops/` contains the runtime deployment surfaces: hardened Kubernetes manifests, the sandbox reverse-proxy topology, and the rotation/Terraform assets.
 
 ## Development
 
@@ -800,8 +833,8 @@ npm run pm2:stop
 ```
 
 The PM2 config starts:
-- `note-app-web` from `index.js`
-- `note-app-worker` from `src/workers/realtimeProcessor.js`
+- `helios-web` from `index.js`
+- `helios-worker` from `src/workers/realtimeProcessor.js`
 
 Both processes read the same `.env` / `.env.local` startup configuration as the standard app scripts.
 
@@ -978,9 +1011,9 @@ SIEM integration options:
 - Both modes preserve the log-chain headers and carry the same event content for console logs, HTTP request audits, and DB state-change telemetry.
 
 SBOM support:
-- Run `npm run sbom:generate` to regenerate `sbom/note-app.cdx.json` from the current `package-lock.json` dependency graph.
+- Run `npm run sbom:generate` to regenerate `sbom/helios.cdx.json` from the current `package-lock.json` dependency graph.
 - The generated manifest uses the CycloneDX JSON format and captures the third-party packages currently resolved for the project.
-- The main GitHub Actions CI workflow now regenerates `sbom/note-app.cdx.json` on every run and uploads it as a build artifact.
+- The main GitHub Actions CI workflow now regenerates `sbom/helios.cdx.json` on every run and uploads it as a build artifact.
 - CI now fails if regenerating the SBOM changes the committed file, which keeps the checked-in manifest aligned with the current lockfile state.
 
 Dependency scanning support:
@@ -1045,7 +1078,7 @@ git push heroku main
 
 # VPS with PM2
 npm install pm2 -g
-pm2 start index.js --name note-app
+pm2 start index.js --name helios
 pm2 save && pm2 startup
 ```
 

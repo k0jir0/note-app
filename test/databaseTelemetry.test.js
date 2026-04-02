@@ -1,7 +1,9 @@
 const { expect } = require('chai');
 const sinon = require('sinon');
+const mongoose = require('mongoose');
 
 const {
+    applyDatabaseTelemetry,
     buildTelemetryEvent,
     configureDatabaseTelemetry,
     findDocumentsByIds,
@@ -270,5 +272,26 @@ describe('Database telemetry', () => {
             { _id: 'user-1', status: 'open' },
             { _id: 'user-2', status: 'closed' }
         ]);
+    });
+
+    it('supports promise-style post-save middleware without a next callback', async () => {
+        const schema = new mongoose.Schema({ name: String });
+        applyDatabaseTelemetry(schema, { modelName: 'TelemetryHookRegression' });
+
+        const hook = schema.s.hooks._posts.get('save').find((entry) => entry.fn.name === 'emitSaveTelemetry');
+        const document = {
+            _id: 'doc-1',
+            name: 'Regression test',
+            $locals: {
+                databaseTelemetry: {
+                    action: 'create',
+                    operation: 'save',
+                    before: null,
+                    changedPaths: ['name']
+                }
+            }
+        };
+
+        await hook.fn.call(document, document);
     });
 });

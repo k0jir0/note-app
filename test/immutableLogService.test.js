@@ -15,7 +15,7 @@ describe('immutable log service', () => {
                 endpoint: 'https://logs.example.com/append',
                 token: 'write-only-token',
                 timeoutMs: 2000,
-                source: 'note-app-web',
+                source: 'helios-web',
                 format: 'json'
             }
         }, {
@@ -37,7 +37,7 @@ describe('immutable log service', () => {
         expect(calls[0].options.method).to.equal('POST');
         expect(calls[0].options.headers.Authorization).to.equal('Bearer write-only-token');
         expect(calls[0].options.headers['X-Log-Format']).to.equal('json');
-        expect(calls[0].body.source).to.equal('note-app-web');
+        expect(calls[0].body.source).to.equal('helios-web');
         expect(calls[0].body.host).to.equal('host-a');
         expect(calls[0].body.level).to.equal('audit');
         expect(calls[0].body.format).to.equal('json');
@@ -56,7 +56,7 @@ describe('immutable log service', () => {
                 endpoint: 'https://logs.example.com/append',
                 token: 'write-only-token',
                 timeoutMs: 2000,
-                source: 'note-app-web',
+                source: 'helios-web',
                 format: 'syslog'
             }
         }, {
@@ -77,7 +77,7 @@ describe('immutable log service', () => {
         expect(calls).to.have.length(1);
         expect(calls[0].options.headers['Content-Type']).to.equal('text/plain; charset=utf-8');
         expect(calls[0].options.headers['X-Log-Format']).to.equal('syslog');
-        expect(calls[0].options.body).to.match(/^<131>1 2026-03-29T12:00:00.000Z host-a note-app-web - - \[note-app@48577 /);
+        expect(calls[0].options.body).to.match(/^<131>1 2026-03-29T12:00:00.000Z host-a helios-web - - \[helios@48577 /);
         expect(calls[0].options.body).to.include('"message":"Security incident observed"');
         expect(calls[0].options.body).to.include('"category":"db-state-change"');
     });
@@ -117,7 +117,7 @@ describe('immutable log service', () => {
                 endpoint: 'https://logs.example.com/append',
                 token: 'write-only-token',
                 timeoutMs: 2000,
-                source: 'note-app-web',
+                source: 'helios-web',
                 format: 'json'
             }
         }, {

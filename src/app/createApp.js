@@ -131,15 +131,16 @@ function createApp({
         app.use(injectSessionPrincipal);
     }
 
+    app.use((req, res, next) => {
+        res.locals.user = req.user || null;
+        next();
+    });
+
     app.use(enforceStrictSessionManagement);
     app.use(attachSessionAuthAssurance);
     app.use(enforceServerSideApiAccessControl);
     app.use(ensureCsrfToken);
     app.use(requireCsrfProtection);
-    app.use((req, res, next) => {
-        res.locals.user = req.user || null;
-        next();
-    });
     app.use(attachBreakGlassState);
 
     app.get('/healthz', (req, res) => {

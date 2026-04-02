@@ -57,7 +57,7 @@ describe('Kubernetes support-image digest refresh', () => {
     });
 
     it('refreshes the manifest file from fetched registry digests', async () => {
-        const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'note-app-k8s-digest-refresh-'));
+        const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'helios-k8s-digest-refresh-'));
         const manifestFile = path.join(tempDirectory, 'immutable-stack.yaml');
         fs.writeFileSync(manifestFile, [
             '        - name: mongo',

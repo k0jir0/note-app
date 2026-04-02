@@ -33,7 +33,7 @@ Implemented Remediations
 
 5. The committed CycloneDX SBOM is now enforced in CI.
    - Files: `scripts/generate-sbom.js`, `scripts/check-sbom.js`, `package.json`, `.github/workflows/dependency-audit.yml`
-   - Rationale: the dependency-audit workflow now fails when `sbom/note-app.cdx.json` no longer matches the lockfile-derived dependency graph.
+   - Rationale: the dependency-audit workflow now fails when `sbom/helios.cdx.json` no longer matches the lockfile-derived dependency graph.
 
 6. The local Kubernetes baseline now uses immutable support-image pins and bounded support-container resources.
    - Files: `ops/kubernetes/immutable-stack.yaml`, `ops/kubernetes/README.md`
