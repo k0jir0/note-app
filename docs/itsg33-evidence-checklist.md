@@ -61,6 +61,7 @@ Quarterly
 Suggested evidence
 
 - Restore drill notes with timestamps and success criteria
+- Quarterly backup/restore workflow artifact or workflow comment link
 - Break-glass drill record
 - Infrastructure review notes
 - Exception register review

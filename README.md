@@ -182,7 +182,7 @@ Notes:
 Notes:
 - `.env.local` is gitignored and overrides `.env` at startup, which makes it the safest place for machine-specific OAuth credentials.
 - Local Google OAuth is intentionally normalized to `http://localhost:3000`; if you browse from `127.0.0.1`, the app redirects you to the canonical localhost URL before starting Google sign-in.
-- `/metrics` is no longer publicly readable in app code. Access now requires either an authenticated session or a token provided through `METRICS_AUTH_TOKEN` via `Authorization: Bearer <token>` or `X-Metrics-Token`.
+- `/metrics` is no longer publicly readable in app code. Access now requires either an authenticated admin session or a token provided through `METRICS_AUTH_TOKEN` via `Authorization: Bearer <token>` or `X-Metrics-Token`.
 - For production scraping, set `METRICS_AUTH_TOKEN` through your deployment secret manager rather than committing a value into `.env`.
 
 Current local verification (March 31, 2026):
@@ -190,7 +190,7 @@ Current local verification (March 31, 2026):
 - `npm run lint` passes with 0 errors
 - `npm run audit:deps` and `npm run audit:prod` both report 0 vulnerabilities
 - `npm run test:e2e` passes in Chromium with 21 passing browser tests
-- `GET /healthz` on `http://127.0.0.1:3000` returns `{"ok":true,"breakGlass":{"mode":"disabled","enabled":false}}`
+- Anonymous `GET /healthz` on `http://127.0.0.1:3000` returns `{"ok":true,"detailsRestricted":true}`, while an authenticated admin session or `METRICS_AUTH_TOKEN` bearer token reveals the immutable-logging and break-glass details needed for protected operational checks.
 - focused March 31 hardening regressions pass with `82 passing` across the strict audit, break-glass persistence, federated lockout, and runtime-config slices
 - focused March 29 module coverage passes with `13 passing` across the new Supply Chain and Audit/Telemetry page routes plus the persisted audit-history service and API tests
 - focused sandbox runtime coverage passes with `20 passing` in `test/runtimeConfig.test.js`
@@ -310,7 +310,7 @@ Notes:
 
 Prometheus-style metrics remain available at `/metrics`, but the route is now protected.
 
-- Browser access works when you already have an authenticated app session.
+- Browser access works when you already have an authenticated admin session.
 - Non-browser scrapers must send a token using either `Authorization: Bearer <token>` or `X-Metrics-Token: <token>`.
 - Configure that token with `METRICS_AUTH_TOKEN` in the runtime environment.
 - Keep the token in your deployment secret store or local `.env.local`; do not commit a real value to source control.
@@ -797,8 +797,17 @@ npm test           # Run test suite
 npm run test:e2e   # Run Playwright browser suite in Chromium
 npm run test:e2e:all  # Run Playwright browser suite across all configured browsers
 npm run test:selenium # Run Selenium browser suite and refresh the Selenium results artifact
+npm run itsg33:audit-health # Query /healthz and report immutable logging posture
+npm run itsg33:backup-restore:drill # Run a restore drill and emit a quarterly evidence artifact
+npm run itsg33:privileged-access:report # Export current admin and break_glass assignments as JSON
 npm run lint       # ESLint code quality check
 ```
+
+- `npm run itsg33:audit-health -- --base-url=https://your-environment.example --output artifacts/itsg33/audit-health.json` captures a JSON artifact from `/healthz` and fails when the app or immutable logging posture is unhealthy. If the endpoint returns restricted diagnostics, rerun with `--bearer-token=...` or set `ITSG33_HEALTHCHECK_TOKEN` or `METRICS_AUTH_TOKEN` in the execution environment.
+- `npm run itsg33:backup-restore:drill -- --backup-source="staging snapshot" --restore-target="recovery sandbox" --drill-environment=staging --output artifacts/itsg33/backup-restore-drill.json` records restore timing, startup/auth/protected-route validation results, and a structured quarterly evidence artifact.
+- `npm run itsg33:privileged-access:report -- --output artifacts/itsg33/privileged-access.json` exports the current privileged user roster for quarterly or monthly review evidence.
+- `npm run itsg33:privileged-access:report -- --previous-report=artifacts/itsg33/previous-privileged-access.json --output artifacts/itsg33/privileged-access.json` embeds added, removed, and changed privileged-account details relative to the earlier report.
+- `.github/workflows/itsg33-backup-restore-drill.yml` reads its restore commands and probe endpoints from protected-environment variables such as `ITSG33_RESTORE_COMMAND`, `ITSG33_PREPARE_RESTORE_COMMAND`, `ITSG33_POST_RESTORE_COMMAND`, `ITSG33_RESTORE_VALIDATION_COMMAND`, `ITSG33_RESTORE_HEALTH_URL`, and `ITSG33_RESTORE_AUTH_URL`, while secrets such as `ITSG33_RESTORE_HEALTHCHECK_TOKEN`, `ITSG33_RESTORE_AUTH_TOKEN`, `MONGODB_URI`, `SESSION_SECRET`, and `NOTE_ENCRYPTION_KEY` remain in the protected environment for the restore tooling and protected endpoint probes.
 
 **Testing Notes:**
 - `npm test` now loads `test/testSetup.js` before the suite so tests run in `NODE_ENV=test` with Redis-backed realtime disabled by default.

@@ -10,6 +10,7 @@ const requiredArtifacts = [
     'docs/itsg33-evidence-checklist.md',
     'docs/itsg33-operations-runbook.md',
     'docs/itsg33-automation-analysis.md',
+    'scripts/run-backup-restore-drill.js',
     'scripts/refresh-k8s-support-image-digests.js',
     '.github/dependabot.yml',
     '.github/pull_request_template.md',
@@ -20,6 +21,7 @@ const requiredArtifacts = [
     '.github/ISSUE_TEMPLATE/annual-governance-refresh.yml',
     '.github/workflows/itsg33-release-evidence.yml',
     '.github/workflows/itsg33-monthly-review.yml',
+    '.github/workflows/itsg33-backup-restore-drill.yml',
     '.github/workflows/itsg33-quarterly-review.yml',
     '.github/workflows/itsg33-annual-review.yml',
     '.github/workflows/itsg33-k8s-support-image-refresh.yml'

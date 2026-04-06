@@ -1,61 +1,12 @@
 const express = require('express');
 const client = require('prom-client');
-const crypto = require('crypto');
+
+const { canReadOperationalDiagnostics } = require('../services/operationalDiagnosticsAccessService');
 
 const router = express.Router();
 
-function readMetricsAuthToken() {
-    const value = String(process.env.METRICS_AUTH_TOKEN || '').trim();
-    return value.length > 0 ? value : '';
-}
-
-function isAuthenticatedSession(req) {
-    return Boolean(
-        req
-        && typeof req.isAuthenticated === 'function'
-        && req.isAuthenticated()
-        && req.user
-        && req.user._id
-    );
-}
-
-function extractMetricsToken(req) {
-    const headerValue = req && req.headers
-        ? req.headers.authorization || req.headers.Authorization || req.headers['x-metrics-token']
-        : '';
-
-    if (typeof headerValue !== 'string') {
-        return '';
-    }
-
-    const trimmedValue = headerValue.trim();
-    const bearerPrefix = 'Bearer ';
-    if (trimmedValue.startsWith(bearerPrefix)) {
-        return trimmedValue.slice(bearerPrefix.length).trim();
-    }
-
-    return trimmedValue;
-}
-
-function hasValidMetricsToken(req) {
-    const expectedToken = readMetricsAuthToken();
-    const presentedToken = extractMetricsToken(req);
-
-    if (!expectedToken || !presentedToken) {
-        return false;
-    }
-
-    const expectedBuffer = Buffer.from(expectedToken, 'utf8');
-    const presentedBuffer = Buffer.from(presentedToken, 'utf8');
-    if (expectedBuffer.length !== presentedBuffer.length) {
-        return false;
-    }
-
-    return crypto.timingSafeEqual(expectedBuffer, presentedBuffer);
-}
-
 function authorizeMetricsRequest(req, res, next) {
-    if (isAuthenticatedSession(req) || hasValidMetricsToken(req)) {
+    if (canReadOperationalDiagnostics(req)) {
         return next();
     }
 

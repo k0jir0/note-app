@@ -95,8 +95,9 @@ Procedure
    - Authentication surface responds.
    - A representative protected route responds for an authorized user.
 4. Record restore duration, issues encountered, and any manual steps required.
-5. Open or update the `Backup and Restore Exercise` issue form with evidence and restore timing.
-6. Open follow-up work for any undocumented steps or restore failures.
+5. Prefer `.github/workflows/itsg33-backup-restore-drill.yml` for the quarterly exercise when the protected environment variables and secrets are configured.
+6. Open or update the `Backup and Restore Exercise` issue form with evidence, workflow artifact links, and restore timing.
+7. Open follow-up work for any undocumented steps or restore failures.
 
 Completion criteria
 

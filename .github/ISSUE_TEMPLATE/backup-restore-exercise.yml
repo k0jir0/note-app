@@ -57,8 +57,8 @@ body:
     id: evidence-links
     attributes:
       label: Evidence links
-      description: Link logs, screenshots, timestamps, or related tickets.
-      placeholder: https://..., ticket-456, artifact path
+      description: Link logs, screenshots, timestamps, workflow comments, or related tickets.
+      placeholder: https://..., quarterly workflow comment, ticket-456, artifact path
     validations:
       required: true
   - type: textarea

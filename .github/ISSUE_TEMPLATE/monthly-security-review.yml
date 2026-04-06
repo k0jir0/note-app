@@ -52,8 +52,8 @@ body:
     id: evidence-links
     attributes:
       label: Evidence links
-      description: Link workflow runs, health captures, tickets, or stored artifacts.
-      placeholder: https://..., ticket-123, artifact path
+      description: Link workflow runs, health captures, tickets, or stored artifacts. Start with the automated evidence comment added by the monthly review workflow, then add any external tickets or approvals.
+      placeholder: Workflow comment link, run URL, ticket-123, artifact path
     validations:
       required: true
   - type: textarea

@@ -40,8 +40,8 @@ Implemented Remediations
    - Rationale: the MongoDB and Nginx support containers are now pinned to immutable image digests and run with explicit resource requests and limits, reducing supply-chain drift and noisy-neighbor risk in the local immutable stack.
 
 7. Residual operational evidence collection now has repository-backed workflow artifacts.
-   - Files: `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/*`, `docs/itsg33-evidence-checklist.md`, `docs/itsg33-operations-runbook.md`
-   - Rationale: release evidence, monthly reviews, contingency drills, privileged-access reviews, and annual governance refreshes now have standardized templates and documented procedures rather than informal ad hoc tracking.
+   - Files: `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/*`, `.github/workflows/itsg33-monthly-review.yml`, `.github/workflows/itsg33-backup-restore-drill.yml`, `docs/itsg33-evidence-checklist.md`, `docs/itsg33-operations-runbook.md`
+   - Rationale: release evidence, monthly reviews, contingency drills, privileged-access reviews, and annual governance refreshes now have standardized templates plus environment-integrated workflow evidence instead of relying only on informal ad hoc tracking.
 
 8. Repository automation now enforces ITSG-33 drift checks and recurring evidence reminders.
    - Files: `.github/workflows/ci.yml`, `.github/workflows/itsg33-release-evidence.yml`, `.github/workflows/itsg33-monthly-review.yml`, `.github/workflows/itsg33-quarterly-review.yml`, `.github/workflows/itsg33-annual-review.yml`, `.github/workflows/itsg33-k8s-support-image-refresh.yml`, `scripts/check-k8s-image-pins.js`, `scripts/check-itsg33-docs.js`, `scripts/refresh-k8s-support-image-digests.js`, `.github/dependabot.yml`

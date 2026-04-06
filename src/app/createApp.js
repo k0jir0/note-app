@@ -18,6 +18,7 @@ const { enforceInjectionPrevention } = require('../middleware/injectionPreventio
 const { enforceStrictSessionManagement } = require('../middleware/sessionManagement');
 const { sanitizeResponseMetadata } = require('../middleware/responseMetadataProtection');
 const { createImmutableRequestAuditMiddleware } = require('../middleware/immutableRequestAudit');
+const { canReadOperationalDiagnostics } = require('../services/operationalDiagnosticsAccessService');
 const { requestContextMiddleware } = require('../utils/requestContext');
 const { handleUnhandledError } = require('../utils/errorHandler');
 
@@ -148,13 +149,24 @@ function createApp({
             ? res.locals.breakGlass
             : (req.app && req.app.locals ? req.app.locals.breakGlass : null);
         const offline = Boolean(breakGlass && breakGlass.offline);
+        const diagnosticsAllowed = canReadOperationalDiagnostics(req);
+        const statusCode = offline ? 503 : 200;
+
+        if (!diagnosticsAllowed) {
+            return res.status(statusCode).json({
+                ok: !offline,
+                detailsRestricted: true
+            });
+        }
+
         const auditClient = req.app && req.app.locals ? req.app.locals.immutableLogClient : null;
         const auditDelivery = auditClient && typeof auditClient.getDeliveryState === 'function'
             ? auditClient.getDeliveryState()
             : null;
 
-        return res.status(offline ? 503 : 200).json({
+        return res.status(statusCode).json({
             ok: !offline,
+            detailsRestricted: false,
             breakGlass: {
                 mode: breakGlass && breakGlass.mode ? breakGlass.mode : 'disabled',
                 enabled: Boolean(breakGlass && breakGlass.enabled)

@@ -86,9 +86,9 @@ Human step that remains
 
 Suggested implementation
 
-- Add `scripts/check-audit-health.js` to call the protected `/healthz` endpoint.
-- Add `scripts/export-privileged-access-report.js` to read current `admin` and `break_glass` assignments.
-- Post the generated report links into the monthly review issue.
+- Use `scripts/check-audit-health.js` to call the protected `/healthz` endpoint and optionally persist a JSON artifact.
+- Use `scripts/export-privileged-access-report.js` to read current `admin` and `break_glass` assignments, compare them with the previous report when available, and persist a reviewable JSON report.
+- `.github/workflows/itsg33-monthly-review.yml` can now upload both artifacts automatically and refresh the monthly review issue with links to the generated evidence.
 
 Backup and restore exercise
 
@@ -105,7 +105,7 @@ Suggested implementation
 
 - Add `.github/workflows/itsg33-backup-restore-drill.yml` with manual dispatch and optional schedule.
 - Gate execution behind a protected environment approval.
-- Emit restore duration, test results, and artifact links into the quarterly issue.
+- Completed: `.github/workflows/itsg33-backup-restore-drill.yml` now runs on manual dispatch or quarterly schedule, emits a structured JSON artifact through `npm run itsg33:backup-restore:drill`, supports protected probe tokens for gated health or auth endpoints, and refreshes the quarterly issue with a workflow evidence comment.
 
 Break-glass drill
 
@@ -181,9 +181,9 @@ Phase 1: repo-only automation
 
 Phase 2: environment-integrated automation
 
-- Add protected-environment health checks.
-- Add privileged-access export and diff reporting.
-- Add an isolated backup and restore drill workflow.
+- Completed in script form: protected-environment health checks via `npm run itsg33:audit-health`.
+- Completed in script and workflow form: privileged-access export plus previous-period diff reporting via `npm run itsg33:privileged-access:report` and `.github/workflows/itsg33-monthly-review.yml`.
+- Completed in script and workflow form: isolated backup and restore drills via `npm run itsg33:backup-restore:drill` and `.github/workflows/itsg33-backup-restore-drill.yml`.
 
 Phase 3: governed operational automation
 
