@@ -1,7 +1,7 @@
 {
   "name": "helios",
   "version": "0.1.0",
-  "description": "A full-stack note-taking and security-research application with authentication, encrypted notes, and security analysis dashboards",
+  "description": "An authenticated notes application with an integrated research workspace for security operations, automation, and operational assurance",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

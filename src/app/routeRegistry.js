@@ -30,49 +30,93 @@ const supplyChainPageRoute = require('../routes/supplyChainPageRoutes');
 const injectionPreventionApiRoute = require('../routes/injectionPreventionApiRoutes');
 const injectionPreventionPageRoute = require('../routes/injectionPreventionPageRoutes');
 
-const FEATURE_ROUTES = [
-    noteApiRoute,
-    notePageRoute,
-    securityApiRoute,
-    securityPageRoute,
-    mlApiRoute,
-    mlPageRoute,
-    playwrightApiRoute,
-    playwrightPageRoute,
-    injectionPreventionApiRoute,
-    injectionPreventionPageRoute,
-    xssDefenseApiRoute,
-    xssDefensePageRoute,
-    breakGlassApiRoute,
-    breakGlassPageRoute,
-    accessControlApiRoute,
-    accessControlPageRoute,
-    locatorRepairApiRoute,
-    locatorRepairPageRoute,
-    hardwareFirstMfaApiRoute,
-    hardwareFirstMfaPageRoute,
-    missionAssuranceApiRoute,
-    missionAssurancePageRoute,
-    sessionManagementApiRoute,
-    sessionManagementPageRoute,
-    seleniumApiRoute,
-    seleniumPageRoute,
-    scanApiRoute,
-    scanPageRoute,
-    auditTelemetryApiRoute,
-    supplyChainPageRoute,
-    auditTelemetryPageRoute
+const FEATURE_ROUTE_GROUPS = [
+    {
+        name: 'notes-and-workspace',
+        routes: [
+            noteApiRoute,
+            notePageRoute
+        ]
+    },
+    {
+        name: 'analysis-and-operations',
+        routes: [
+            securityApiRoute,
+            securityPageRoute,
+            mlApiRoute,
+            mlPageRoute,
+            playwrightApiRoute,
+            playwrightPageRoute
+        ]
+    },
+    {
+        name: 'control-modules',
+        routes: [
+            injectionPreventionApiRoute,
+            injectionPreventionPageRoute,
+            xssDefenseApiRoute,
+            xssDefensePageRoute,
+            breakGlassApiRoute,
+            breakGlassPageRoute,
+            accessControlApiRoute,
+            accessControlPageRoute,
+            locatorRepairApiRoute,
+            locatorRepairPageRoute,
+            hardwareFirstMfaApiRoute,
+            hardwareFirstMfaPageRoute,
+            missionAssuranceApiRoute,
+            missionAssurancePageRoute,
+            sessionManagementApiRoute,
+            sessionManagementPageRoute
+        ]
+    },
+    {
+        name: 'assurance-and-telemetry',
+        routes: [
+            seleniumApiRoute,
+            seleniumPageRoute,
+            scanApiRoute,
+            scanPageRoute,
+            auditTelemetryApiRoute,
+            supplyChainPageRoute,
+            auditTelemetryPageRoute
+        ]
+    }
 ];
 
-function registerFeatureRoutes(app, routes = FEATURE_ROUTES) {
-    routes.forEach((routeModule) => {
-        app.use(routeModule);
+const FEATURE_ROUTES = FEATURE_ROUTE_GROUPS.flatMap((group) => group.routes);
+
+function normalizeRouteGroups(routeGroupsOrRoutes = FEATURE_ROUTE_GROUPS) {
+    if (!Array.isArray(routeGroupsOrRoutes)) {
+        return [];
+    }
+
+    if (routeGroupsOrRoutes.length === 0) {
+        return [];
+    }
+
+    if (routeGroupsOrRoutes.every((entry) => entry && Array.isArray(entry.routes))) {
+        return routeGroupsOrRoutes;
+    }
+
+    return [{
+        name: 'custom',
+        routes: routeGroupsOrRoutes
+    }];
+}
+
+function registerFeatureRoutes(app, routeGroups = FEATURE_ROUTE_GROUPS) {
+    normalizeRouteGroups(routeGroups).forEach((group) => {
+        group.routes.forEach((routeModule) => {
+            app.use(routeModule);
+        });
     });
 
     return app;
 }
 
 module.exports = {
+    FEATURE_ROUTE_GROUPS,
     FEATURE_ROUTES,
     registerFeatureRoutes
 };
