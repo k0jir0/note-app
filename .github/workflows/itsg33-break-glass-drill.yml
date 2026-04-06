@@ -1,0 +1,305 @@
+name: ITSG-33 Break-Glass Drill
+
+on:
+  schedule:
+    - cron: '50 9 2 1,4,7,10 *'
+  workflow_dispatch:
+    inputs:
+      drill_environment:
+        description: Non-production environment name for the drill
+        required: false
+        default: staging
+      target_mode:
+        description: Break-glass mode to exercise
+        required: false
+        default: offline
+      issue_number:
+        description: Existing quarterly break-glass issue number to update
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  run-break-glass-drill:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.drill_environment || vars.ITSG33_BREAK_GLASS_DRILL_ENVIRONMENT || 'staging' }}
+
+    steps:
+      - name: Compute review period
+        id: review_period
+        shell: bash
+        run: |
+          year=$(date -u +%Y)
+          month=$(date -u +%m)
+          quarter=$(( ((10#$month - 1) / 3) + 1 ))
+          echo "value=${year}-Q${quarter}" >> "$GITHUB_OUTPUT"
+
+      - name: Define artifact name
+        id: artifact_name
+        run: |
+          echo "value=itsg33-break-glass-drill-${{ steps.review_period.outputs.value }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --progress=false
+
+      - name: Prepare evidence directory
+        run: mkdir -p artifacts/itsg33/quarterly-review
+
+      - name: Refuse production drill targets
+        shell: bash
+        env:
+          DRILL_ENVIRONMENT: ${{ github.event.inputs.drill_environment || vars.ITSG33_BREAK_GLASS_DRILL_ENVIRONMENT || 'staging' }}
+        run: |
+          normalized=$(echo "$DRILL_ENVIRONMENT" | tr '[:upper:]' '[:lower:]')
+          if [ "$normalized" = "production" ] || [ "$normalized" = "prod" ]; then
+            echo "Break-glass drills must not target production environments."
+            exit 1
+          fi
+
+      - name: Resolve quarterly break-glass issue
+        id: issue
+        uses: actions/github-script@v7
+        env:
+          REVIEW_PERIOD: ${{ steps.review_period.outputs.value }}
+          DISPATCH_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const requestedIssueNumber = Number(process.env.DISPATCH_ISSUE_NUMBER || 0);
+
+            if (requestedIssueNumber > 0) {
+              core.setOutput('found', 'true');
+              core.setOutput('number', String(requestedIssueNumber));
+              await core.summary.addRaw(`Using manually selected issue #${requestedIssueNumber}.`).write();
+              return;
+            }
+
+            const title = `[ITSG-33] Break-glass drill: ${process.env.REVIEW_PERIOD}`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'itsg33,quarterly-review,break-glass',
+              per_page: 100
+            });
+            const matchingIssue = issues.find((issue) => !issue.pull_request && issue.title === title);
+
+            if (!matchingIssue) {
+              core.setOutput('found', 'false');
+              await core.summary.addRaw(`No open quarterly break-glass issue matched ${title}.`).write();
+              return;
+            }
+
+            core.setOutput('found', 'true');
+            core.setOutput('number', String(matchingIssue.number));
+            await core.summary.addRaw(`Resolved quarterly break-glass issue #${matchingIssue.number}.`).write();
+
+      - name: Collect break-glass drill evidence
+        id: drill
+        continue-on-error: true
+        shell: bash
+        env:
+          DISPATCH_DRILL_ENVIRONMENT: ${{ github.event.inputs.drill_environment }}
+          DISPATCH_TARGET_MODE: ${{ github.event.inputs.target_mode }}
+          ITSG33_BREAK_GLASS_DRILL_ENVIRONMENT: ${{ vars.ITSG33_BREAK_GLASS_DRILL_ENVIRONMENT }}
+          ITSG33_BREAK_GLASS_TARGET_MODE: ${{ vars.ITSG33_BREAK_GLASS_TARGET_MODE }}
+          ITSG33_BREAK_GLASS_BASE_URL: ${{ vars.ITSG33_BREAK_GLASS_BASE_URL }}
+          ITSG33_BREAK_GLASS_HEALTH_URL: ${{ vars.ITSG33_BREAK_GLASS_HEALTH_URL }}
+          ITSG33_BREAK_GLASS_PREPARE_COMMAND: ${{ vars.ITSG33_BREAK_GLASS_PREPARE_COMMAND }}
+          ITSG33_BREAK_GLASS_ACTIVATE_COMMAND: ${{ vars.ITSG33_BREAK_GLASS_ACTIVATE_COMMAND }}
+          ITSG33_BREAK_GLASS_RESET_COMMAND: ${{ vars.ITSG33_BREAK_GLASS_RESET_COMMAND }}
+          ITSG33_BREAK_GLASS_VALIDATION_COMMAND: ${{ vars.ITSG33_BREAK_GLASS_VALIDATION_COMMAND }}
+          ITSG33_BREAK_GLASS_AUDIT_VALIDATION_COMMAND: ${{ vars.ITSG33_BREAK_GLASS_AUDIT_VALIDATION_COMMAND }}
+          ITSG33_BREAK_GLASS_TIMEOUT_MS: ${{ vars.ITSG33_BREAK_GLASS_TIMEOUT_MS }}
+          ITSG33_BREAK_GLASS_HTTP_TIMEOUT_MS: ${{ vars.ITSG33_BREAK_GLASS_HTTP_TIMEOUT_MS }}
+          ITSG33_BREAK_GLASS_HEALTHCHECK_TOKEN: ${{ secrets.ITSG33_BREAK_GLASS_HEALTHCHECK_TOKEN }}
+          ITSG33_HEALTHCHECK_TOKEN: ${{ secrets.ITSG33_HEALTHCHECK_TOKEN }}
+        run: |
+          output_file="artifacts/itsg33/quarterly-review/break-glass-drill.json"
+          target_mode="${DISPATCH_TARGET_MODE:-${ITSG33_BREAK_GLASS_TARGET_MODE:-offline}}"
+          drill_environment="${DISPATCH_DRILL_ENVIRONMENT:-${ITSG33_BREAK_GLASS_DRILL_ENVIRONMENT:-staging}}"
+
+          if [ -z "${ITSG33_BREAK_GLASS_ACTIVATE_COMMAND}" ] || [ -z "${ITSG33_BREAK_GLASS_RESET_COMMAND}" ]; then
+            TARGET_MODE="$target_mode" \
+            DRILL_ENVIRONMENT="$drill_environment" \
+            node - <<'NODE'
+            const fs = require('fs');
+            const path = require('path');
+
+            const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'break-glass-drill.json');
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+            fs.writeFileSync(outputPath, JSON.stringify({
+              generatedAt: new Date().toISOString(),
+              skipped: true,
+              success: false,
+              reason: 'ITSG33_BREAK_GLASS_ACTIVATE_COMMAND or ITSG33_BREAK_GLASS_RESET_COMMAND is not configured for the break-glass drill workflow.',
+              drillEnvironment: process.env.DRILL_ENVIRONMENT,
+              targetMode: process.env.TARGET_MODE
+            }, null, 2));
+            NODE
+            echo "mode=skipped" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          set +e
+          npm run itsg33:break-glass:drill -- \
+            --drill-environment="$drill_environment" \
+            --target-mode="$target_mode" \
+            --output "$output_file"
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ] && [ ! -f "$output_file" ]; then
+            TARGET_MODE="$target_mode" \
+            DRILL_ENVIRONMENT="$drill_environment" \
+            node - <<'NODE'
+            const fs = require('fs');
+            const path = require('path');
+
+            const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'break-glass-drill.json');
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+            fs.writeFileSync(outputPath, JSON.stringify({
+              generatedAt: new Date().toISOString(),
+              skipped: false,
+              success: false,
+              reason: 'Break-glass drill execution failed before a structured report could be written.',
+              drillEnvironment: process.env.DRILL_ENVIRONMENT,
+              targetMode: process.env.TARGET_MODE
+            }, null, 2));
+            NODE
+          fi
+
+          echo "mode=collected" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Upload break-glass drill artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact_name.outputs.value }}
+          path: artifacts/itsg33/quarterly-review/break-glass-drill.json
+          if-no-files-found: error
+
+      - name: Refresh break-glass issue evidence comment
+        if: always() && steps.issue.outputs.found == 'true'
+        env:
+          REVIEW_PERIOD: ${{ steps.review_period.outputs.value }}
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+          ARTIFACT_NAME: ${{ steps.artifact_name.outputs.value }}
+          DRILL_MODE: ${{ steps.drill.outputs.mode }}
+          DRILL_OUTCOME: ${{ steps.drill.outcome }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const { owner, repo } = context.repo;
+            const marker = '<!-- itsg33-break-glass-evidence -->';
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const runId = Number(process.env.GITHUB_RUN_ID);
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+            const artifactName = process.env.ARTIFACT_NAME;
+            const reportPath = path.join(process.env.GITHUB_WORKSPACE, 'artifacts', 'itsg33', 'quarterly-review', 'break-glass-drill.json');
+            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100
+            });
+            const artifact = artifacts.find((entry) => entry.name === artifactName);
+            const artifactLink = artifact
+              ? `https://github.com/${owner}/${repo}/actions/runs/${runId}/artifacts/${artifact.id}`
+              : `${artifactName} (artifact unavailable)`;
+
+            const lines = [
+              marker,
+              `Break-glass drill evidence for ${process.env.REVIEW_PERIOD}.`,
+              '',
+              `- Workflow run: ${runUrl}`,
+              `- Drill collection: ${(process.env.DRILL_MODE || 'unknown')} (${process.env.DRILL_OUTCOME || 'unknown'})`,
+              `- Artifact: ${artifactLink}`,
+              `- Target mode: ${report.targetMode || 'unspecified'}`,
+              `- Drill environment: ${report.drillEnvironment || 'unspecified'}`
+            ];
+
+            if (report.skipped) {
+              lines.push('- Status: skipped');
+              lines.push(`- Reason: ${report.reason || 'The drill was skipped.'}`);
+            } else {
+              lines.push(`- Status: ${report.success ? 'passed' : 'failed'}`);
+              if (report.summary) {
+                lines.push(`- Overall duration: ${report.summary.overallDurationMs || 0}ms`);
+                lines.push(`- Failed steps: ${report.summary.failedSteps || 0}`);
+              }
+
+              if (Array.isArray(report.failures) && report.failures.length > 0) {
+                lines.push('');
+                lines.push('Failures:');
+                for (const failure of report.failures) {
+                  lines.push(`- ${failure.step}: ${failure.reason}`);
+                }
+              }
+            }
+
+            const body = lines.join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100
+            });
+            const existingComment = comments.find((comment) => comment.body && comment.body.includes(marker));
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body
+              });
+            }
+
+      - name: Evaluate drill result
+        if: always()
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const reportPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'break-glass-drill.json');
+          const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+
+          if (report.skipped) {
+            console.log(report.reason || 'Break-glass drill skipped.');
+            process.exit(0);
+          }
+
+          if (!report.success) {
+            console.error('Break-glass drill failed.');
+            process.exit(1);
+          }
+
+          console.log('Break-glass drill completed successfully.');
+          NODE

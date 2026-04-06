@@ -71,7 +71,8 @@ Procedure
 5. Verify the resulting state using the application control view and, if relevant, `GET /healthz`.
 6. Once the incident or maintenance action is complete, return the system to `disabled` mode and capture the restoration timestamp.
 7. Review the audit trail for both the activation and the reset.
-8. Open or update the `Break-Glass Drill` issue form with the scenario, timestamps, and evidence links.
+8. Prefer `.github/workflows/itsg33-break-glass-drill.yml` for the quarterly non-production drill when the activation, reset, validation, and health-check commands are configured through protected environment variables.
+9. Open or update the `Break-Glass Drill` issue form with the scenario, timestamps, and evidence links.
 
 Completion criteria
 
@@ -96,8 +97,9 @@ Procedure
    - A representative protected route responds for an authorized user.
 4. Record restore duration, issues encountered, and any manual steps required.
 5. Prefer `.github/workflows/itsg33-backup-restore-drill.yml` for the quarterly exercise when the protected environment variables and secrets are configured.
-6. Open or update the `Backup and Restore Exercise` issue form with evidence, workflow artifact links, and restore timing.
-7. Open follow-up work for any undocumented steps or restore failures.
+6. Capture or link the infrastructure conformance artifact produced alongside the restore workflow when `ITSG33_PUBLIC_BASE_URL` is configured.
+7. Open or update the `Backup and Restore Exercise` issue form with evidence, workflow artifact links, and restore timing.
+8. Open follow-up work for any undocumented steps or restore failures.
 
 Completion criteria
 
@@ -118,7 +120,8 @@ Procedure
 2. Confirm each assignment still has a business justification.
 3. Remove or downgrade any stale or unnecessary privilege.
 4. Review recent privileged-denial audit events for unusual patterns.
-5. Record the reviewer, date, and decisions made in the `Privileged Access Review` issue form.
+5. Review the latest secret-rotation artifact or secret-manager metadata export for authentication and probe credentials that support privileged operations.
+6. Record the reviewer, date, and decisions made in the `Privileged Access Review` issue form.
 
 Completion criteria
 
@@ -136,9 +139,10 @@ Procedure
 
 1. Review `docs/itsg33-review.md` for outdated assumptions.
 2. Update `docs/itsg33-control-matrix.md` if controls, owners, or evidence expectations changed.
-3. Reconfirm hosting, physical, personnel, and media-protection inheritance with the appropriate owner.
-4. Refresh the risk record or system security plan for major architecture, auth, or hosting changes.
-5. Record the outcome in the `Annual Governance Refresh` issue form.
+3. Review the governance diff artifact from `.github/workflows/itsg33-annual-review.yml` for the prior year before drafting conclusions.
+4. Reconfirm hosting, physical, personnel, and media-protection inheritance with the appropriate owner.
+5. Refresh the risk record or system security plan for major architecture, auth, or hosting changes.
+6. Record the outcome in the `Annual Governance Refresh` issue form.
 
 Completion criteria
 

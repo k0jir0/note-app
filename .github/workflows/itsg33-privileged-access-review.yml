@@ -1,0 +1,330 @@
+name: ITSG-33 Privileged Access Review
+
+on:
+  schedule:
+    - cron: '10 10 2 1,4,7,10 *'
+  workflow_dispatch:
+    inputs:
+      review_environment:
+        description: Protected environment name for the evidence record
+        required: false
+        default: staging
+      issue_number:
+        description: Existing quarterly privileged access review issue number to update
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  run-privileged-access-review:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.review_environment || vars.ITSG33_PRIVILEGED_ACCESS_REVIEW_ENVIRONMENT || 'staging' }}
+
+    steps:
+      - name: Compute review period
+        id: review_period
+        shell: bash
+        run: |
+          year=$(date -u +%Y)
+          month=$(date -u +%m)
+          quarter=$(( ((10#$month - 1) / 3) + 1 ))
+          echo "value=${year}-Q${quarter}" >> "$GITHUB_OUTPUT"
+
+      - name: Define artifact name
+        id: artifact_name
+        run: |
+          echo "value=itsg33-privileged-access-review-${{ steps.review_period.outputs.value }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --progress=false
+
+      - name: Prepare evidence directories
+        run: |
+          mkdir -p artifacts/itsg33/quarterly-review
+          mkdir -p artifacts/itsg33/previous
+
+      - name: Resolve quarterly privileged access review issue
+        id: issue
+        uses: actions/github-script@v7
+        env:
+          REVIEW_PERIOD: ${{ steps.review_period.outputs.value }}
+          DISPATCH_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const requestedIssueNumber = Number(process.env.DISPATCH_ISSUE_NUMBER || 0);
+
+            if (requestedIssueNumber > 0) {
+              core.setOutput('found', 'true');
+              core.setOutput('number', String(requestedIssueNumber));
+              await core.summary.addRaw(`Using manually selected issue #${requestedIssueNumber}.`).write();
+              return;
+            }
+
+            const title = `[ITSG-33] Privileged access review: ${process.env.REVIEW_PERIOD}`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'itsg33,quarterly-review,privileged-access',
+              per_page: 100
+            });
+            const matchingIssue = issues.find((issue) => !issue.pull_request && issue.title === title);
+
+            if (!matchingIssue) {
+              core.setOutput('found', 'false');
+              await core.summary.addRaw(`No open quarterly privileged-access issue matched ${title}.`).write();
+              return;
+            }
+
+            core.setOutput('found', 'true');
+            core.setOutput('number', String(matchingIssue.number));
+            await core.summary.addRaw(`Resolved quarterly privileged-access issue #${matchingIssue.number}.`).write();
+
+      - name: Locate previous privileged-access artifact
+        id: previous_artifact
+        uses: actions/github-script@v7
+        env:
+          CURRENT_ARTIFACT_NAME: ${{ steps.artifact_name.outputs.value }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const currentArtifactName = process.env.CURRENT_ARTIFACT_NAME;
+            const artifactPrefix = 'itsg33-privileged-access-review-';
+
+            const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {
+              owner,
+              repo,
+              per_page: 100
+            });
+            const candidate = artifacts
+              .filter((artifact) => !artifact.expired && artifact.name.startsWith(artifactPrefix) && artifact.name !== currentArtifactName)
+              .sort((left, right) => new Date(right.created_at) - new Date(left.created_at))[0];
+
+            if (!candidate) {
+              core.setOutput('found', 'false');
+              await core.summary.addRaw('No previous privileged-access review artifact was found for comparison.').write();
+              return;
+            }
+
+            core.setOutput('found', 'true');
+            core.setOutput('name', candidate.name);
+            core.setOutput('archive_url', candidate.archive_download_url);
+            await core.summary.addRaw(`Using previous privileged-access review artifact ${candidate.name}.`).write();
+
+      - name: Download previous privileged-access artifact
+        if: steps.previous_artifact.outputs.found == 'true'
+        env:
+          ARCHIVE_URL: ${{ steps.previous_artifact.outputs.archive_url }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail -L \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$ARCHIVE_URL" \
+            -o artifacts/itsg33/previous/privileged-access-review.zip
+          unzip -o artifacts/itsg33/previous/privileged-access-review.zip -d artifacts/itsg33/previous
+
+      - name: Resolve previous privileged-access report path
+        id: previous_report
+        shell: bash
+        run: |
+          previous_report_path=$(find artifacts/itsg33/previous -maxdepth 3 -type f -name '*.json' | head -n 1)
+          if [ -n "$previous_report_path" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "path=$previous_report_path" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Collect privileged-access review evidence
+        id: review
+        continue-on-error: true
+        shell: bash
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          NOTE_ENCRYPTION_KEY: ${{ secrets.NOTE_ENCRYPTION_KEY }}
+          PREVIOUS_REPORT_PATH: ${{ steps.previous_report.outputs.path }}
+        run: |
+          output_file="artifacts/itsg33/quarterly-review/privileged-access-review.json"
+          previous_report_arg=""
+
+          if [ -n "${PREVIOUS_REPORT_PATH}" ]; then
+            previous_report_arg="--previous-report=${PREVIOUS_REPORT_PATH}"
+            echo "baseline=previous-artifact" >> "$GITHUB_OUTPUT"
+          else
+            echo "baseline=none" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "${MONGODB_URI}" ] && [ -n "${NOTE_ENCRYPTION_KEY}" ]; then
+            set +e
+            npm run itsg33:privileged-access:report -- --output "$output_file" $previous_report_arg
+            status=$?
+            set -e
+
+            if [ "$status" -ne 0 ] && [ ! -f "$output_file" ]; then
+              node - <<'NODE'
+              const fs = require('fs');
+              const path = require('path');
+
+              const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'privileged-access-review.json');
+              fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+              fs.writeFileSync(outputPath, JSON.stringify({
+                generatedAt: new Date().toISOString(),
+                failed: true,
+                reason: 'Privileged-access review collection failed before a structured report could be written.',
+                comparison: {
+                  available: false,
+                  reason: 'No previous privileged-access report was provided.'
+                }
+              }, null, 2));
+              NODE
+            fi
+
+            echo "mode=collected" >> "$GITHUB_OUTPUT"
+            exit "$status"
+          fi
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'privileged-access-review.json');
+          fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+          fs.writeFileSync(outputPath, JSON.stringify({
+            generatedAt: new Date().toISOString(),
+            skipped: true,
+            reason: 'MONGODB_URI or NOTE_ENCRYPTION_KEY is not configured for the privileged-access review workflow.',
+            comparison: {
+              available: false,
+              reason: 'No previous privileged-access report was provided.'
+            }
+          }, null, 2));
+          NODE
+          echo "mode=skipped" >> "$GITHUB_OUTPUT"
+
+      - name: Upload privileged-access review artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact_name.outputs.value }}
+          path: artifacts/itsg33/quarterly-review/privileged-access-review.json
+          if-no-files-found: error
+
+      - name: Refresh privileged-access issue evidence comment
+        if: always() && steps.issue.outputs.found == 'true'
+        env:
+          REVIEW_PERIOD: ${{ steps.review_period.outputs.value }}
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+          ARTIFACT_NAME: ${{ steps.artifact_name.outputs.value }}
+          REVIEW_MODE: ${{ steps.review.outputs.mode }}
+          REVIEW_OUTCOME: ${{ steps.review.outcome }}
+          REVIEW_BASELINE: ${{ steps.review.outputs.baseline }}
+          PREVIOUS_ARTIFACT_FOUND: ${{ steps.previous_artifact.outputs.found }}
+          PREVIOUS_ARTIFACT_NAME: ${{ steps.previous_artifact.outputs.name }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const { owner, repo } = context.repo;
+            const marker = '<!-- itsg33-privileged-access-evidence -->';
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const runId = Number(process.env.GITHUB_RUN_ID);
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+            const artifactName = process.env.ARTIFACT_NAME;
+            const reportPath = path.join(process.env.GITHUB_WORKSPACE, 'artifacts', 'itsg33', 'quarterly-review', 'privileged-access-review.json');
+            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100
+            });
+            const artifact = artifacts.find((entry) => entry.name === artifactName);
+            const artifactLink = artifact
+              ? `https://github.com/${owner}/${repo}/actions/runs/${runId}/artifacts/${artifact.id}`
+              : `${artifactName} (artifact unavailable)`;
+
+            const lines = [
+              marker,
+              `Privileged-access review evidence for ${process.env.REVIEW_PERIOD}.`,
+              '',
+              `- Workflow run: ${runUrl}`,
+              `- Review collection: ${(process.env.REVIEW_MODE || 'unknown')} (${process.env.REVIEW_OUTCOME || 'unknown'})`,
+              `- Artifact: ${artifactLink}`,
+              process.env.PREVIOUS_ARTIFACT_FOUND === 'true'
+                ? `- Previous baseline: ${process.env.PREVIOUS_ARTIFACT_NAME} (${process.env.REVIEW_BASELINE || 'previous-artifact'})`
+                : '- Previous baseline: none found'
+            ];
+
+            if (report.skipped) {
+              lines.push('- Status: skipped');
+              lines.push(`- Reason: ${report.reason || 'The review was skipped.'}`);
+            } else if (report.summary) {
+              lines.push(`- Status: ${report.failed ? 'failed' : 'collected'}`);
+              lines.push(`- Privileged users: ${report.summary.totalPrivilegedUsers || 0}`);
+              lines.push(`- Locked out: ${report.summary.lockedOutUsers || 0}`);
+            }
+
+            const body = lines.join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100
+            });
+            const existingComment = comments.find((comment) => comment.body && comment.body.includes(marker));
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body
+              });
+            }
+
+      - name: Evaluate privileged-access review result
+        if: always()
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const reportPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'privileged-access-review.json');
+          const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+
+          if (report.skipped) {
+            console.log(report.reason || 'Privileged-access review skipped.');
+            process.exit(0);
+          }
+
+          if (report.failed) {
+            console.error('Privileged-access review failed.');
+            process.exit(1);
+          }
+
+          console.log('Privileged-access review completed successfully.');
+          NODE

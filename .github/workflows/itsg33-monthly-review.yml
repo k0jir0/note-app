@@ -25,6 +25,7 @@ jobs:
         run: |
           echo "audit=itsg33-audit-health-${{ steps.review_period.outputs.value }}" >> "$GITHUB_OUTPUT"
           echo "privileged=itsg33-privileged-access-report-${{ steps.review_period.outputs.value }}" >> "$GITHUB_OUTPUT"
+          echo "rotation=itsg33-secret-rotation-${{ steps.review_period.outputs.value }}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
         uses: actions/checkout@v6
@@ -212,6 +213,72 @@ jobs:
           NODE
           echo "mode=skipped" >> "$GITHUB_OUTPUT"
 
+      - name: Collect secret-rotation evidence
+        id: secret_rotation
+        continue-on-error: true
+        shell: bash
+        env:
+          ITSG33_SECRET_ROTATION_SPECS: ${{ vars['ITSG33_SECRET_ROTATION_SPECS'] }}
+          ITSG33_DEFAULT_SECRET_ROTATION_MAX_AGE_DAYS: ${{ vars['ITSG33_DEFAULT_SECRET_ROTATION_MAX_AGE_DAYS'] }}
+        run: |
+          output_file="artifacts/itsg33/monthly-review/secret-rotation.json"
+
+          if [ -n "${ITSG33_SECRET_ROTATION_SPECS}" ]; then
+            set +e
+            npm run itsg33:secret-rotation:check -- --output "$output_file"
+            status=$?
+            set -e
+
+            if [ "$status" -ne 0 ] && [ ! -f "$output_file" ]; then
+              node - <<'NODE'
+              const fs = require('fs');
+              const path = require('path');
+
+              const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'monthly-review', 'secret-rotation.json');
+              fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+              fs.writeFileSync(outputPath, JSON.stringify({
+                checkedAt: new Date().toISOString(),
+                skipped: false,
+                failed: true,
+                reason: 'Secret rotation evidence collection failed before a structured report could be written.',
+                summary: {
+                  totalSecrets: 0,
+                  ok: 0,
+                  warn: 0,
+                  stale: 0,
+                  invalid: 0
+                },
+                secrets: []
+              }, null, 2));
+              NODE
+            fi
+
+            echo "mode=collected" >> "$GITHUB_OUTPUT"
+            exit "$status"
+          fi
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'monthly-review', 'secret-rotation.json');
+          fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+          fs.writeFileSync(outputPath, JSON.stringify({
+            checkedAt: new Date().toISOString(),
+            skipped: true,
+            reason: 'ITSG33_SECRET_ROTATION_SPECS is not configured for the monthly review workflow.',
+            summary: {
+              totalSecrets: 0,
+              ok: 0,
+              warn: 0,
+              stale: 0,
+              invalid: 0
+            },
+            secrets: []
+          }, null, 2));
+          NODE
+          echo "mode=skipped" >> "$GITHUB_OUTPUT"
+
       - name: Upload audit-health artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -228,16 +295,27 @@ jobs:
           path: artifacts/itsg33/monthly-review/privileged-access-report.json
           if-no-files-found: error
 
+      - name: Upload secret-rotation artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact_names.outputs.rotation }}
+          path: artifacts/itsg33/monthly-review/secret-rotation.json
+          if-no-files-found: error
+
       - name: Open or refresh monthly review issue
         if: always()
         env:
           REVIEW_PERIOD: ${{ steps.review_period.outputs.value }}
           AUDIT_ARTIFACT_NAME: ${{ steps.artifact_names.outputs.audit }}
           PRIVILEGED_ARTIFACT_NAME: ${{ steps.artifact_names.outputs.privileged }}
+          ROTATION_ARTIFACT_NAME: ${{ steps.artifact_names.outputs.rotation }}
           AUDIT_MODE: ${{ steps.audit_health.outputs.mode }}
           AUDIT_OUTCOME: ${{ steps.audit_health.outcome }}
           PRIVILEGED_MODE: ${{ steps.privileged_access.outputs.mode }}
           PRIVILEGED_OUTCOME: ${{ steps.privileged_access.outcome }}
+          ROTATION_MODE: ${{ steps.secret_rotation.outputs.mode }}
+          ROTATION_OUTCOME: ${{ steps.secret_rotation.outcome }}
           PRIVILEGED_BASELINE: ${{ steps.privileged_access.outputs.baseline }}
           PREVIOUS_ARTIFACT_FOUND: ${{ steps.previous_privileged_artifact.outputs.found }}
           PREVIOUS_ARTIFACT_NAME: ${{ steps.previous_privileged_artifact.outputs.name }}
@@ -345,6 +423,8 @@ jobs:
               `- Audit-health artifact: ${formatArtifactLink(process.env.AUDIT_ARTIFACT_NAME)}`,
               `- Privileged-access collection: ${formatStatus(process.env.PRIVILEGED_MODE, process.env.PRIVILEGED_OUTCOME)}`,
               `- Privileged-access artifact: ${formatArtifactLink(process.env.PRIVILEGED_ARTIFACT_NAME)}`,
+              `- Secret-rotation collection: ${formatStatus(process.env.ROTATION_MODE, process.env.ROTATION_OUTCOME)}`,
+              `- Secret-rotation artifact: ${formatArtifactLink(process.env.ROTATION_ARTIFACT_NAME)}`,
               process.env.PREVIOUS_ARTIFACT_FOUND === 'true'
                 ? `- Previous privileged-access baseline: ${process.env.PREVIOUS_ARTIFACT_NAME} (${process.env.PRIVILEGED_BASELINE || 'previous-artifact'})`
                 : '- Previous privileged-access baseline: none found',

@@ -43,6 +43,7 @@ jobs:
         id: artifact_name
         run: |
           echo "value=itsg33-backup-restore-drill-${{ steps.review_period.outputs.value }}" >> "$GITHUB_OUTPUT"
+          echo "infrastructure=itsg33-infrastructure-conformance-${{ steps.review_period.outputs.value }}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
         uses: actions/checkout@v6
@@ -198,12 +199,75 @@ jobs:
           path: artifacts/itsg33/quarterly-review/backup-restore-drill.json
           if-no-files-found: error
 
+      - name: Collect infrastructure conformance evidence
+        id: infrastructure
+        continue-on-error: true
+        shell: bash
+        env:
+          ITSG33_PUBLIC_BASE_URL: ${{ vars.ITSG33_PUBLIC_BASE_URL }}
+          ITSG33_HEALTHCHECK_URL: ${{ vars.ITSG33_HEALTHCHECK_URL }}
+          ITSG33_HEALTHCHECK_TOKEN: ${{ secrets.ITSG33_HEALTHCHECK_TOKEN }}
+          METRICS_AUTH_TOKEN: ${{ secrets.METRICS_AUTH_TOKEN }}
+          ITSG33_MIN_CERT_VALID_DAYS: ${{ vars.ITSG33_MIN_CERT_VALID_DAYS }}
+        run: |
+          output_file="artifacts/itsg33/quarterly-review/infrastructure-conformance.json"
+
+          if [ -n "${ITSG33_PUBLIC_BASE_URL}" ]; then
+            set +e
+            npm run itsg33:infrastructure:check -- --public-base-url="${ITSG33_PUBLIC_BASE_URL}" --health-url="${ITSG33_HEALTHCHECK_URL:-${ITSG33_PUBLIC_BASE_URL%/}/healthz}" --output "$output_file"
+            status=$?
+            set -e
+
+            if [ "$status" -ne 0 ] && [ ! -f "$output_file" ]; then
+              node - <<'NODE'
+              const fs = require('fs');
+              const path = require('path');
+
+              const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'infrastructure-conformance.json');
+              fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+              fs.writeFileSync(outputPath, JSON.stringify({
+                checkedAt: new Date().toISOString(),
+                failed: true,
+                reason: 'Infrastructure conformance evidence collection failed before a structured report could be written.'
+              }, null, 2));
+              NODE
+            fi
+
+            echo "mode=collected" >> "$GITHUB_OUTPUT"
+            exit "$status"
+          fi
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'infrastructure-conformance.json');
+          fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+          fs.writeFileSync(outputPath, JSON.stringify({
+            checkedAt: new Date().toISOString(),
+            skipped: true,
+            reason: 'ITSG33_PUBLIC_BASE_URL is not configured for the infrastructure conformance probe.'
+          }, null, 2));
+          NODE
+          echo "mode=skipped" >> "$GITHUB_OUTPUT"
+
+      - name: Upload infrastructure conformance artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact_name.outputs.infrastructure }}
+          path: artifacts/itsg33/quarterly-review/infrastructure-conformance.json
+          if-no-files-found: error
+
       - name: Refresh backup and restore issue evidence comment
         if: always() && steps.issue.outputs.found == 'true'
         env:
           REVIEW_PERIOD: ${{ steps.review_period.outputs.value }}
           ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
           ARTIFACT_NAME: ${{ steps.artifact_name.outputs.value }}
+          INFRASTRUCTURE_ARTIFACT_NAME: ${{ steps.artifact_name.outputs.infrastructure }}
+          INFRASTRUCTURE_MODE: ${{ steps.infrastructure.outputs.mode }}
+          INFRASTRUCTURE_OUTCOME: ${{ steps.infrastructure.outcome }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -215,6 +279,7 @@ jobs:
             const runId = Number(process.env.GITHUB_RUN_ID);
             const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
             const artifactName = process.env.ARTIFACT_NAME;
+            const infrastructureArtifactName = process.env.INFRASTRUCTURE_ARTIFACT_NAME;
             const reportPath = path.join(process.env.GITHUB_WORKSPACE, 'artifacts', 'itsg33', 'quarterly-review', 'backup-restore-drill.json');
             const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
 
@@ -228,6 +293,10 @@ jobs:
             const artifactLink = artifact
               ? `https://github.com/${owner}/${repo}/actions/runs/${runId}/artifacts/${artifact.id}`
               : null;
+            const infrastructureArtifact = artifacts.find((entry) => entry.name === infrastructureArtifactName);
+            const infrastructureArtifactLink = infrastructureArtifact
+              ? `https://github.com/${owner}/${repo}/actions/runs/${runId}/artifacts/${infrastructureArtifact.id}`
+              : null;
 
             const lines = [
               marker,
@@ -235,6 +304,8 @@ jobs:
               '',
               `- Workflow run: ${runUrl}`,
               `- Artifact: ${artifactLink || `${artifactName} (artifact unavailable)`}`,
+              `- Infrastructure conformance: ${(process.env.INFRASTRUCTURE_MODE || 'unknown')} (${process.env.INFRASTRUCTURE_OUTCOME || 'unknown'})`,
+              `- Infrastructure artifact: ${infrastructureArtifactLink || `${infrastructureArtifactName} (artifact unavailable)`}`,
               `- Backup source: ${report.backupSource || 'unspecified'}`,
               `- Restore target: ${report.restoreTarget || 'unspecified'}`,
               `- Drill environment: ${report.drillEnvironment || 'unspecified'}`

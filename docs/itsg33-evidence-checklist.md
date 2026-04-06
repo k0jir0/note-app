@@ -46,6 +46,7 @@ Suggested evidence
 - Audit event export or screenshots
 - Health endpoint result from the protected environment
 - Role review notes
+- Secret-rotation artifact or secret-manager metadata export
 - Ticket or change log for rotated secrets
 - The completed `Monthly Security Review` issue form
 
@@ -62,6 +63,7 @@ Suggested evidence
 
 - Restore drill notes with timestamps and success criteria
 - Quarterly backup/restore workflow artifact or workflow comment link
+- Infrastructure conformance artifact or ingress review export
 - Break-glass drill record
 - Infrastructure review notes
 - Exception register review
@@ -80,6 +82,7 @@ Annual or Major Change
 Suggested evidence
 
 - Updated review and matrix docs
+- Annual governance diff artifact
 - Risk review or architecture decision record
 - Hosting-provider attestation or internal infrastructure review
 - Annual access review and security training record
@@ -96,5 +99,7 @@ For a compact but defensible package, retain at least the following:
 - Passing dependency audit output
 - One sample of a persisted audit event or authorization-denial audit event
 - One protected-environment `/healthz` response that includes immutable logging status
+- One secret-rotation artifact or equivalent secret-manager metadata export
+- One infrastructure conformance artifact covering HTTPS, redirects, and certificate age
 - Latest privileged-access review record
 - Latest backup or restore exercise record

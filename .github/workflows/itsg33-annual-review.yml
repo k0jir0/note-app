@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   issues: write
 
 jobs:
@@ -14,19 +15,101 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Compute review period
+        id: review_period
+        run: |
+          year=$(date -u +%Y)
+          echo "year=${year}" >> "$GITHUB_OUTPUT"
+          echo "label=${year} annual review" >> "$GITHUB_OUTPUT"
+          echo "artifact=itsg33-governance-diff-${year}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --progress=false
+
+      - name: Prepare evidence directory
+        run: mkdir -p artifacts/itsg33/annual-review
+
+      - name: Collect governance diff
+        id: governance_diff
+        continue-on-error: true
+        shell: bash
+        run: |
+          output_file="artifacts/itsg33/annual-review/governance-diff.json"
+          since="${{ steps.review_period.outputs.year }}-01-01"
+
+          set +e
+          npm run itsg33:governance:diff -- --since="$since" --output "$output_file"
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ] && [ ! -f "$output_file" ]; then
+            node - <<'NODE'
+            const fs = require('fs');
+            const path = require('path');
+
+            const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'annual-review', 'governance-diff.json');
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+            fs.writeFileSync(outputPath, JSON.stringify({
+              generatedAt: new Date().toISOString(),
+              failed: true,
+              reason: 'Governance diff collection failed before a structured report could be written.',
+              summary: {
+                sectionsWithChanges: 0,
+                totalCommitReferences: 0
+              },
+              sections: []
+            }, null, 2));
+            NODE
+          fi
+
+          echo "mode=collected" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Upload governance diff artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.review_period.outputs.artifact }}
+          path: artifacts/itsg33/annual-review/governance-diff.json
+          if-no-files-found: error
+
       - name: Open or refresh annual governance review issue
+        if: always()
+        env:
+          REVIEW_PERIOD: ${{ steps.review_period.outputs.label }}
+          REVIEW_YEAR: ${{ steps.review_period.outputs.year }}
+          GOVERNANCE_ARTIFACT_NAME: ${{ steps.review_period.outputs.artifact }}
+          GOVERNANCE_MODE: ${{ steps.governance_diff.outputs.mode }}
+          GOVERNANCE_OUTCOME: ${{ steps.governance_diff.outcome }}
         uses: actions/github-script@v7
         with:
           script: |
             const { owner, repo } = context.repo;
-            const year = new Date().getUTCFullYear();
-            const reviewPeriod = `${year} annual review`;
+            const reviewPeriod = process.env.REVIEW_PERIOD;
             const title = `[ITSG-33] Annual governance refresh: ${reviewPeriod}`;
+            const marker = '<!-- itsg33-annual-review-evidence -->';
             const labels = [
               { name: 'itsg33', color: '0e8a16', description: 'ITSG-33 evidence and governance tracking' },
               { name: 'evidence', color: '1d76db', description: 'Evidence collection and review records' },
               { name: 'annual-review', color: 'c2e0c6', description: 'Recurring annual ITSG-33 governance work' }
             ];
+            const runId = Number(process.env.GITHUB_RUN_ID);
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+
+            function formatStatus(mode, outcome) {
+              return `${mode || 'unknown'} (${outcome || 'unknown'})`;
+            }
 
             async function ensureLabel(label) {
               try {
@@ -51,12 +134,7 @@ jobs:
               labels: 'itsg33,annual-review',
               per_page: 100
             });
-            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
-
-            if (existing) {
-              await core.summary.addRaw(`Annual review already open: #${existing.number}`).write();
-              return;
-            }
+            let issue = issues.find((entry) => !entry.pull_request && entry.title === title);
 
             const body = [
               'This issue was created automatically for the annual ITSG-33 governance refresh.',
@@ -77,12 +155,62 @@ jobs:
               '- [ ] Attach or link the evidence package before closing this issue.'
             ].join('\n');
 
-            const issue = await github.rest.issues.create({
+            if (!issue) {
+              const createdIssue = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: labels.map((label) => label.name)
+              });
+              issue = createdIssue.data;
+            }
+
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
               owner,
               repo,
-              title,
-              body,
-              labels: labels.map((label) => label.name)
+              run_id: runId,
+              per_page: 100
             });
+            const artifact = artifacts.find((entry) => entry.name === process.env.GOVERNANCE_ARTIFACT_NAME);
+            const artifactLink = artifact
+              ? `https://github.com/${owner}/${repo}/actions/runs/${runId}/artifacts/${artifact.id}`
+              : `${process.env.GOVERNANCE_ARTIFACT_NAME} (artifact unavailable)`;
 
-            await core.summary.addRaw(`Created annual review issue #${issue.data.number}.`).write();
+            const commentBody = [
+              marker,
+              '## Automated Annual Governance Evidence',
+              '',
+              `- Workflow run: [${process.env.GITHUB_WORKFLOW} #${process.env.GITHUB_RUN_NUMBER}](${runUrl})`,
+              `- Governance diff collection: ${formatStatus(process.env.GOVERNANCE_MODE, process.env.GOVERNANCE_OUTCOME)}`,
+              `- Governance diff artifact: ${artifactLink}`,
+              `- Comparison window starts: ${process.env.REVIEW_YEAR}-01-01`,
+              '',
+              'Use the governance diff as the starting point for annual review notes and linked approvals.'
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issue.number,
+              per_page: 100
+            });
+            const existingComment = comments.find((comment) => typeof comment.body === 'string' && comment.body.includes(marker));
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body: commentBody
+              });
+            }
+
+            await core.summary.addRaw(`Annual review issue #${issue.number} is ready with governance evidence.`).write();

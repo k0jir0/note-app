@@ -23,6 +23,11 @@ What is already automated
 - `.github/workflows/itsg33-k8s-support-image-refresh.yml` now refreshes the pinned `mongo` and `nginx` `linux/amd64` support-image digests and opens a pull request when upstream digests change.
 - `.github/workflows/itsg33-release-evidence.yml` now rolls up required workflow status into a PR comment and artifact whenever the required security or CI workflows complete for a pull request.
 - `.github/workflows/itsg33-monthly-review.yml`, `.github/workflows/itsg33-quarterly-review.yml`, and `.github/workflows/itsg33-annual-review.yml` now open the recurring ITSG-33 review issues automatically on schedule.
+- `.github/workflows/itsg33-monthly-review.yml` now uploads secret-rotation evidence alongside audit-health and privileged-access artifacts when rotation metadata is configured.
+- `.github/workflows/itsg33-backup-restore-drill.yml` now attaches infrastructure-conformance evidence alongside the restore drill artifact when a protected public base URL is configured.
+- `.github/workflows/itsg33-break-glass-drill.yml` now runs a non-production, approval-gated break-glass drill and refreshes the quarterly break-glass issue with a structured evidence artifact.
+- `.github/workflows/itsg33-privileged-access-review.yml` now runs a quarterly privileged-access export with previous-period diff support and refreshes the matching quarterly issue.
+- `.github/workflows/itsg33-annual-review.yml` now collects a git-backed governance diff artifact before refreshing the annual review issue.
 - `npm run itsg33:repo-checks` now enforces digest-pinned Kubernetes support images and the presence of the required ITSG-33 artifacts through CI.
 - The release evidence path already has a required structure through `.github/pull_request_template.md`.
 - Monthly, quarterly, and annual evidence records already have issue forms under `.github/ISSUE_TEMPLATE`.
@@ -88,7 +93,21 @@ Suggested implementation
 
 - Use `scripts/check-audit-health.js` to call the protected `/healthz` endpoint and optionally persist a JSON artifact.
 - Use `scripts/export-privileged-access-report.js` to read current `admin` and `break_glass` assignments, compare them with the previous report when available, and persist a reviewable JSON report.
-- `.github/workflows/itsg33-monthly-review.yml` can now upload both artifacts automatically and refresh the monthly review issue with links to the generated evidence.
+- `.github/workflows/itsg33-monthly-review.yml` now uploads audit-health, privileged-access, and secret-rotation artifacts automatically and refreshes the monthly review issue with links to the generated evidence.
+
+Infrastructure conformance review
+
+- A workflow can probe the public HTTPS origin, HTTP-to-HTTPS redirect posture, security headers, certificate age, and protected health diagnostics.
+- The resulting artifact can be attached to the quarterly review evidence package automatically.
+
+Human step that remains
+
+- A reviewer must confirm the probed endpoints still match the intended ingress architecture and must investigate any platform-level exceptions.
+
+Suggested implementation
+
+- Use `scripts/check-infrastructure-conformance.js` to probe the protected public origin and collect a JSON report.
+- `.github/workflows/itsg33-backup-restore-drill.yml` now uploads this artifact automatically when `ITSG33_PUBLIC_BASE_URL` is configured.
 
 Backup and restore exercise
 
@@ -118,9 +137,7 @@ Human step that remains
 
 Suggested implementation
 
-- Add `.github/workflows/itsg33-break-glass-drill.yml` for non-production use only.
-- Require environment approval before the workflow can run.
-- Refuse execution when the target environment is production.
+- Completed: `.github/workflows/itsg33-break-glass-drill.yml` now runs on manual dispatch or quarterly schedule, requires a non-production environment target, orchestrates activation and reset through operator-supplied commands, verifies the resulting health posture, and refreshes the quarterly issue with a structured artifact.
 
 Privileged-access review
 
@@ -132,8 +149,7 @@ Human step that remains
 
 Suggested implementation
 
-- Add `.github/workflows/itsg33-privileged-access-review.yml`.
-- Store an artifact containing the current privileged-role report and a comparison against the last completed review.
+- Completed in script and workflow form: `.github/workflows/itsg33-privileged-access-review.yml` now exports the privileged-role report on a quarterly cadence, compares it with the previous artifact when available, and refreshes the quarterly review issue with the evidence link.
 
 Annual governance refresh
 
@@ -146,8 +162,7 @@ Human step that remains
 
 Suggested implementation
 
-- Add `scripts/collect-governance-diff.js` to gather `git log` output for the relevant docs and workflow paths.
-- Attach the resulting summary to the annual governance issue.
+- Completed in script and workflow form: `npm run itsg33:governance:diff` now collects git-backed change summaries for governance docs, workflows, and security-sensitive code paths, and `.github/workflows/itsg33-annual-review.yml` attaches the resulting artifact to the annual governance issue.
 
 What cannot be fully automated
 ------------------------------
@@ -184,10 +199,12 @@ Phase 2: environment-integrated automation
 - Completed in script form: protected-environment health checks via `npm run itsg33:audit-health`.
 - Completed in script and workflow form: privileged-access export plus previous-period diff reporting via `npm run itsg33:privileged-access:report` and `.github/workflows/itsg33-monthly-review.yml`.
 - Completed in script and workflow form: isolated backup and restore drills via `npm run itsg33:backup-restore:drill` and `.github/workflows/itsg33-backup-restore-drill.yml`.
+- Completed in script and workflow form: infrastructure conformance probes via `npm run itsg33:infrastructure:check` and `.github/workflows/itsg33-backup-restore-drill.yml`.
+- Completed in script and workflow form: secret-rotation evidence via `npm run itsg33:secret-rotation:check` and `.github/workflows/itsg33-monthly-review.yml`.
 
 Phase 3: governed operational automation
 
-- Add a non-production break-glass drill workflow with approval gates.
+- Completed: non-production break-glass drill workflow with approval gates.
 - Integrate recurring evidence issues with the internal ticket or GRC system if one exists.
 - Add owner-specific reminders for provider attestation and inherited-control refresh.
 

@@ -128,6 +128,8 @@ jobs:
 
             fs.writeFileSync('itsg33-release-evidence.md', `${summary}\n`, 'utf8');
             core.setOutput('should_upload', 'true');
+            core.setOutput('all_completed', String(allCompleted));
+            core.setOutput('all_successful', String(allSuccessful));
             await core.summary.addRaw(summary).write();
 
       - name: Upload release evidence artifact
@@ -136,3 +138,9 @@ jobs:
         with:
           name: itsg33-release-evidence
           path: itsg33-release-evidence.md
+
+      - name: Enforce release evidence gate
+        if: steps.rollup.outputs.should_upload == 'true' && (steps.rollup.outputs.all_completed != 'true' || steps.rollup.outputs.all_successful != 'true')
+        run: |
+          echo "One or more required ITSG-33 release workflows are incomplete or unsuccessful."
+          exit 1

@@ -57,6 +57,7 @@ jobs:
                   '- [ ] Execute the restore into an isolated environment.',
                   '- [ ] Capture restore duration and any manual steps.',
                   '- [ ] Run startup, authentication, and representative protected-route validation.',
+                  '- [ ] Review the attached infrastructure conformance artifact or record the platform exception.',
                   '- [ ] Attach or link the evidence package before closing this issue.'
                 ]
               },
