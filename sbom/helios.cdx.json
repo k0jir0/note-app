@@ -25,7 +25,7 @@
       "version": "0.1.0",
       "scope": "required",
       "author": "Ryan V",
-      "description": "A full-stack note-taking and security-research application with authentication, encrypted notes, and security analysis dashboards",
+      "description": "An authenticated notes application with an integrated research workspace for security operations, automation, and operational assurance",
       "purl": "pkg:npm/helios@0.1.0",
       "properties": [
         {
@@ -169,12 +169,12 @@
       ]
     },
     {
-      "bom-ref": "@eslint/config-array@0.23.3",
+      "bom-ref": "@eslint/config-array@0.23.4",
       "type": "library",
       "name": "@eslint/config-array",
-      "version": "0.23.3",
+      "version": "0.23.4",
       "scope": "optional",
-      "purl": "pkg:npm/%40eslint/config-array@0.23.3",
+      "purl": "pkg:npm/%40eslint/config-array@0.23.4",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -188,13 +188,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/@eslint/config-array/-/config-array-0.23.3.tgz"
+          "url": "https://registry.npmjs.org/@eslint/config-array/-/config-array-0.23.4.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "8fe7845a607a6182f070d39d97043a2f63aca6d23f2ceea5341b8b22a7b947b45eb43eb9f072e817e327ecbcd898059634dcdd0ba72a3fe2faafcba37985d62f"
+          "content": "95fd7d176e0b48c7c5f30797bd6e5012d9cba96ef4bbb9208ade5ef4f4b1d0cb0700572519dd53f729ef5843034f5c3927842de78b6898678085da0092ed57a3"
         }
       ],
       "licenses": [
@@ -206,12 +206,12 @@
       ]
     },
     {
-      "bom-ref": "@eslint/config-helpers@0.5.3",
+      "bom-ref": "@eslint/config-helpers@0.5.4",
       "type": "library",
       "name": "@eslint/config-helpers",
-      "version": "0.5.3",
+      "version": "0.5.4",
       "scope": "optional",
-      "purl": "pkg:npm/%40eslint/config-helpers@0.5.3",
+      "purl": "pkg:npm/%40eslint/config-helpers@0.5.4",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -225,13 +225,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/@eslint/config-helpers/-/config-helpers-0.5.3.tgz"
+          "url": "https://registry.npmjs.org/@eslint/config-helpers/-/config-helpers-0.5.4.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "97318dd289e594e6421aba0a26647063a41c107c5b8c1c3583007c4a0452a8af186dbb445ccbcaca7b17737e79ddc908101c6c6cc054ee83995ca20f19935e67"
+          "content": "8c986a898df03cc95658edf7ef433ce823c9ee9b7c1a613048b82531f4218d76a5d3b442be1994d1ab3822e5045b94897ae9df22d8847ad1e64b10827bd94306"
         }
       ],
       "licenses": [
@@ -243,12 +243,12 @@
       ]
     },
     {
-      "bom-ref": "@eslint/core@1.1.1",
+      "bom-ref": "@eslint/core@1.2.0",
       "type": "library",
       "name": "@eslint/core",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "scope": "optional",
-      "purl": "pkg:npm/%40eslint/core@1.1.1",
+      "purl": "pkg:npm/%40eslint/core@1.2.0",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -262,13 +262,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/@eslint/core/-/core-1.1.1.tgz"
+          "url": "https://registry.npmjs.org/@eslint/core/-/core-1.2.0.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "4143db953b44e75ffbfd985fbfc043c0ed2a924cd02fb3ff69659ba9c7f8c562c4627d682a374ed20825401078180b2eeeeeb08e28db0a6cec513cba9a793aa1"
+          "content": "f054c66cdcd3be64a573871905a4a1902e98bc5306d2b8a4b1859114a5f3b6a55d5da41b7192d79456d2a42d39b3bd2c184b17030d2ac21c7af49896ee1412ec"
         }
       ],
       "licenses": [
@@ -280,12 +280,12 @@
       ]
     },
     {
-      "bom-ref": "@eslint/object-schema@3.0.3",
+      "bom-ref": "@eslint/object-schema@3.0.4",
       "type": "library",
       "name": "@eslint/object-schema",
-      "version": "3.0.3",
+      "version": "3.0.4",
       "scope": "optional",
-      "purl": "pkg:npm/%40eslint/object-schema@3.0.3",
+      "purl": "pkg:npm/%40eslint/object-schema@3.0.4",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -299,13 +299,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/@eslint/object-schema/-/object-schema-3.0.3.tgz"
+          "url": "https://registry.npmjs.org/@eslint/object-schema/-/object-schema-3.0.4.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "88cf3af4fba09fd36cc5b87f60746a622a9ddb702621bc4939ca5430eb9609535da1027966dc0bea1dedd1b719cc95250b70eaf630850844816675f4193bfb89"
+          "content": "e7994effbf98a742122913f43ec3ed35378d19aa5768ed3ce5a10b66658255ce521f78dfaeaa6e53a62039d231312f7d647910375717284f9c748ab0c30f69b7"
         }
       ],
       "licenses": [
@@ -317,12 +317,12 @@
       ]
     },
     {
-      "bom-ref": "@eslint/plugin-kit@0.6.1",
+      "bom-ref": "@eslint/plugin-kit@0.7.0",
       "type": "library",
       "name": "@eslint/plugin-kit",
-      "version": "0.6.1",
+      "version": "0.7.0",
       "scope": "optional",
-      "purl": "pkg:npm/%40eslint/plugin-kit@0.6.1",
+      "purl": "pkg:npm/%40eslint/plugin-kit@0.7.0",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -336,13 +336,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/@eslint/plugin-kit/-/plugin-kit-0.6.1.tgz"
+          "url": "https://registry.npmjs.org/@eslint/plugin-kit/-/plugin-kit-0.7.0.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "887d41d3be87a00b211f598ba47320c1d19e4ecd026302f448f3241ae49e6d9af0069d7abf8d797bd3595e0da3b6ba8f5508dfe8800d7b656d96be4ab30b5c65"
+          "content": "7a3bc1afc31009b56c58d6670b00d78d42aae343039876a5abb709e9ef6cfeacd3505208a3f69fcedd55ba2f53f7b14cfd5fe937862c155a1e7793486bde910e"
         }
       ],
       "licenses": [
@@ -3178,12 +3178,12 @@
       ]
     },
     {
-      "bom-ref": "dotenv@17.4.0",
+      "bom-ref": "dotenv@17.4.1",
       "type": "library",
       "name": "dotenv",
-      "version": "17.4.0",
+      "version": "17.4.1",
       "scope": "required",
-      "purl": "pkg:npm/dotenv@17.4.0",
+      "purl": "pkg:npm/dotenv@17.4.1",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -3193,13 +3193,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/dotenv/-/dotenv-17.4.0.tgz"
+          "url": "https://registry.npmjs.org/dotenv/-/dotenv-17.4.1.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "902285eb67f0b73c189b420604d8d1523b4980c7c66a9208f85b25307223311e4a4e7c049819962c34529dcdd748d3fc6cdcb7e2d7a4810c834f486bee911145"
+          "content": "93c0da2863faaf51b7d0bc7c578fa90ac2f32abf2f2e6576a5aa848f5639e46740809b88aa9469e457da8c617c2adc0cc42cfda8973ac142099e6d39dddfd60b"
         }
       ],
       "licenses": [
@@ -3656,12 +3656,12 @@
       ]
     },
     {
-      "bom-ref": "eslint@10.1.0",
+      "bom-ref": "eslint@10.2.0",
       "type": "library",
       "name": "eslint",
-      "version": "10.1.0",
+      "version": "10.2.0",
       "scope": "optional",
-      "purl": "pkg:npm/eslint@10.1.0",
+      "purl": "pkg:npm/eslint@10.2.0",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -3675,13 +3675,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/eslint/-/eslint-10.1.0.tgz"
+          "url": "https://registry.npmjs.org/eslint/-/eslint-10.2.0.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "4bd8e563f10b284530c109ea5833be7fe9bab1eadca8e3d2a973391a8f7897b0ce9b11d50e0992146584cde13f83081302bd16d74dc15add102deffb99a6c8bc"
+          "content": "f8bd2f04560622948d22dfca593a45a273eba98be02b0d5e508e559fb984a20ad0716b5662d350edd36a0bea71fc9d22753dc1024896ae17d2ee4f93ba6f1350"
         }
       ],
       "licenses": [
@@ -7682,12 +7682,12 @@
       ]
     },
     {
-      "bom-ref": "mongoose@9.3.3",
+      "bom-ref": "mongoose@9.4.1",
       "type": "library",
       "name": "mongoose",
-      "version": "9.3.3",
+      "version": "9.4.1",
       "scope": "required",
-      "purl": "pkg:npm/mongoose@9.3.3",
+      "purl": "pkg:npm/mongoose@9.4.1",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -7697,13 +7697,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/mongoose/-/mongoose-9.3.3.tgz"
+          "url": "https://registry.npmjs.org/mongoose/-/mongoose-9.4.1.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "b1fbf92ce20f59e379a3fdbcd64a78471f599ee5dbd20f02b6f0538bbb6b610b363d8631f0b5977a05f11b76abed5127b35a3e77887d2c8fc3b5cedd4d3c9898"
+          "content": "e2b14159afbfc1d05049fbe738f241a62486e940846e149087ceb974475a1fd63c59f1c1502f88d974f6f1da74201206ac4c2687e833ae066079ae4f6e6ac758"
         }
       ],
       "licenses": [
@@ -12532,7 +12532,7 @@
         "bootstrap@5.3.8",
         "bootstrap-icons@1.13.1",
         "connect-mongo@6.0.0",
-        "dotenv@17.4.0",
+        "dotenv@17.4.1",
         "ejs@5.0.1",
         "express@5.2.1",
         "express-rate-limit@8.3.2",
@@ -12540,14 +12540,14 @@
         "helmet@8.1.0",
         "ioredis@5.10.1",
         "keytar@7.9.0",
-        "mongoose@9.3.3",
+        "mongoose@9.4.1",
         "passport@0.7.0",
         "passport-google-oidc@0.1.0",
         "passport-local@1.0.0",
         "prom-client@15.1.3",
         "@playwright/test@1.59.1",
         "chai@6.2.2",
-        "eslint@10.1.0",
+        "eslint@10.2.0",
         "mocha@11.7.5",
         "nodemailer@8.0.4",
         "nodemon@3.1.14",
@@ -12562,7 +12562,7 @@
     {
       "ref": "@eslint-community/eslint-utils@4.9.1",
       "dependsOn": [
-        "eslint@10.1.0",
+        "eslint@10.2.0",
         "eslint-visitor-keys@3.4.3"
       ]
     },
@@ -12571,33 +12571,33 @@
       "dependsOn": []
     },
     {
-      "ref": "@eslint/config-array@0.23.3",
+      "ref": "@eslint/config-array@0.23.4",
       "dependsOn": [
-        "@eslint/object-schema@3.0.3",
+        "@eslint/object-schema@3.0.4",
         "debug@4.4.3",
         "minimatch@10.2.5"
       ]
     },
     {
-      "ref": "@eslint/config-helpers@0.5.3",
+      "ref": "@eslint/config-helpers@0.5.4",
       "dependsOn": [
-        "@eslint/core@1.1.1"
+        "@eslint/core@1.2.0"
       ]
     },
     {
-      "ref": "@eslint/core@1.1.1",
+      "ref": "@eslint/core@1.2.0",
       "dependsOn": [
         "@types/json-schema@7.0.15"
       ]
     },
     {
-      "ref": "@eslint/object-schema@3.0.3",
+      "ref": "@eslint/object-schema@3.0.4",
       "dependsOn": []
     },
     {
-      "ref": "@eslint/plugin-kit@0.6.1",
+      "ref": "@eslint/plugin-kit@0.7.0",
       "dependsOn": [
-        "@eslint/core@1.1.1",
+        "@eslint/core@1.2.0",
         "levn@0.4.1"
       ]
     },
@@ -13040,7 +13040,7 @@
       "dependsOn": []
     },
     {
-      "ref": "dotenv@17.4.0",
+      "ref": "dotenv@17.4.1",
       "dependsOn": []
     },
     {
@@ -13104,14 +13104,14 @@
       "dependsOn": []
     },
     {
-      "ref": "eslint@10.1.0",
+      "ref": "eslint@10.2.0",
       "dependsOn": [
         "@eslint-community/eslint-utils@4.9.1",
         "@eslint-community/regexpp@4.12.2",
-        "@eslint/config-array@0.23.3",
-        "@eslint/config-helpers@0.5.3",
-        "@eslint/core@1.1.1",
-        "@eslint/plugin-kit@0.6.1",
+        "@eslint/config-array@0.23.4",
+        "@eslint/config-helpers@0.5.4",
+        "@eslint/core@1.2.0",
+        "@eslint/plugin-kit@0.7.0",
         "@humanfs/node@0.16.7",
         "@humanwhocodes/module-importer@1.0.1",
         "@humanwhocodes/retry@0.4.3",
@@ -13798,7 +13798,7 @@
       ]
     },
     {
-      "ref": "mongoose@9.3.3",
+      "ref": "mongoose@9.4.1",
       "dependsOn": [
         "kareem@3.2.0",
         "mongodb@7.1.1",

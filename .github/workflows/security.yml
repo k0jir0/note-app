@@ -63,11 +63,11 @@ jobs:
       SELF_SIGNUP_ENABLED: 'false'
       GOOGLE_AUTO_PROVISION_ENABLED: 'false'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20.8.0'
+          node-version: '22'
           cache: 'npm'
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit --progress=false
