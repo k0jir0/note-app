@@ -1,0 +1,57 @@
+name: Privileged Access Review
+description: Record the quarterly review of admin and break_glass assignments.
+title: "[ITSG-33] Privileged access review: "
+body:
+  - type: input
+    id: review-date
+    attributes:
+      label: Review date
+      placeholder: YYYY-MM-DD
+    validations:
+      required: true
+  - type: input
+    id: reviewer
+    attributes:
+      label: Reviewer
+      placeholder: Name or handle
+    validations:
+      required: true
+  - type: textarea
+    id: accounts-reviewed
+    attributes:
+      label: Accounts reviewed
+      description: List or summarize every admin and break_glass assignment reviewed.
+      placeholder: admin@example.com, ops@example.com
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Decisions and justifications
+      description: Record retained, removed, or changed privileges and the business justification.
+      placeholder: Retained admin@example.com for release operations; removed break_glass from contractor@example.com after offboarding.
+    validations:
+      required: true
+  - type: textarea
+    id: denial-review
+    attributes:
+      label: Privileged-denial audit review
+      description: Summarize any unusual denied privileged actions or state that none were found.
+      placeholder: No unusual denied privileged actions.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence-links
+    attributes:
+      label: Evidence links
+      description: Link audit exports, approvals, screenshots, or related PRs.
+      placeholder: https://..., PR #123, ticket-789
+    validations:
+      required: true
+  - type: textarea
+    id: follow-up
+    attributes:
+      label: Follow-up actions
+      placeholder: None.
+    validations:
+      required: true

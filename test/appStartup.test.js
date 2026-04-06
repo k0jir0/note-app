@@ -41,14 +41,14 @@ describe('app startup utilities', () => {
         const server = await startApplication({
             app,
             mongooseLib,
-            dbURI: 'mongodb://127.0.0.1:27017/noteAppTest',
+            dbURI: 'mongodb://127.0.0.1:27017/heliosTest',
             port: 3000,
             logger
         });
 
         expect(server).to.equal(fakeServer);
         expect(callOrder).to.deep.equal(['connect', 'listen']);
-        sinon.assert.calledOnceWithExactly(mongooseLib.connect, 'mongodb://127.0.0.1:27017/noteAppTest');
+        sinon.assert.calledOnceWithExactly(mongooseLib.connect, 'mongodb://127.0.0.1:27017/heliosTest');
         sinon.assert.calledOnce(app.listen);
         expect(app.listen.firstCall.args[0]).to.equal(3000);
         expect(app.listen.firstCall.args[1]).to.be.a('function');
@@ -72,7 +72,7 @@ describe('app startup utilities', () => {
             await startApplication({
                 app,
                 mongooseLib,
-                dbURI: 'mongodb://127.0.0.1:27017/noteAppTest',
+                dbURI: 'mongodb://127.0.0.1:27017/heliosTest',
                 port: 3000,
                 logger
             });
@@ -110,7 +110,7 @@ describe('app startup utilities', () => {
             await startApplication({
                 app,
                 mongooseLib,
-                dbURI: 'mongodb://127.0.0.1:27017/noteAppTest',
+                dbURI: 'mongodb://127.0.0.1:27017/heliosTest',
                 port: 3000,
                 logger
             });
@@ -141,7 +141,7 @@ describe('app startup utilities', () => {
 
         await connectDatabase({
             mongooseLib,
-            dbURI: 'mongodb://127.0.0.1:27017/noteAppTest',
+            dbURI: 'mongodb://127.0.0.1:27017/heliosTest',
             logger
         });
         const server = await listenAsync({
@@ -176,7 +176,7 @@ describe('app startup utilities', () => {
         const server = await startApplication({
             app,
             mongooseLib,
-            dbURI: 'mongodb://127.0.0.1:27017/noteAppTest',
+            dbURI: 'mongodb://127.0.0.1:27017/heliosTest',
             port: 3443,
             logger: { log: sandbox.spy() },
             serverFactory
@@ -208,7 +208,7 @@ describe('app startup utilities', () => {
         const server = await startApplication({
             app,
             mongooseLib,
-            dbURI: 'mongodb://127.0.0.1:27017/noteAppTest',
+            dbURI: 'mongodb://127.0.0.1:27017/heliosTest',
             port: 3000,
             logger,
             serverFactory: null

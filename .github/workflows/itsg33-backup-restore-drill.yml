@@ -1,0 +1,310 @@
+name: ITSG-33 Backup Restore Drill
+
+on:
+  schedule:
+    - cron: '40 9 2 1,4,7,10 *'
+  workflow_dispatch:
+    inputs:
+      drill_environment:
+        description: Protected environment name for the drill
+        required: false
+        default: staging
+      backup_source:
+        description: Human-readable backup source label for the evidence record
+        required: false
+      restore_target:
+        description: Human-readable restore target label for the evidence record
+        required: false
+      issue_number:
+        description: Existing quarterly backup/restore issue number to update
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  run-backup-restore-drill:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.drill_environment || vars.ITSG33_RESTORE_DRILL_ENVIRONMENT || 'staging' }}
+
+    steps:
+      - name: Compute review period
+        id: review_period
+        shell: bash
+        run: |
+          year=$(date -u +%Y)
+          month=$(date -u +%m)
+          quarter=$(( ((10#$month - 1) / 3) + 1 ))
+          echo "value=${year}-Q${quarter}" >> "$GITHUB_OUTPUT"
+
+      - name: Define artifact name
+        id: artifact_name
+        run: |
+          echo "value=itsg33-backup-restore-drill-${{ steps.review_period.outputs.value }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --progress=false
+
+      - name: Prepare evidence directory
+        run: mkdir -p artifacts/itsg33/quarterly-review
+
+      - name: Resolve quarterly backup/restore issue
+        id: issue
+        uses: actions/github-script@v7
+        env:
+          REVIEW_PERIOD: ${{ steps.review_period.outputs.value }}
+          DISPATCH_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const requestedIssueNumber = Number(process.env.DISPATCH_ISSUE_NUMBER || 0);
+
+            if (requestedIssueNumber > 0) {
+              core.setOutput('found', 'true');
+              core.setOutput('number', String(requestedIssueNumber));
+              await core.summary.addRaw(`Using manually selected issue #${requestedIssueNumber}.`).write();
+              return;
+            }
+
+            const title = `[ITSG-33] Backup and restore exercise: ${process.env.REVIEW_PERIOD}`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'itsg33,quarterly-review,backup-restore',
+              per_page: 100
+            });
+            const matchingIssue = issues.find((issue) => !issue.pull_request && issue.title === title);
+
+            if (!matchingIssue) {
+              core.setOutput('found', 'false');
+              await core.summary.addRaw(`No open quarterly backup/restore issue matched ${title}.`).write();
+              return;
+            }
+
+            core.setOutput('found', 'true');
+            core.setOutput('number', String(matchingIssue.number));
+            await core.summary.addRaw(`Resolved quarterly backup/restore issue #${matchingIssue.number}.`).write();
+
+      - name: Collect backup and restore evidence
+        id: drill
+        continue-on-error: true
+        shell: bash
+        env:
+          DISPATCH_BACKUP_SOURCE: ${{ github.event.inputs.backup_source }}
+          DISPATCH_RESTORE_TARGET: ${{ github.event.inputs.restore_target }}
+          DISPATCH_DRILL_ENVIRONMENT: ${{ github.event.inputs.drill_environment }}
+          ITSG33_BACKUP_SOURCE_LABEL: ${{ vars.ITSG33_BACKUP_SOURCE_LABEL }}
+          ITSG33_RESTORE_TARGET_LABEL: ${{ vars.ITSG33_RESTORE_TARGET_LABEL }}
+          ITSG33_RESTORE_DRILL_ENVIRONMENT: ${{ vars.ITSG33_RESTORE_DRILL_ENVIRONMENT }}
+          ITSG33_PREPARE_RESTORE_COMMAND: ${{ vars.ITSG33_PREPARE_RESTORE_COMMAND }}
+          ITSG33_RESTORE_COMMAND: ${{ vars.ITSG33_RESTORE_COMMAND }}
+          ITSG33_POST_RESTORE_COMMAND: ${{ vars.ITSG33_POST_RESTORE_COMMAND }}
+          ITSG33_RESTORE_VALIDATION_COMMAND: ${{ vars.ITSG33_RESTORE_VALIDATION_COMMAND }}
+          ITSG33_RESTORE_HEALTH_URL: ${{ vars.ITSG33_RESTORE_HEALTH_URL }}
+          ITSG33_RESTORE_AUTH_URL: ${{ vars.ITSG33_RESTORE_AUTH_URL }}
+          ITSG33_RESTORE_TIMEOUT_MS: ${{ vars.ITSG33_RESTORE_TIMEOUT_MS }}
+          ITSG33_RESTORE_HTTP_TIMEOUT_MS: ${{ vars.ITSG33_RESTORE_HTTP_TIMEOUT_MS }}
+          ITSG33_RESTORE_AUTH_EXPECTED_STATUS: ${{ vars.ITSG33_RESTORE_AUTH_EXPECTED_STATUS }}
+          ITSG33_RESTORE_HEALTH_EXPECTED_STATUS: ${{ vars.ITSG33_RESTORE_HEALTH_EXPECTED_STATUS }}
+          ITSG33_RESTORE_HEALTHCHECK_TOKEN: ${{ secrets.ITSG33_RESTORE_HEALTHCHECK_TOKEN }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          NOTE_ENCRYPTION_KEY: ${{ secrets.NOTE_ENCRYPTION_KEY }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          ITSG33_RESTORE_AUTH_TOKEN: ${{ secrets.ITSG33_RESTORE_AUTH_TOKEN }}
+        run: |
+          output_file="artifacts/itsg33/quarterly-review/backup-restore-drill.json"
+          backup_source="${DISPATCH_BACKUP_SOURCE:-${ITSG33_BACKUP_SOURCE_LABEL:-protected-environment backup source}}"
+          restore_target="${DISPATCH_RESTORE_TARGET:-${ITSG33_RESTORE_TARGET_LABEL:-isolated recovery sandbox}}"
+          drill_environment="${DISPATCH_DRILL_ENVIRONMENT:-${ITSG33_RESTORE_DRILL_ENVIRONMENT:-staging}}"
+
+          if [ -z "${ITSG33_RESTORE_COMMAND}" ]; then
+            BACKUP_SOURCE="$backup_source" \
+            RESTORE_TARGET="$restore_target" \
+            DRILL_ENVIRONMENT="$drill_environment" \
+            node - <<'NODE'
+            const fs = require('fs');
+            const path = require('path');
+
+            const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'backup-restore-drill.json');
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+            fs.writeFileSync(outputPath, JSON.stringify({
+              generatedAt: new Date().toISOString(),
+              skipped: true,
+              success: false,
+              reason: 'ITSG33_RESTORE_COMMAND is not configured for the backup and restore workflow.',
+              backupSource: process.env.BACKUP_SOURCE,
+              restoreTarget: process.env.RESTORE_TARGET,
+              drillEnvironment: process.env.DRILL_ENVIRONMENT
+            }, null, 2));
+            NODE
+            echo "mode=skipped" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          set +e
+          BACKUP_SOURCE="$backup_source" \
+          RESTORE_TARGET="$restore_target" \
+          DRILL_ENVIRONMENT="$drill_environment" \
+          npm run itsg33:backup-restore:drill -- \
+            --backup-source="$backup_source" \
+            --restore-target="$restore_target" \
+            --drill-environment="$drill_environment" \
+            --output "$output_file"
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ] && [ ! -f "$output_file" ]; then
+            BACKUP_SOURCE="$backup_source" \
+            RESTORE_TARGET="$restore_target" \
+            DRILL_ENVIRONMENT="$drill_environment" \
+            node - <<'NODE'
+            const fs = require('fs');
+            const path = require('path');
+
+            const outputPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'backup-restore-drill.json');
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+            fs.writeFileSync(outputPath, JSON.stringify({
+              generatedAt: new Date().toISOString(),
+              skipped: false,
+              success: false,
+              reason: 'Backup and restore drill execution failed before a structured report could be written.',
+              backupSource: process.env.BACKUP_SOURCE,
+              restoreTarget: process.env.RESTORE_TARGET,
+              drillEnvironment: process.env.DRILL_ENVIRONMENT
+            }, null, 2));
+            NODE
+          fi
+
+          echo "mode=collected" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Upload backup and restore artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact_name.outputs.value }}
+          path: artifacts/itsg33/quarterly-review/backup-restore-drill.json
+          if-no-files-found: error
+
+      - name: Refresh backup and restore issue evidence comment
+        if: always() && steps.issue.outputs.found == 'true'
+        env:
+          REVIEW_PERIOD: ${{ steps.review_period.outputs.value }}
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+          ARTIFACT_NAME: ${{ steps.artifact_name.outputs.value }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const { owner, repo } = context.repo;
+            const marker = '<!-- itsg33-backup-restore-evidence -->';
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const runId = Number(process.env.GITHUB_RUN_ID);
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+            const artifactName = process.env.ARTIFACT_NAME;
+            const reportPath = path.join(process.env.GITHUB_WORKSPACE, 'artifacts', 'itsg33', 'quarterly-review', 'backup-restore-drill.json');
+            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100
+            });
+            const artifact = artifacts.find((entry) => entry.name === artifactName);
+            const artifactLink = artifact
+              ? `https://github.com/${owner}/${repo}/actions/runs/${runId}/artifacts/${artifact.id}`
+              : null;
+
+            const lines = [
+              marker,
+              `Backup and restore drill evidence for ${process.env.REVIEW_PERIOD}.`,
+              '',
+              `- Workflow run: ${runUrl}`,
+              `- Artifact: ${artifactLink || `${artifactName} (artifact unavailable)`}`,
+              `- Backup source: ${report.backupSource || 'unspecified'}`,
+              `- Restore target: ${report.restoreTarget || 'unspecified'}`,
+              `- Drill environment: ${report.drillEnvironment || 'unspecified'}`
+            ];
+
+            if (report.skipped) {
+              lines.push(`- Status: skipped`);
+              lines.push(`- Reason: ${report.reason || 'The drill was skipped.'}`);
+            } else {
+              lines.push(`- Status: ${report.success ? 'passed' : 'failed'}`);
+              if (report.summary) {
+                lines.push(`- Restore duration: ${report.summary.restoreDurationMs || 0}ms`);
+                lines.push(`- Overall duration: ${report.summary.overallDurationMs || 0}ms`);
+                lines.push(`- Failed steps: ${report.summary.failedSteps || 0}`);
+              }
+
+              if (Array.isArray(report.failures) && report.failures.length > 0) {
+                lines.push('');
+                lines.push('Failures:');
+                for (const failure of report.failures) {
+                  lines.push(`- ${failure.step}: ${failure.reason}`);
+                }
+              }
+            }
+
+            const body = lines.join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issueNumber,
+              per_page: 100
+            });
+            const existingComment = comments.find((comment) => comment.body && comment.body.includes(marker));
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body
+              });
+            }
+
+      - name: Evaluate drill result
+        if: always()
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const reportPath = path.join(process.cwd(), 'artifacts', 'itsg33', 'quarterly-review', 'backup-restore-drill.json');
+          const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+
+          if (report.skipped) {
+            console.log(report.reason || 'Backup and restore drill skipped.');
+            process.exit(0);
+          }
+
+          if (!report.success) {
+            console.error('Backup and restore drill failed.');
+            process.exit(1);
+          }
+
+          console.log('Backup and restore drill completed successfully.');
+          NODE

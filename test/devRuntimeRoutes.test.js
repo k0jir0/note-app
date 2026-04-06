@@ -72,7 +72,7 @@ describe('Dev Runtime Routes', () => {
             app: {
                 locals: {
                     runtimeConfig: {
-                        dbURI: 'mongodb://localhost:27017/noteApp',
+                        dbURI: 'mongodb://localhost:27017/helios',
                         database: {
                             tlsRequired: false,
                             tlsEnabled: false,

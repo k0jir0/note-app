@@ -44,8 +44,25 @@ const noteSchema = new mongoose.Schema({
 
 noteSchema.index({ user: 1, updatedAt: -1 });
 
-noteSchema.pre('save', function encryptNoteFields(next) {
+function runNoteHook(next, operation) {
     try {
+        operation();
+    } catch (error) {
+        if (typeof next === 'function') {
+            next(error);
+            return;
+        }
+
+        throw error;
+    }
+
+    if (typeof next === 'function') {
+        next();
+    }
+}
+
+noteSchema.pre('save', function encryptNoteFields(next) {
+    return runNoteHook(next, () => {
         ENCRYPTED_NOTE_FIELDS.forEach((fieldName) => {
             if (!this.isModified(fieldName)) {
                 return;
@@ -56,21 +73,14 @@ noteSchema.pre('save', function encryptNoteFields(next) {
                 this.set(fieldName, encryptText(value));
             }
         });
-
-        next();
-    } catch (error) {
-        next(error);
-    }
+    });
 });
 
 noteSchema.pre('findOneAndUpdate', function encryptUpdatedNoteFields(next) {
-    try {
+    return runNoteHook(next, () => {
         const update = this.getUpdate();
         this.setUpdate(encryptNoteUpdatePayload(update));
-        next();
-    } catch (error) {
-        next(error);
-    }
+    });
 });
 
 noteSchema.post('init', function decryptNoteAfterInit(document) {
@@ -78,12 +88,9 @@ noteSchema.post('init', function decryptNoteAfterInit(document) {
 });
 
 noteSchema.post('save', function decryptNoteAfterSave(document, next) {
-    try {
+    return runNoteHook(next, () => {
         decryptNoteDocumentFields(document);
-        next();
-    } catch (error) {
-        next(error);
-    }
+    });
 });
 
 noteSchema.post('find', function decryptNotesAfterFind(documents) {

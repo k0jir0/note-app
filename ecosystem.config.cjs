@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'note-app-web',
+      name: 'helios-web',
       script: 'index.js',
       cwd: __dirname,
       instances: 1,
@@ -22,7 +22,7 @@ module.exports = {
       },
     },
     {
-      name: 'note-app-worker',
+      name: 'helios-worker',
       script: 'src/workers/realtimeProcessor.js',
       cwd: __dirname,
       instances: 1,

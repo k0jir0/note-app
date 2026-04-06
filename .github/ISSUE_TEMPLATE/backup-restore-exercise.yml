@@ -1,0 +1,70 @@
+name: Backup and Restore Exercise
+description: Record contingency-planning backup and restore evidence.
+title: "[ITSG-33] Backup and restore exercise: "
+body:
+  - type: input
+    id: exercise-date
+    attributes:
+      label: Exercise date
+      placeholder: YYYY-MM-DD
+    validations:
+      required: true
+  - type: input
+    id: operator
+    attributes:
+      label: Operator or reviewer
+      placeholder: Name or handle
+    validations:
+      required: true
+  - type: input
+    id: backup-source
+    attributes:
+      label: Backup source
+      placeholder: Production snapshot, staging dump, vault export, etc.
+    validations:
+      required: true
+  - type: input
+    id: restore-target
+    attributes:
+      label: Restore target environment
+      placeholder: Isolated staging namespace, recovery sandbox, etc.
+    validations:
+      required: true
+  - type: input
+    id: duration
+    attributes:
+      label: Restore duration
+      placeholder: 18 minutes
+    validations:
+      required: true
+  - type: textarea
+    id: validation-results
+    attributes:
+      label: Validation results
+      description: Confirm application startup, auth surface, and representative protected-route checks.
+      placeholder: App started; /auth/login responded; protected route succeeded for an authorized user.
+    validations:
+      required: true
+  - type: textarea
+    id: issues
+    attributes:
+      label: Issues and manual steps
+      description: Record problems, undocumented steps, or state that none were found.
+      placeholder: None.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence-links
+    attributes:
+      label: Evidence links
+      description: Link logs, screenshots, timestamps, workflow comments, or related tickets.
+      placeholder: https://..., quarterly workflow comment, ticket-456, artifact path
+    validations:
+      required: true
+  - type: textarea
+    id: follow-up
+    attributes:
+      label: Follow-up actions
+      placeholder: None.
+    validations:
+      required: true

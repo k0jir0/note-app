@@ -15,7 +15,7 @@ async function renderNotesHome(req, res) {
         const notes = await noteService.listNotesForUser(req.user._id);
 
         return res.render('pages/home.ejs', {
-            title: 'Note App',
+            title: 'Helios',
             notes,
             csrfToken: res.locals.csrfToken
         });

@@ -19,6 +19,7 @@ const { enforceStrictSessionManagement } = require('../middleware/sessionManagem
 const { sanitizeResponseMetadata } = require('../middleware/responseMetadataProtection');
 const { createImmutableRequestAuditMiddleware } = require('../middleware/immutableRequestAudit');
 const { enforceSecureTransport } = require('../middleware/secureTransport');
+const { canReadOperationalDiagnostics } = require('../services/operationalDiagnosticsAccessService');
 const { requestContextMiddleware } = require('../utils/requestContext');
 const { handleUnhandledError } = require('../utils/errorHandler');
 
@@ -143,15 +144,16 @@ function createApp({
         app.use(injectSessionPrincipal);
     }
 
+    app.use((req, res, next) => {
+        res.locals.user = req.user || null;
+        next();
+    });
+
     app.use(enforceStrictSessionManagement);
     app.use(attachSessionAuthAssurance);
     app.use(enforceServerSideApiAccessControl);
     app.use(ensureCsrfToken);
     app.use(requireCsrfProtection);
-    app.use((req, res, next) => {
-        res.locals.user = req.user || null;
-        next();
-    });
     app.use(attachBreakGlassState);
 
     app.get('/healthz', (req, res) => {
@@ -159,9 +161,36 @@ function createApp({
             ? res.locals.breakGlass
             : (req.app && req.app.locals ? req.app.locals.breakGlass : null);
         const offline = Boolean(breakGlass && breakGlass.offline);
+        const diagnosticsAllowed = canReadOperationalDiagnostics(req);
+        const statusCode = offline ? 503 : 200;
 
-        return res.status(offline ? 503 : 200).json({
-            ok: !offline
+        if (!diagnosticsAllowed) {
+            return res.status(statusCode).json({
+                ok: !offline,
+                detailsRestricted: true
+            });
+        }
+
+        const auditClient = req.app && req.app.locals ? req.app.locals.immutableLogClient : null;
+        const auditDelivery = auditClient && typeof auditClient.getDeliveryState === 'function'
+            ? auditClient.getDeliveryState()
+            : null;
+
+        return res.status(statusCode).json({
+            ok: !offline,
+            detailsRestricted: false,
+            breakGlass: {
+                mode: breakGlass && breakGlass.mode ? breakGlass.mode : 'disabled',
+                enabled: Boolean(breakGlass && breakGlass.enabled)
+            },
+            immutableLogging: {
+                enabled: Boolean(auditClient && auditClient.enabled),
+                healthy: auditDelivery ? Boolean(auditDelivery.healthy) : true,
+                degraded: auditDelivery ? Boolean(auditDelivery.degraded) : false,
+                requireRemoteSuccess: auditDelivery
+                    ? Boolean(auditDelivery.requireRemoteSuccess)
+                    : Boolean(auditClient && auditClient.requireRemoteSuccess)
+            }
         });
     });
 

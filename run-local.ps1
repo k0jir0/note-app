@@ -83,7 +83,7 @@ if ($UsePm2) {
     }
 
     $env:PORT = "$Port"
-    $targetApps = if ($WithWorker) { 'note-app-web,note-app-worker' } else { 'note-app-web' }
+    $targetApps = if ($WithWorker) { 'helios-web,helios-worker' } else { 'helios-web' }
 
     pm2 start ecosystem.config.cjs --only $targetApps --update-env
     pm2 status

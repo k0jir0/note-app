@@ -1,0 +1,129 @@
+name: ITSG-33 Quarterly Review
+
+on:
+  schedule:
+    - cron: '20 9 1 1,4,7,10 *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-quarterly-review-issues:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Open or refresh quarterly review issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const now = new Date();
+            const quarter = Math.floor(now.getUTCMonth() / 3) + 1;
+            const period = `${now.getUTCFullYear()}-Q${quarter}`;
+            const sharedLabels = [
+              { name: 'itsg33', color: '0e8a16', description: 'ITSG-33 evidence and governance tracking' },
+              { name: 'evidence', color: '1d76db', description: 'Evidence collection and review records' },
+              { name: 'quarterly-review', color: 'fbca04', description: 'Recurring quarterly ITSG-33 review work' },
+              { name: 'backup-restore', color: '0052cc', description: 'Backup and restore exercise tracking' },
+              { name: 'break-glass', color: 'b60205', description: 'Break-glass exercise and emergency control tracking' },
+              { name: 'privileged-access', color: 'd93f0b', description: 'Privileged access review tracking' }
+            ];
+
+            async function ensureLabel(label) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: label.name });
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+
+                await github.rest.issues.createLabel({ owner, repo, ...label });
+              }
+            }
+
+            for (const label of sharedLabels) {
+              await ensureLabel(label);
+            }
+
+            const issueDefinitions = [
+              {
+                title: `[ITSG-33] Backup and restore exercise: ${period}`,
+                labels: ['itsg33', 'evidence', 'quarterly-review', 'backup-restore'],
+                templatePath: '.github/ISSUE_TEMPLATE/backup-restore-exercise.yml',
+                checklist: [
+                  '- [ ] Identify the backup source and restore target environment.',
+                  '- [ ] Execute the restore into an isolated environment.',
+                  '- [ ] Capture restore duration and any manual steps.',
+                  '- [ ] Run startup, authentication, and representative protected-route validation.',
+                  '- [ ] Attach or link the evidence package before closing this issue.'
+                ]
+              },
+              {
+                title: `[ITSG-33] Break-glass drill: ${period}`,
+                labels: ['itsg33', 'evidence', 'quarterly-review', 'break-glass'],
+                templatePath: '.github/ISSUE_TEMPLATE/break-glass-drill.yml',
+                checklist: [
+                  '- [ ] Confirm the scenario, target non-production environment, and approver.',
+                  '- [ ] Execute the break-glass activation and reset.',
+                  '- [ ] Capture audit evidence and health verification.',
+                  '- [ ] Record findings and follow-up actions.',
+                  '- [ ] Attach or link the evidence package before closing this issue.'
+                ]
+              },
+              {
+                title: `[ITSG-33] Privileged access review: ${period}`,
+                labels: ['itsg33', 'evidence', 'quarterly-review', 'privileged-access'],
+                templatePath: '.github/ISSUE_TEMPLATE/privileged-access-review.yml',
+                checklist: [
+                  '- [ ] Export or review all admin and break_glass assignments.',
+                  '- [ ] Confirm business justification for each privileged assignment.',
+                  '- [ ] Remove or track stale privileges.',
+                  '- [ ] Review recent privileged-denial audit events.',
+                  '- [ ] Attach or link the evidence package before closing this issue.'
+                ]
+              }
+            ];
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'itsg33,quarterly-review',
+              per_page: 100
+            });
+            const created = [];
+
+            for (const definition of issueDefinitions) {
+              const existing = issues.find((issue) => !issue.pull_request && issue.title === definition.title);
+              if (existing) {
+                created.push(`Already open: #${existing.number} ${definition.title}`);
+                continue;
+              }
+
+              const body = [
+                'This issue was created automatically for the quarterly ITSG-33 review cycle.',
+                '',
+                `Review period: ${period}`,
+                '',
+                'References:',
+                '- docs/itsg33-evidence-checklist.md',
+                '- docs/itsg33-operations-runbook.md',
+                `- ${definition.templatePath}`,
+                '',
+                'Checklist',
+                ...definition.checklist
+              ].join('\n');
+
+              const issue = await github.rest.issues.create({
+                owner,
+                repo,
+                title: definition.title,
+                body,
+                labels: definition.labels
+              });
+              created.push(`Created #${issue.data.number} ${definition.title}`);
+            }
+
+            await core.summary.addRaw(created.join('\n')).write();

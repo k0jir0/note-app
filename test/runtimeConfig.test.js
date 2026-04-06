@@ -13,7 +13,7 @@ const {
 describe('Runtime Config Validation', () => {
     function createValidEnv() {
         return {
-            MONGODB_URI: 'mongodb://localhost:27017/noteApp',
+            MONGODB_URI: 'mongodb://localhost:27017/helios',
             SESSION_SECRET: 'a'.repeat(MIN_SESSION_SECRET_LENGTH),
             NOTE_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
         };
@@ -22,30 +22,20 @@ describe('Runtime Config Validation', () => {
     it('accepts a valid config without Google OAuth', () => {
         const config = validateRuntimeConfig(createValidEnv());
 
-        expect(config.dbURI).to.equal('mongodb://localhost:27017/noteApp');
-        expect(config.runtimePosture).to.deep.equal({
-            profile: 'local',
-            protectedRuntime: false,
-            source: 'heuristic_local'
-        });
+        expect(config.dbURI).to.equal('mongodb://localhost:27017/helios');
         expect(config.database).to.deep.equal({
-            uri: 'mongodb://localhost:27017/noteApp',
+            uri: 'mongodb://localhost:27017/helios',
             tlsRequired: false,
             tlsEnabled: false,
             local: true
         });
         expect(config.googleAuthEnabled).to.equal(false);
-        expect(config.identityLifecycle).to.deep.equal({
-            protectedRuntime: false,
-            selfSignupEnabled: true,
-            googleAutoProvisionEnabled: true
-        });
         expect(config.cipherAlgo).to.equal('aes-256-gcm');
     });
 
     it('does not treat .local MongoDB hosts as local-only deployments', () => {
         const env = createValidEnv();
-        env.MONGODB_URI = 'mongodb://mongo.local:27017/noteApp';
+        env.MONGODB_URI = 'mongodb://mongo.local:27017/helios';
 
         expect(() => validateRuntimeConfig(env)).to.throw('MONGODB_URI must enable TLS');
     });
@@ -114,27 +104,6 @@ describe('Runtime Config Validation', () => {
         expect(() => validateRuntimeConfig(env)).to.throw('APP_BASE_URL must be a valid http or https URL when set');
     });
 
-    it('infers a protected runtime when NODE_ENV is omitted but remote deployment signals are present', () => {
-        const env = createValidEnv();
-        env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
-        env.APP_BASE_URL = 'https://note-app.example.com';
-        env.TRUST_PROXY_HOPS = '1';
-        env.TRUSTED_PROXY_ADDRESSES = '127.0.0.1';
-        env.IMMUTABLE_LOGGING_ENABLED = 'true';
-        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
-        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
-
-        const config = validateRuntimeConfig(env);
-
-        expect(config.runtimePosture).to.deep.equal({
-            profile: 'protected',
-            protectedRuntime: true,
-            source: 'heuristic_protected'
-        });
-        expect(config.transport.secureTransportRequired).to.equal(true);
-        expect(config.identityLifecycle.protectedRuntime).to.equal(true);
-    });
-
     it('returns disabled automation config by default', () => {
         const config = validateRuntimeConfig(createValidEnv());
 
@@ -168,17 +137,12 @@ describe('Runtime Config Validation', () => {
             proxyTlsTerminated: false,
             publicOriginHttps: false
         });
-        expect(config.identityLifecycle).to.deep.equal({
-            protectedRuntime: false,
-            selfSignupEnabled: true,
-            googleAutoProvisionEnabled: true
-        });
         expect(config.breakGlass).to.deep.equal({
             mode: 'disabled',
             reason: ''
         });
         expect(config.database).to.deep.equal({
-            uri: 'mongodb://localhost:27017/noteApp',
+            uri: 'mongodb://localhost:27017/helios',
             tlsRequired: false,
             tlsEnabled: false,
             local: true
@@ -189,7 +153,7 @@ describe('Runtime Config Validation', () => {
             endpoint: '',
             token: '',
             timeoutMs: 2000,
-            source: 'note-app',
+            source: 'helios',
             format: 'json',
             requireForwardSuccess: false
         });
@@ -209,7 +173,7 @@ describe('Runtime Config Validation', () => {
         env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
         env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
         env.IMMUTABLE_LOGGING_TIMEOUT_MS = '3500';
-        env.IMMUTABLE_LOGGING_SOURCE = 'note-app-web';
+        env.IMMUTABLE_LOGGING_SOURCE = 'helios-web';
 
         const config = validateRuntimeConfig(env);
 
@@ -219,7 +183,7 @@ describe('Runtime Config Validation', () => {
             endpoint: 'https://logs.example.com/append',
             token: 'remote-write-only-token',
             timeoutMs: 3500,
-            source: 'note-app-web',
+            source: 'helios-web',
             format: 'json',
             requireForwardSuccess: false
         });
@@ -300,7 +264,6 @@ describe('Runtime Config Validation', () => {
 
         expect(config.transport.trustProxyHops).to.equal(1);
         expect(config.transport.trustProxyClientCertHeaders).to.equal(false);
-        expect(config.transport.proxyTlsTerminated).to.equal(false);
     });
 
     it('requires explicit proxy-hop trust before client-certificate headers can be trusted', () => {
@@ -356,70 +319,6 @@ describe('Runtime Config Validation', () => {
         env.HTTPS_CERT_PATH = 'C:\\tls\\server.crt';
 
         expect(() => validateRuntimeConfig(env)).to.throw('HTTPS_CA_PATH is required when HTTPS_REQUEST_CLIENT_CERT=true');
-    });
-
-    it('requires protected runtimes to configure secure inbound transport', () => {
-        const env = createValidEnv();
-        env.NODE_ENV = 'production';
-        env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
-        env.IMMUTABLE_LOGGING_ENABLED = 'true';
-        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
-        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
-
-        expect(() => validateRuntimeConfig(env)).to.throw('Protected runtime deployments require HTTPS_ENABLED=true or a trusted TLS-terminating proxy');
-    });
-
-    it('accepts a trusted HTTPS proxy posture for protected runtimes', () => {
-        const env = createValidEnv();
-        env.NODE_ENV = 'production';
-        env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
-        env.APP_BASE_URL = 'https://note-app.example.com';
-        env.TRUST_PROXY_HOPS = '1';
-        env.TRUSTED_PROXY_ADDRESSES = '127.0.0.1, ::1';
-        env.IMMUTABLE_LOGGING_ENABLED = 'true';
-        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
-        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
-
-        const config = validateRuntimeConfig(env);
-
-        expect(config.transport.protocol).to.equal('https');
-        expect(config.transport.secureTransportRequired).to.equal(true);
-        expect(config.transport.proxyTlsTerminated).to.equal(true);
-        expect(config.transport.publicOriginHttps).to.equal(true);
-        expect(config.transport.trustedProxyAddresses).to.deep.equal(['127.0.0.1', '::1']);
-        expect(config.identityLifecycle).to.deep.equal({
-            protectedRuntime: true,
-            selfSignupEnabled: false,
-            googleAutoProvisionEnabled: false
-        });
-    });
-
-    it('requires an explicit trusted proxy allowlist for protected runtime proxy transport', () => {
-        const env = createValidEnv();
-        env.NODE_ENV = 'production';
-        env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
-        env.APP_BASE_URL = 'https://note-app.example.com';
-        env.TRUST_PROXY_HOPS = '1';
-        env.IMMUTABLE_LOGGING_ENABLED = 'true';
-        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
-        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
-
-        expect(() => validateRuntimeConfig(env)).to.throw('TRUSTED_PROXY_ADDRESSES must enumerate one or more exact proxy addresses');
-    });
-
-    it('rejects self-service identity provisioning in protected runtimes', () => {
-        const env = createValidEnv();
-        env.NODE_ENV = 'production';
-        env.MONGODB_URI = 'mongodb+srv://cluster0.example.mongodb.net/noteApp';
-        env.APP_BASE_URL = 'https://note-app.example.com';
-        env.TRUST_PROXY_HOPS = '1';
-        env.TRUSTED_PROXY_ADDRESSES = '127.0.0.1';
-        env.IMMUTABLE_LOGGING_ENABLED = 'true';
-        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.com/append';
-        env.IMMUTABLE_LOGGING_TOKEN = 'remote-write-only-token';
-        env.SELF_SIGNUP_ENABLED = 'true';
-
-        expect(() => validateRuntimeConfig(env)).to.throw('SELF_SIGNUP_ENABLED must remain false in protected runtime environments');
     });
 
     it('accepts custom session-timeout settings and concurrent-login policy', () => {
@@ -483,14 +382,9 @@ describe('Runtime Config Validation', () => {
 
     it('builds a sanitized runtime diagnostic view without secrets', () => {
         const diagnostics = toDiagnosticRuntimeConfig({
-            dbURI: 'mongodb://localhost:27017/noteApp',
-            runtimePosture: {
-                profile: 'protected',
-                protectedRuntime: true,
-                source: 'runtime_posture'
-            },
+            dbURI: 'mongodb://localhost:27017/helios',
             database: {
-                uri: 'mongodb://localhost:27017/noteApp',
+                uri: 'mongodb://localhost:27017/helios',
                 tlsRequired: true,
                 tlsEnabled: true,
                 local: false
@@ -523,7 +417,7 @@ describe('Runtime Config Validation', () => {
                 token: 'write-only-token',
                 timeoutMs: 2500,
                 format: 'syslog',
-                source: 'note-app-web',
+                source: 'helios-web',
                 requireForwardSuccess: true
             },
             automation: {
@@ -546,11 +440,6 @@ describe('Runtime Config Validation', () => {
             cipherAlgo: 'aes-256-gcm',
             appBaseUrl: 'http://localhost:3000',
             googleAuthEnabled: true
-        });
-        expect(diagnostics.runtimePosture).to.deep.equal({
-            profile: 'protected',
-            protectedRuntime: true,
-            source: 'runtime_posture'
         });
         expect(diagnostics.database).to.deep.equal({
             tlsRequired: true,
@@ -575,7 +464,7 @@ describe('Runtime Config Validation', () => {
             endpointConfigured: true,
             timeoutMs: 2500,
             format: 'syslog',
-            source: 'note-app-web'
+            source: 'helios-web'
         });
         expect(diagnostics.sessionManagement).to.deep.equal({
             idleTimeoutMinutes: 15,

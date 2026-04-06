@@ -1,5 +1,5 @@
 {
-  "name": "note-app",
+  "name": "helios",
   "version": "0.1.0",
   "description": "A full-stack note-taking and security-research application with authentication, encrypted notes, and security analysis dashboards",
   "main": "index.js",
@@ -13,7 +13,7 @@
     "sandbox:down": "docker compose -f docker-compose.sandbox.yml down",
     "sandbox:logs": "docker compose -f docker-compose.sandbox.yml logs -f proxy app mongo",
     "k8s:apply": "kubectl apply -f ops/kubernetes/immutable-stack.yaml",
-    "k8s:rotate": "kubectl rollout restart deployment/note-app deployment/note-app-proxy -n note-app",
+    "k8s:rotate": "kubectl rollout restart deployment/helios deployment/helios-proxy -n helios",
     "k8s:teardown": "kubectl delete -f ops/kubernetes/immutable-stack.yaml",
     "check-env": "node scripts/env-check.js",
     "backup:export": "node scripts/export-backup.js",
@@ -24,12 +24,12 @@
     "automation:falco": "node automation/falco-runner.js",
     "ml:train": "node scripts/train-alert-triage-model.js",
     "locator-repair:train": "node scripts/train-locator-repair-model.js",
-    "pm2:start": "pm2 start ecosystem.config.cjs --only note-app-web --update-env",
-    "pm2:start:worker": "pm2 start ecosystem.config.cjs --only note-app-web,note-app-worker --update-env",
+    "pm2:start": "pm2 start ecosystem.config.cjs --only helios-web --update-env",
+    "pm2:start:worker": "pm2 start ecosystem.config.cjs --only helios-web,helios-worker --update-env",
     "pm2:restart": "pm2 restart ecosystem.config.cjs --update-env",
-    "pm2:stop": "pm2 delete note-app-web note-app-worker",
+    "pm2:stop": "pm2 delete helios-web helios-worker",
     "pm2:status": "pm2 status",
-    "pm2:logs": "pm2 logs note-app-web --lines 200",
+    "pm2:logs": "pm2 logs helios-web --lines 200",
     "worker": "node src/workers/realtimeProcessor.js",
     "test": "mocha --require ./test/testSetup.js \"test/**/*.js\"",
     "test:selenium": "node scripts/run-selenium-suite.js",
@@ -41,12 +41,20 @@
     "audit:deps": "npm audit --audit-level=high",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "audit:report": "npm audit --json",
+    "itsg33:audit-health": "node scripts/check-audit-health.js",
+    "itsg33:backup-restore:drill": "node scripts/run-backup-restore-drill.js",
+    "itsg33:privileged-access:report": "node scripts/export-privileged-access-report.js",
+    "itsg33:k8s-pins:check": "node scripts/check-k8s-image-pins.js",
+    "itsg33:k8s-pins:refresh": "node scripts/refresh-k8s-support-image-digests.js",
+    "itsg33:docs:check": "node scripts/check-itsg33-docs.js",
+    "itsg33:repo-checks": "npm run itsg33:k8s-pins:check && npm run itsg33:docs:check",
+    "sbom:check": "node scripts/check-sbom.js",
     "sbom:generate": "node scripts/generate-sbom.js",
     "lint": "eslint . --ext .js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/k0jir0/note-app.git"
+    "url": "git+https://github.com/k0jir0/helios.git"
   },
   "keywords": [
     "notes",
@@ -65,39 +73,39 @@
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/k0jir0/note-app/issues"
+    "url": "https://github.com/k0jir0/helios/issues"
   },
   "overrides": {
     "serialize-javascript": "7.0.5"
   },
-  "homepage": "https://github.com/k0jir0/note-app#readme",
+  "homepage": "https://github.com/k0jir0/helios#readme",
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
-    "chai": "^4.3.7",
-    "eslint": "^8.57.1",
-    "mocha": "^11.3.0",
+    "@playwright/test": "^1.59.1",
+    "chai": "^6.2.2",
+    "eslint": "^10.1.0",
+    "mocha": "^11.7.5",
     "nodemailer": "^8.0.2",
-    "nodemon": "^3.1.11",
+    "nodemon": "^3.1.14",
     "selenium-webdriver": "^4.41.0",
-    "sinon": "^21.0.1"
+    "sinon": "^21.0.3"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "bootstrap": "^5.3.8",
-    "bootstrap-icons": "^1.11.3",
+    "bootstrap-icons": "^1.13.1",
     "connect-mongo": "^6.0.0",
-    "dotenv": "^17.3.1",
+    "dotenv": "^17.4.0",
     "ejs": "^5.0.1",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.3.1",
+    "express-rate-limit": "^8.3.2",
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
-    "ioredis": "^5.3.1",
+    "ioredis": "^5.10.1",
     "keytar": "^7.7.0",
-    "mongoose": "^8.10.0",
+    "mongoose": "^9.3.3",
     "passport": "^0.7.0",
     "passport-google-oidc": "^0.1.0",
     "passport-local": "^1.0.0",
-    "prom-client": "^14.0.0"
+    "prom-client": "^15.1.3"
   }
 }

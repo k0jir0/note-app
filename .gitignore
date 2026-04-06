@@ -155,6 +155,8 @@ documents/report4.txt
 documents/report5.txt
 documents/paper2.txt
 documents/paper7.txt
+documents/paper99.txt
+documents/note1f.txt
 documents/selenium1.txt
 documents/playwright1.txt
 documents/letter5.txt
@@ -172,9 +174,11 @@ pitch.txt
 documents/McGillSoftware.code-workspace
 *.code-workspace
 
-# Terraform runtime files and state
+# Terraform runtime and generated artifacts
+**/.terraform/
 *.tfstate
 *.tfstate.backup
-**/.terraform/
-ops/terraform/**/.terraform/
-
+ops/terraform/**/tfplan
+ops/terraform/**/tfplan.*
+ops/terraform/**/lambda.zip
+ops/terraform/**/invoke-response*.json

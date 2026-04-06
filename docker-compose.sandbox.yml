@@ -36,7 +36,7 @@ services:
       INTRUSION_BATCH_ENABLED: false
       APP_BASE_URL: http://localhost:${SANDBOX_PUBLIC_PORT:-3000}
       TRUST_PROXY_HOPS: 1
-      MONGODB_URI: mongodb://mongo:27017/noteAppSandbox
+      MONGODB_URI: mongodb://mongo:27017/heliosSandbox
     expose:
       - "3000"
     depends_on:

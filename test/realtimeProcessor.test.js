@@ -17,6 +17,10 @@ describe('Realtime Processor', () => {
         sinon.restore();
     });
 
+    it('does not override the test runtime environment when local env files are loaded', () => {
+        expect(process.env.NODE_ENV).to.equal('test');
+    });
+
     it('dead-letters malformed payloads and acknowledges the original message', async () => {
         const redisClient = {
             xadd: sinon.stub().resolves('2-0'),
@@ -195,7 +199,7 @@ describe('Realtime Processor', () => {
             realtimeEnabled: false,
             disconnectMongoOnStop: false,
             runtimeConfig: {
-                dbURI: 'mongodb://127.0.0.1:27017/note-app',
+                dbURI: 'mongodb://127.0.0.1:27017/helios',
                 automation: {
                     logBatch: {
                         enabled: true,

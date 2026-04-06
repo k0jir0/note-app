@@ -17,7 +17,7 @@ function buildImmutableLoggingConfig(env, errors) {
     }, errors);
     const endpoint = isNonEmptyString(env.IMMUTABLE_LOGGING_URL) ? env.IMMUTABLE_LOGGING_URL.trim() : '';
     const token = isNonEmptyString(env.IMMUTABLE_LOGGING_TOKEN) ? env.IMMUTABLE_LOGGING_TOKEN.trim() : '';
-    const source = isNonEmptyString(env.IMMUTABLE_LOGGING_SOURCE) ? env.IMMUTABLE_LOGGING_SOURCE.trim() : 'note-app';
+    const source = isNonEmptyString(env.IMMUTABLE_LOGGING_SOURCE) ? env.IMMUTABLE_LOGGING_SOURCE.trim() : 'helios';
     const format = isNonEmptyString(env.IMMUTABLE_LOGGING_FORMAT) ? env.IMMUTABLE_LOGGING_FORMAT.trim().toLowerCase() : 'json';
 
     if (!IMMUTABLE_LOG_FORMATS.includes(format)) {

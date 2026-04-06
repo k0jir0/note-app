@@ -96,6 +96,13 @@ describe('persistent audit service', () => {
         expect(createdDocs[0].entryHash).to.be.a('string').with.length.greaterThan(10);
         expect(forwarded).to.have.length(1);
         expect(forwarded[0].level).to.equal('audit');
+        expect(client.getDeliveryState()).to.deep.include({
+            healthy: true,
+            degraded: false,
+            persistedHealthy: true,
+            remoteHealthy: true,
+            requireRemoteSuccess: false
+        });
     });
 
     it('continues the persisted audit hash chain across client instances', async () => {
@@ -154,6 +161,41 @@ describe('persistent audit service', () => {
         });
 
         expect(result).to.equal(false);
+    });
+
+    it('tracks degraded delivery health when remote forwarding fails but local persistence succeeds', async () => {
+        const client = createPersistentAuditClient({
+            baseClient: {
+                enabled: true,
+                capture: async () => false
+            },
+            AuditEventModel: {
+                create: async (doc) => doc
+            },
+            AuditChainStateModel: createChainStateModel(),
+            osLib: { hostname: () => 'audit-host' },
+            clock: () => new Date('2026-04-01T20:00:00.000Z')
+        });
+
+        const result = await client.audit('Remote sink unavailable', {
+            category: 'http-request'
+        });
+        const deliveryState = client.getDeliveryState();
+
+        expect(result).to.equal(true);
+        expect(deliveryState).to.deep.include({
+            healthy: false,
+            degraded: true,
+            persistedHealthy: true,
+            remoteHealthy: false,
+            requireRemoteSuccess: false
+        });
+        expect(deliveryState.lastFailureAt).to.equal('2026-04-01T20:00:00.000Z');
+        expect(deliveryState.lastError).to.equal('Immutable audit delivery degraded.');
+        expect(deliveryState.lastOutcome).to.deep.equal({
+            persisted: true,
+            forwarded: false
+        });
     });
 
     it('can throw on required immutable audit delivery failures in strict mode', async () => {

@@ -4,7 +4,7 @@ const os = require('os');
 const { enrichMetadataWithRequestContext } = require('./semanticLogging');
 
 const DEFAULT_TIMEOUT_MS = 2000;
-const DEFAULT_SOURCE = 'note-app';
+const DEFAULT_SOURCE = 'helios';
 const DEFAULT_FORMAT = 'json';
 const CONSOLE_LEVEL_MAP = {
     log: 'info',
@@ -122,7 +122,7 @@ function buildSyslogPayload(entry, entryHash) {
         `entryHash="${escapeSyslogStructuredValue(entryHash)}"`
     ].join(' ');
 
-    return `<${priority}>1 ${entry.timestamp} ${host} ${appName} - - [note-app@48577 ${structuredData}] ${JSON.stringify({
+    return `<${priority}>1 ${entry.timestamp} ${host} ${appName} - - [helios@48577 ${structuredData}] ${JSON.stringify({
         message: entry.message,
         metadata: entry.metadata
     })}`;
@@ -175,7 +175,7 @@ function createImmutableLogClient(runtimeConfig = {}, options = {}) {
         const enrichedMetadata = enrichMetadataWithRequestContext(metadata);
         const entry = {
             schemaVersion: 1,
-            application: 'note-app',
+            application: 'helios',
             source: immutableLogging.source || DEFAULT_SOURCE,
             host: typeof osLib.hostname === 'function' ? osLib.hostname() : '',
             level,

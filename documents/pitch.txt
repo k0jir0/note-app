@@ -1,4 +1,4 @@
-Note App: Secure Research Workspace
+Helios: Secure Research Workspace
 ==================================
 
 A next-generation, security-first note-taking and research platform for professionals who demand more than just notes. 

@@ -52,7 +52,7 @@ describe('Audit and telemetry page routes', () => {
                     immutableLogging: {
                         enabled: true,
                         endpoint: 'https://logs.example.test/append',
-                        source: 'note-app',
+                        source: 'helios',
                         timeoutMs: 2500,
                         format: 'syslog'
                     },
@@ -68,7 +68,7 @@ describe('Audit and telemetry page routes', () => {
                         immutableLogging: {
                             enabled: true,
                             endpoint: 'https://logs.example.test/append',
-                            source: 'note-app',
+                            source: 'helios',
                             timeoutMs: 2500,
                             format: 'syslog'
                         },

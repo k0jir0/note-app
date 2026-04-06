@@ -8,7 +8,7 @@ async function prompt(question) {
 async function run() {
     try {
         const keytar = require('keytar');
-        const service = 'note-app-local';
+        const service = 'helios-local';
 
         console.log('This will store Google credentials in your OS keyring (Windows Credential Manager).');
         const id = (await prompt('Google Client ID: ')).trim();

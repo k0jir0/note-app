@@ -78,7 +78,8 @@ describe('protected runtime app smoke', function () {
 
         expect(response.status).to.equal(200);
         expect(payload).to.deep.equal({
-            ok: true
+            ok: true,
+            detailsRestricted: true
         });
     });
 });

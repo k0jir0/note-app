@@ -1,6 +1,6 @@
 ================================================================================
 DEVELOPMENT NOTES & LESSONS LEARNED
-Note-Taking Application Development Process
+Helios Development Process
 ================================================================================
 
 PROJECT OVERVIEW
@@ -10,6 +10,14 @@ This full-stack note-taking, security-research, and browser-automation-aware app
 Current verified state (March 31, 2026): 575 passing tests, ESLint clean, `npm audit` clean for both all-dependency and production-only gates, Chromium Playwright smoke coverage at 21 passing browser tests, MongoDB-backed session persistence, synchronizer-token CSRF protection, Helmet/CSP browser hardening, rate-limited security analysis endpoints, a unified Research Workspace, dedicated Security Operations, Alert Triage ML, Mission Access Assurance, Hardware-Backed MFA, Session Security, Query Injection Prevention, XSS and CSP Defense, Server Access Control, Playwright Testing, Selenium Testing, Self-Healing Locator Repair, Supply Chain Security, and Audit Trail and Telemetry modules, plus focused March 29 module coverage at 13 passing tests for the new page routes and persisted audit-history backend, focused March 30 sandbox runtime coverage at 20 passing tests, and focused March 31 hardening regressions at 82 passing tests. The app now enforces a global protected-API access gate, request-level Mongo injection blocking, strict CSP-backed rendering posture, mission-aware RBAC-plus-ABAC evaluation, hardware-first session assurance with WebAuthn and PKI support, strict idle and absolute session limits with concurrent-login invalidation, startup-stable local launch behavior, TLS 1.3-only inbound transport when HTTPS is enabled, sanitized metadata/error exposure, immutable remote logging, request-scoped database state-change telemetry, SIEM-friendly JSON or syslog log formatting, a validated hardened distroless container build, a verified three-zone DMZ/app/data sandbox deployment with an unprivileged Nginx edge tier, a live authenticated audit-history feed backed by persisted `AuditEvent` records, authenticated same-origin note-image delivery backed by server-managed assets, a reusable app factory and centralized route registry, persisted break-glass runtime state, account-level login lockout, privileged dev-tool gating, strict immutable-audit fail-closed behavior, fail-safe break-glass persistence degradation, federated-account lockout parity, and stricter MongoDB TLS plus immutable-audit enforcement across protected runtime deployments.
 
 Development log (newest first):
+
+Latest April 1, 2026 repository-governance and maintenance updates:
+- Merged the repo-level ITSG-33 hardening program into `main`, including recurring review workflows, release-evidence rollups, Kubernetes support-image pin enforcement, required-artifact drift checks, stronger privileged-runtime auditing, and immutable-audit delivery-health exposure.
+- Followed that merge with two workflow-registration fixes so the support-image refresh automation now lives at `.github/workflows/itsg33-k8s-support-image-refresh.yml`, replacing the earlier file path that GitHub persisted as an active workflow record but would not accept as manually dispatchable.
+- Added `eslint.config.cjs` so the merged Dependabot npm update could move from legacy `.eslintrc.json` assumptions to the ESLint 10 flat-config model without rewriting the repo's established lint rule set by hand.
+- Regenerated the committed CycloneDX SBOM after the dependency updates so `npm run sbom:check` stays meaningful as a lockfile-derived supply-chain gate instead of drifting behind the real package graph.
+- Repaired the failing npm Dependabot pull request by fixing the ESLint 10 compatibility issue and refreshing the SBOM, then merged that PR after all six required GitHub checks returned green.
+- Cleaned repository hygiene after the merge sequence by fast-forwarding local `main`, pruning merged feature/fix branches, leaving `test-branch` intact for separate judgment, and reducing the remaining open branch surface to `test-branch` plus the still-open Docker Dependabot branch.
 
 Latest March 31, 2026 hardening updates addressed the repo's ITSG-33-aligned review findings:
 - Persisted the break-glass runtime state through a shared backend store instead of relying only on in-process app locals, and required a recent hardware-first MFA step-up before the runtime break-glass mode can be changed.
@@ -47,9 +55,9 @@ Recent updates (March 30, 2026) focused on architectural sandboxing and operator
 - Added `ops/kubernetes/immutable-stack.yaml` so the same proxy/app split now has a Kubernetes deployment path with rolling-update Deployments, default-deny ingress, and a public edge service in front of the internal application service.
 - Added a namespace-scoped daily rollout CronJob plus RBAC so the proxy and app pods are forcibly recycled every 24 hours from the pinned approved image reference instead of being left running indefinitely.
 - Added `npm run k8s:apply`, `npm run k8s:rotate`, and `npm run k8s:teardown` plus README guidance so the non-persistent deployment flow is executable and not only documented as a policy target.
-- Switched the local Kubernetes path to a self-contained kind-friendly stack by using the preloaded `note-app:hardened` image with `imagePullPolicy: Never`, adding an internal ephemeral MongoDB service, and exposing the proxy through NodePort `30080` mapped to `http://localhost:3002`.
-- Live-validated the immutable stack on a disposable `kind-note-app-local` cluster: `GET /healthz` and `GET /auth/login` returned HTTP 200 through the public proxy, `kubectl get cronjob,pods,svc -n note-app` showed the daily rollout CronJob plus healthy app/proxy/Mongo resources, and `npm run k8s:rotate` completed a successful rolling recycle.
-- Confirmed the local cluster intentionally reports `Google sign-in is not configured` until `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are injected into `note-app-secrets` and the Google OAuth client allows `http://localhost:3002/auth/oauth2/redirect/google`.
+- Switched the local Kubernetes path to a self-contained kind-friendly stack by using the preloaded `helios:hardened` image with `imagePullPolicy: Never`, adding an internal ephemeral MongoDB service, and exposing the proxy through NodePort `30080` mapped to `http://localhost:3002`.
+- Live-validated the immutable stack on a disposable `kind-helios-local` cluster: `GET /healthz` and `GET /auth/login` returned HTTP 200 through the public proxy, `kubectl get cronjob,pods,svc -n helios` showed the daily rollout CronJob plus healthy app/proxy/Mongo resources, and `npm run k8s:rotate` completed a successful rolling recycle.
+- Confirmed the local cluster intentionally reports `Google sign-in is not configured` until `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are injected into `helios-secrets` and the Google OAuth client allows `http://localhost:3002/auth/oauth2/redirect/google`.
 - Added a dedicated `docker-compose.sandbox.yml` deployment that splits the stack into a DMZ-style `edge_zone`, an internal-only `app_zone`, and an internal-only `data_zone`, with only the Nginx reverse proxy published to the host.
 - Added `ops/nginx/sandbox.conf` so the DMZ edge terminates public HTTP traffic, forwards the app routes and SSE security stream to the internal Node service, and preserves forwarded-client headers for the backend.
 - Extended runtime configuration with `TRUST_PROXY_HOPS` so Express trusts exactly one proxy hop in the sandbox deployment instead of assuming direct client connections.
@@ -66,9 +74,9 @@ Recent updates (March 29, 2026) focused on transport hardening, auditability, an
 - Added request-scoped database telemetry using AsyncLocalStorage plus model-layer hooks so persisted state changes now emit Who, What, When, Where, and How summaries for create, update, delete, and tracked bulk-write operations.
 - Extended immutable logging with SIEM-oriented output formatting so the same audit pipeline can emit structured JSON for Splunk/ELK-style collectors or RFC 5424-style syslog text when the downstream collector expects syslog payloads.
 - Tightened dependency scanning by adding local `npm audit` scripts, CI gating for high-severity package CVEs, and a transitive override to remove the vulnerable `serialize-javascript` path currently pulled in by Mocha.
-- Added CycloneDX SBOM generation from the npm lockfile so the repo now keeps a reproducible manifest of third-party libraries at `sbom/note-app.cdx.json`.
+- Added CycloneDX SBOM generation from the npm lockfile so the repo now keeps a reproducible manifest of third-party libraries at `sbom/helios.cdx.json`.
 - Added a hardened Docker path with a multi-stage budil, production-only dependencies, and a non-root distroless runtime image so container deployments no longer rely on a general-purpose base image.
-- Verified the hardened image locally: `docker build -t note-app:hardened .` succeeds, the app serves HTTP 200 from `/auth/login` when pointed at host MongoDB through `host.docker.internal`, and the container now suppresses optional `keytar` loading that is not usable inside the distroless runtime.
+- Verified the hardened image locally: `docker build -t helios:hardened .` succeeds, the app serves HTTP 200 from `/auth/login` when pointed at host MongoDB through `host.docker.internal`, and the container now suppresses optional `keytar` loading that is not usable inside the distroless runtime.
 - Added a Supply Chain Security Module to the Research Workspace so the March 29 SBOM, dependency-audit scripts, workflow enforcement, license distribution, and container-hardening posture are visible in a dedicated authenticated frontend instead of only in docs and CI files.
 - Added an Audit Trail and Telemetry Module to the Research Workspace so immutable forwarding posture, TLS policy, request-scoped DB telemetry coverage, response-surface hardening, and JSON versus syslog previews are visible in a dedicated authenticated frontend.
 - Added a persistent `AuditEvent` model, a wrapper around the immutable log client, and an authenticated `/api/audit-telemetry/events` endpoint so audit history is stored per user and can be rendered live in the new Audit Trail and Telemetry Module.
@@ -299,6 +307,6 @@ FINAL REFLECTION (as of March 31, 2026)
 The project is now a robust, production-ready, security-focused, and test-driven application with modular architecture, strong authentication, comprehensive validation, encrypted data, and a full suite of research, automation, and browser-testing tools. The most important lesson: real progress comes from honest assessment, continuous improvement, and balancing shipping with technical debt management.
 
 ================================================================================
-Project: Note App | Developer: Ryan V | Date: March 31, 2026
-Repository: https://github.com/k0jir0/note-app
+Project: Helios | Developer: Ryan V | Date: March 31, 2026
+Repository: https://github.com/k0jir0/helios
 ================================================================================

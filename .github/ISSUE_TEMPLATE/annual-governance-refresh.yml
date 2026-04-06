@@ -1,0 +1,60 @@
+name: Annual Governance Refresh
+description: Record annual control-owner, risk, and inherited-control review evidence.
+title: "[ITSG-33] Annual governance refresh: "
+body:
+  - type: input
+    id: review-period
+    attributes:
+      label: Review period
+      placeholder: 2026 annual review
+    validations:
+      required: true
+  - type: input
+    id: reviewer
+    attributes:
+      label: Reviewer
+      placeholder: Name or handle
+    validations:
+      required: true
+  - type: textarea
+    id: architecture-changes
+    attributes:
+      label: Architecture or hosting changes
+      description: Summarize major auth, data-flow, hosting, or deployment changes since the last review.
+      placeholder: No major changes, or summarize them here.
+    validations:
+      required: true
+  - type: checkboxes
+    id: document-updates
+    attributes:
+      label: Governance document updates
+      options:
+        - label: Updated docs/itsg33-review.md when assumptions changed
+        - label: Updated docs/itsg33-control-matrix.md when control ownership or evidence expectations changed
+        - label: Reviewed branch protection, deployment authorization, and emergency operating procedures
+        - label: Reconfirmed inherited personnel, physical, and media-protection controls with the relevant owner
+    validations:
+      required: true
+  - type: textarea
+    id: risk-record
+    attributes:
+      label: Risk and authorization record
+      description: Summarize risk decisions, accepted residual risk, or linked authorization artifacts.
+      placeholder: Linked current system security plan and latest risk acceptance record.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence-links
+    attributes:
+      label: Evidence links
+      description: Link attestation documents, architecture decisions, review notes, or tickets.
+      placeholder: https://..., ADR-12, ticket-321
+    validations:
+      required: true
+  - type: textarea
+    id: follow-up
+    attributes:
+      label: Follow-up actions
+      placeholder: None.
+    validations:
+      required: true
