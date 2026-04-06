@@ -2,7 +2,7 @@
 
 Helios is an authenticated notes application with an integrated Research Workspace. The core product is straightforward: signed-in users create and manage encrypted notes, and the same app includes companion modules for security operations, browser automation, and operational assurance.
 
-That boundary matters. Helios is not a general-purpose SOC platform, and it is not a standalone compliance product. The research modules exist to make the notes application inspectable: they show how the app handles alert triage, audit telemetry, break-glass controls, supply-chain posture, access policy, session security, MFA, and browser-test generation inside one authenticated product.
+The research modules exist to make the notes application inspectable: they show how the app handles alert triage, audit telemetry, break-glass controls, supply-chain posture, access policy, session security, MFA, and browser-test generation inside one authenticated product.
 
 ## What Lives Here
 
