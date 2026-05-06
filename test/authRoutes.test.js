@@ -707,9 +707,13 @@ describe('Auth Routes', () => {
             await handler(req, res);
 
             expect(User.findOne.calledWith({ email: 'newuser@example.com' })).to.be.true;
-            expect(User.prototype.save.firstCall.thisValue.accessProfile.missionRole).to.equal('external');
-            expect(User.prototype.save.firstCall.thisValue.accessProfile.clearance).to.equal('unclassified');
-            expect(User.prototype.save.firstCall.thisValue.accessProfile.networkZones).to.deep.equal(['public']);
+            expect(User.prototype.save.firstCall.thisValue.accessProfile.missionRole).to.equal('analyst');
+            expect(User.prototype.save.firstCall.thisValue.accessProfile.clearance).to.equal('protected_b');
+            expect(User.prototype.save.firstCall.thisValue.accessProfile.assignedMissions).to.deep.equal([
+                'research-workspace',
+                'browser-assurance'
+            ]);
+            expect(User.prototype.save.firstCall.thisValue.accessProfile.networkZones).to.deep.equal(['corp']);
             expect(res.redirect.calledWith('/auth/login')).to.be.true;
         });
 

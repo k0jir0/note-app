@@ -155,7 +155,7 @@ async function handleSignup(req, res) {
             return res.redirect('/auth/login');
         }
 
-        await authService.createLocalUser({ email, password });
+        await authService.createLocalUser({ email, password, runtimeConfig });
         return res.redirect('/auth/login');
     } catch (error) {
         if (error.name === 'ValidationError') {

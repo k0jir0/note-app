@@ -226,7 +226,7 @@ describe('Passport configuration', () => {
         );
     });
 
-    it('creates externally scoped Google users when auto-provisioning is allowed', (done) => {
+    it('creates research-scoped Google users when auto-provisioning is allowed in open runtimes', (done) => {
         process.env.GOOGLE_CLIENT_ID = 'google-client-id';
         process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
 
@@ -258,9 +258,13 @@ describe('Passport configuration', () => {
             (error, user) => {
                 expect(error).to.equal(null);
                 expect(user.email).to.equal('external@example.com');
-                expect(user.accessProfile.missionRole).to.equal('external');
-                expect(user.accessProfile.clearance).to.equal('unclassified');
-                expect(user.accessProfile.networkZones).to.deep.equal(['public']);
+                expect(user.accessProfile.missionRole).to.equal('analyst');
+                expect(user.accessProfile.clearance).to.equal('protected_b');
+                expect(user.accessProfile.assignedMissions).to.deep.equal([
+                    'research-workspace',
+                    'browser-assurance'
+                ]);
+                expect(user.accessProfile.networkZones).to.deep.equal(['corp']);
                 done();
             }
         );

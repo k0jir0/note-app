@@ -138,7 +138,7 @@ module.exports = function (passport, runtimeConfig = {}) {
                     googleId: profile.id,
                     name: profile.displayName,
                     email,
-                    accessProfile: buildSelfRegisteredAccessProfile()
+                    accessProfile: buildSelfRegisteredAccessProfile(runtimeConfig)
                 });
 
                 await newUser.save();

@@ -1,7 +1,10 @@
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const { getConfiguredAppBaseUrl, hasGoogleAuthCredentials } = require('../config/runtimeConfig');
-const { buildSelfRegisteredAccessProfile } = require('./identityProvisioningService');
+const {
+    buildSelfRegisteredAccessProfile,
+    upgradeLegacySelfRegisteredAccessProfile
+} = require('./identityProvisioningService');
 const {
     SESSION_LOCK_REASONS,
     beginAuthenticatedSession,
@@ -243,12 +246,18 @@ function destroySession(req) {
 }
 
 async function completeAuthenticatedLogin(req, user) {
+    const runtimeConfig = req.app && req.app.locals ? req.app.locals.runtimeConfig || {} : {};
+
+    if (upgradeLegacySelfRegisteredAccessProfile(user, runtimeConfig) && typeof user.save === 'function') {
+        await user.save();
+    }
+
     await regenerateSession(req);
     await logInUser(req, user);
     await beginAuthenticatedSession({
         user,
         session: req.session,
-        runtimeConfig: req.app && req.app.locals ? req.app.locals.runtimeConfig : {}
+        runtimeConfig
     });
 }
 
@@ -268,12 +277,12 @@ async function findExistingUserByEmail(email) {
     return User.findOne({ email });
 }
 
-async function createLocalUser({ email, password }) {
+async function createLocalUser({ email, password, runtimeConfig = {} }) {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
         email,
         password: hashedPassword,
-        accessProfile: buildSelfRegisteredAccessProfile()
+        accessProfile: buildSelfRegisteredAccessProfile(runtimeConfig)
     });
 
     await user.save();
