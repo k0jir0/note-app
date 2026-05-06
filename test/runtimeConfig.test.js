@@ -266,6 +266,22 @@ describe('Runtime Config Validation', () => {
         expect(config.transport.trustProxyClientCertHeaders).to.equal(false);
     });
 
+    it('accepts protected proxy-terminated HTTPS without requiring exact proxy addresses', () => {
+        const env = createValidEnv();
+        env.NODE_ENV = 'staging';
+        env.APP_BASE_URL = 'https://note-app.example.gov';
+        env.MONGODB_URI = 'mongodb://127.0.0.1:27017/helios?tls=true';
+        env.TRUST_PROXY_HOPS = '1';
+        env.IMMUTABLE_LOGGING_ENABLED = 'true';
+        env.IMMUTABLE_LOGGING_URL = 'https://logs.example.gov/append';
+        env.IMMUTABLE_LOGGING_TOKEN = 'ci-log-token';
+
+        const config = validateRuntimeConfig(env);
+
+        expect(config.transport.proxyTlsTerminated).to.equal(true);
+        expect(config.transport.trustedProxyAddresses).to.deep.equal([]);
+    });
+
     it('requires explicit proxy-hop trust before client-certificate headers can be trusted', () => {
         const env = createValidEnv();
         env.TRUST_PROXY_CLIENT_CERT_HEADERS = 'true';

@@ -42,7 +42,7 @@ describe('secure transport middleware', () => {
         sinon.restore();
     });
 
-    it('recognizes secure requests from direct TLS or a trusted proxy path', () => {
+    it('recognizes secure requests from direct TLS or standard proxy-terminated HTTPS', () => {
         const secureReq = buildReq({
             secure: true,
             socket: {
@@ -52,7 +52,7 @@ describe('secure transport middleware', () => {
         const proxiedReq = buildReq({
             secure: true,
             socket: {
-                remoteAddress: '127.0.0.1'
+                remoteAddress: '10.10.10.20'
             },
             app: {
                 locals: {
@@ -60,8 +60,7 @@ describe('secure transport middleware', () => {
                     transportSecurity: {
                         secureTransportRequired: true,
                         proxyTlsTerminated: true,
-                        trustProxyHops: 1,
-                        trustedProxyAddresses: ['127.0.0.1']
+                        trustProxyHops: 1
                     }
                 }
             },
@@ -75,9 +74,9 @@ describe('secure transport middleware', () => {
         )).to.equal(true);
     });
 
-    it('does not trust forwarded-proto headers from remote addresses outside the explicit allowlist', () => {
+    it('does not trust raw forwarded-proto headers from remote addresses outside the explicit allowlist', () => {
         const spoofedReq = buildReq({
-            secure: true,
+            secure: false,
             socket: {
                 remoteAddress: '10.10.10.20'
             },

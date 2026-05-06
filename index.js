@@ -68,7 +68,12 @@ const { localEnvOverrides, protectedEnvKeys } = loadRuntimeEnvironment({ rootDir
         configureDatabaseTelemetry({ client: immutableLogClient });
 
         const isProduction = process.env.NODE_ENV === 'production';
-        const useSecureCookies = isProduction || Boolean(runtimeConfig.transport && runtimeConfig.transport.httpsEnabled);
+        const useSecureCookies = Boolean(runtimeConfig.runtimePosture && runtimeConfig.runtimePosture.protectedRuntime)
+            || Boolean(runtimeConfig.transport && (
+                runtimeConfig.transport.httpsEnabled
+                || runtimeConfig.transport.proxyTlsTerminated
+                || runtimeConfig.transport.secureTransportRequired
+            ));
         const realtimeAvailable = Boolean(process.env.REDIS_URL) && process.env.DISABLE_REDIS !== '1';
         const privilegedDevToolsEnabled = !isProduction
             && String(process.env.ENABLE_PRIVILEGED_DEV_TOOLS || '').trim().toLowerCase() === 'true';

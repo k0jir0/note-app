@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: helios-k0jir0-test-branch
+    runtime: docker
+    plan: free
+    branch: test-branch
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: commit
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: local
+      - key: RUNTIME_POSTURE
+        value: local
+      - key: DISABLE_KEYTAR
+        value: "1"
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      - key: SELF_SIGNUP_ENABLED
+        value: "false"
+      - key: GOOGLE_AUTO_PROVISION_ENABLED
+        value: "false"
+      - key: MONGODB_URI
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: NOTE_ENCRYPTION_KEY
+        generateValue: true
+      - key: METRICS_AUTH_TOKEN
+        generateValue: true

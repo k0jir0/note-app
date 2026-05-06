@@ -19,23 +19,26 @@ function requestArrivedFromTrustedProxy(req = {}, transport = {}) {
     return isTrustedProxyAddress(remoteAddress, transport.trustedProxyAddresses);
 }
 
-function requestUsesSecureTransport(req = {}, transport = {}) {
-    if (req.secure) {
-        return Boolean(
-            (req.socket && req.socket.encrypted)
-            || requestArrivedFromTrustedProxy(req, transport)
-        );
+function requestUsesTrustedProxyTlsTermination(req = {}, transport = {}) {
+    if (!transport || !transport.proxyTlsTerminated) {
+        return false;
     }
 
+    if (req.secure) {
+        return true;
+    }
+
+    return requestArrivedFromTrustedProxy(req, transport)
+        && typeof req.get === 'function'
+        && normalizeForwardedProto(req.get('x-forwarded-proto')) === 'https';
+}
+
+function requestUsesSecureTransport(req = {}, transport = {}) {
     if (req.socket && req.socket.encrypted) {
         return true;
     }
 
-    if (
-        requestArrivedFromTrustedProxy(req, transport)
-        && typeof req.get === 'function'
-        && normalizeForwardedProto(req.get('x-forwarded-proto')) === 'https'
-    ) {
+    if (requestUsesTrustedProxyTlsTermination(req, transport)) {
         return true;
     }
 

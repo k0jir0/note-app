@@ -994,6 +994,10 @@ NOTE_ENCRYPTION_KEY=64-char-hex-key
 PORT=3000
 ```
 
+The included `render.yaml` uses Docker with `NODE_ENV=local` and `RUNTIME_POSTURE=local` so the app can run behind Render's TLS-terminating proxy without also requiring a separate immutable-log sink during first deployment. Set `MONGODB_URI` to a TLS-enabled non-local MongoDB connection string during the initial Render Blueprint import, and set `APP_BASE_URL` to the resulting `onrender.com` URL if you need absolute callback URLs such as Google OAuth.
+
+If you want Render to run in the app's protected posture instead, align `NODE_ENV` and `RUNTIME_POSTURE` to a protected profile and also provide the immutable logging settings described below.
+
 **Optional Google OAuth Variables:**
 ```env
 APP_BASE_URL=https://your-domain.example

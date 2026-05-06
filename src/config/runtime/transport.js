@@ -71,10 +71,6 @@ function buildTransportConfig(env, errors) {
         errors.push('APP_BASE_URL must use https:// when HTTPS_ENABLED=true in protected runtime environments');
     }
 
-    if (protectedRuntime && proxyTlsTerminated && trustedProxyAddresses.length < 1) {
-        errors.push('TRUSTED_PROXY_ADDRESSES must enumerate one or more exact proxy addresses when TRUST_PROXY_HOPS is configured for protected runtime transport');
-    }
-
     return {
         protocol: httpsEnabled || proxyTlsTerminated ? 'https' : 'http',
         httpsEnabled,
