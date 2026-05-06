@@ -18,9 +18,9 @@ services:
       - key: TRUST_PROXY_HOPS
         value: "1"
       - key: SELF_SIGNUP_ENABLED
-        value: "false"
+        value: "true"
       - key: GOOGLE_AUTO_PROVISION_ENABLED
-        value: "false"
+        value: "true"
       - key: MONGODB_URI
         sync: false
       - key: APP_BASE_URL
