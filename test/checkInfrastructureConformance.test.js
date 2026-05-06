@@ -4,6 +4,7 @@ const path = require('path');
 const { expect } = require('chai');
 
 const {
+    DEFAULT_MIN_CERT_VALID_DAYS,
     assertInfrastructureConformance,
     deriveHttpProbeUrl,
     parseArgs,
@@ -68,6 +69,8 @@ describe('Infrastructure conformance checks', () => {
     });
 
     it('runs a successful infrastructure check with mocked probes', async () => {
+        const issuedAt = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toUTCString();
+        const expiresAt = new Date(Date.now() + ((DEFAULT_MIN_CERT_VALID_DAYS + 7) * 24 * 60 * 60 * 1000)).toUTCString();
         const report = await runInfrastructureConformanceCheck({
             publicBaseUrl: 'https://helios.example',
             healthUrl: 'https://helios.example/healthz'
@@ -121,8 +124,8 @@ describe('Infrastructure conformance checks', () => {
                     },
                     getPeerCertificate() {
                         return {
-                            valid_from: 'Apr 01 00:00:00 2026 GMT',
-                            valid_to: 'May 20 00:00:00 2026 GMT'
+                            valid_from: issuedAt,
+                            valid_to: expiresAt
                         };
                     },
                     getProtocol() {

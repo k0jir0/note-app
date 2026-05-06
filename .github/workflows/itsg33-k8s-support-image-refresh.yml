@@ -1,7 +1,7 @@
 name: ITSG-33 K8s Support Image Refresh
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
   schedule:
     - cron: '45 7 * * 1'
 
@@ -36,8 +36,8 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           branch: automation/itsg33-k8s-digest-refresh
-          commit-message: build(k8s): refresh pinned support image digests
-          title: build(k8s): refresh pinned support image digests
+          commit-message: 'build(k8s): refresh pinned support image digests'
+          title: 'build(k8s): refresh pinned support image digests'
           body: |
             Refreshes the pinned `mongo` and `nginx` support-image digests in `ops/kubernetes/immutable-stack.yaml`.
 
