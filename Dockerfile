@@ -6,7 +6,7 @@ COPY package.json package-lock.json ./
 
 RUN npm ci --omit=dev --no-audit --fund=false && npm cache clean --force
 
-FROM gcr.io/distroless/nodejs22-debian12:nonroot
+FROM gcr.io/distroless/nodejs22-debian13:nonroot
 
 WORKDIR /app
 
