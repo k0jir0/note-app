@@ -2,6 +2,7 @@ const { expect } = require('chai');
 const mongoose = require('mongoose');
 const sinon = require('sinon');
 
+const { listResearchModules } = require('../../src/features/research/researchModuleCatalog');
 const playwrightResearchService = require('../../src/services/playwrightResearchService');
 const seleniumResearchService = require('../../src/services/seleniumResearchService');
 const {
@@ -293,32 +294,33 @@ describe('Application end-to-end flows', function () {
             headers: { 'x-test-auth': '1' }
         });
         const researchHtml = await researchPage.text();
+        const researchModules = listResearchModules();
+        const researchWorkspaceLinks = ['/notes', ...researchModules.map((module) => module.href)];
 
         expect(researchPage.status).to.equal(200);
         expect(researchPage.headers.get('content-security-policy')).to.include('script-src \'self\'');
         expect(researchPage.headers.get('content-security-policy')).to.include('script-src-attr \'none\'');
         expect(researchPage.headers.get('x-powered-by')).to.equal(null);
         expect(researchPage.headers.get('server')).to.equal(null);
-        expect(researchHtml).to.include('Alert Triage ML Module');
-        expect(researchHtml).to.include('Selenium Testing Module');
-        expect(researchHtml).to.include('Playwright Testing Module');
-        expect(researchHtml).to.include('Query Injection Prevention Module');
-        expect(researchHtml).to.include('XSS and CSP Defense Module');
-        expect(researchHtml).to.include('Server Access Control Module');
-        expect(researchHtml).to.include('Self-Healing Locator Repair Module');
-        expect(researchHtml).to.include('Session Security Module');
-        expect(researchHtml).to.include('Hardware-Backed MFA Module');
-        expect(researchHtml).to.include('Mission Access Assurance Module');
-        expect(researchHtml).to.include('/ml/module');
-        expect(researchHtml).to.include('/selenium/module');
-        expect(researchHtml).to.include('/playwright/module');
-        expect(researchHtml).to.include('/injection-prevention/module');
-        expect(researchHtml).to.include('/xss-defense/module');
-        expect(researchHtml).to.include('/access-control/module');
-        expect(researchHtml).to.include('/self-healing/module');
-        expect(researchHtml).to.include('/session-management/module');
-        expect(researchHtml).to.include('/hardware-mfa/module');
-        expect(researchHtml).to.include('/mission-assurance/module');
+        expect(researchHtml).to.include('Research Workspace');
+        expect(researchHtml).to.include('href="/notes"');
+
+        researchModules.forEach((module) => {
+            expect(researchHtml).to.include(module.title);
+            expect(researchHtml).to.include(module.actionLabel);
+            expect(researchHtml).to.include(`href="${module.href}"`);
+        });
+
+        for (const routePath of researchWorkspaceLinks) {
+            const linkedPage = await client.request(routePath, {
+                headers: { 'x-test-auth': '1' }
+            });
+
+            expect(
+                linkedPage.status,
+                `Expected the Research Workspace link ${routePath} to load successfully.`
+            ).to.equal(200);
+        }
 
         stores.alerts.push({
             _id: new mongoose.Types.ObjectId(),
